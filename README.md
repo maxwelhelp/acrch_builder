@@ -62,3 +62,7 @@ Each run writes `PROGRAM_REPORT.md` inside the run directory. It shows the Actio
 ## v10 anti-collapse
 
 The synthetic proof run can use small anti-collapse losses so the expected primitive is not selected in every cell. Check `PROGRAM_REPORT.md` for `program_verdict`, `expected_top_cells`, and `active_cells`.
+
+## v11 harder proof tasks
+
+Use `TASK=two_diff` for two useful diff cells in one layer, and `TASK=chain_diff_product LAYERS=2` to test whether the second ActionMatrix layer does something different from the first.

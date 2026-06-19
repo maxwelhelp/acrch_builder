@@ -200,3 +200,34 @@ active_cells
 ```
 
 These losses are only for known-program synthetic proof. They are not the final unsupervised real-task training rule.
+
+
+## v11 multi-action and two-layer proof tasks
+
+v10 anti-collapse is still synthetic-known-program supervision. It is useful only as a microscope.
+
+v11 adds harder microscope tasks:
+
+```text
+TASK=two_diff:
+  layer0 expected:
+    0->1 diff
+    2->3 diff
+
+TASK=chain_diff_product:
+  intended:
+    layer0: 0->1 diff and 2->3 diff
+    layer1: 1->3 product
+```
+
+v11 also reports every layer separately in PROGRAM_REPORT.md:
+
+```text
+Layer 0 table
+Layer 1 table
+verdict per layer
+expected_top_cells per layer
+active_cells per layer
+```
+
+This answers whether the model is building a multi-layer program or still collapsing.

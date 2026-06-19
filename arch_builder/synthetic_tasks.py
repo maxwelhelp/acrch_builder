@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Dict, List
 
 import torch
 
@@ -9,13 +10,24 @@ import torch
 class Batch:
     x: torch.Tensor
     y: torch.Tensor
+
+    # Legacy first expected action for old reports.
     expected_primitive: str
     expected_src: int
     expected_tgt: int
 
+    # Full known-program target for proof-slice.
+    # Each action: {"layer": int, "src": int, "tgt": int, "primitive": str}
+    expected_actions: List[Dict[str, object]]
+
 
 class SyntheticKnownProgramTask:
-    """Known-program tasks for the vertical slice."""
+    """Known-program tasks for vertical-slice debugging.
+
+    These tasks are not the final training regime. They are microscopes:
+    we know the intended program and check whether ActionMatrix layers can
+    discover/execute/report it.
+    """
 
     def __init__(self, task: str = "diff", slots: int = 4, dim: int = 64, classes: int = 2) -> None:
         self.task = task
@@ -23,31 +35,66 @@ class SyntheticKnownProgramTask:
         self.dim = dim
         self.classes = classes
 
-    def label_signal(self, x: torch.Tensor) -> tuple[torch.Tensor, str, int, int]:
+    def label_signal(self, x: torch.Tensor) -> tuple[torch.Tensor, List[Dict[str, object]]]:
         if self.task == "diff":
             signal = (x[:, 0] - x[:, 1]).mean(dim=-1)
-            return signal, "diff", 0, 1
+            actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"}]
+            return signal, actions
+
+        if self.task == "two_diff":
+            signal = (x[:, 0] - x[:, 1]).mean(dim=-1) + (x[:, 2] - x[:, 3]).mean(dim=-1)
+            actions = [
+                {"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"},
+                {"layer": 0, "src": 2, "tgt": 3, "primitive": "diff"},
+            ]
+            return signal, actions
+
         if self.task == "merge":
             signal = (x[:, 0] + x[:, 1]).mean(dim=-1)
-            return signal, "merge", 0, 1
+            actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "merge"}]
+            return signal, actions
+
         if self.task == "product":
             signal = (x[:, 0] * x[:, 1]).mean(dim=-1)
-            return signal, "product", 0, 1
-        if self.task == "memory":
-            signal = x.mean(dim=(1, 2))
-            return signal, "memory_write", 0, 1
+            actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "product"}]
+            return signal, actions
+
+        if self.task == "chain_diff_product":
+            # Intended two-stage program:
+            #   layer0: d01 = x0 - x1, d23 = x2 - x3
+            #   layer1: product(d01, d23)
+            # This is intentionally harder and can expose whether layer1 really
+            # uses layer0 state or whether layer0/product-collapse solves it.
+            signal = ((x[:, 0] - x[:, 1]) * (x[:, 2] - x[:, 3])).mean(dim=-1)
+            actions = [
+                {"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"},
+                {"layer": 0, "src": 2, "tgt": 3, "primitive": "diff"},
+                {"layer": 1, "src": 1, "tgt": 3, "primitive": "product"},
+            ]
+            return signal, actions
+
         if self.task == "semantic_rescue":
             signal = (x[:, 0] * x[:, 1]).mean(dim=-1) - (x[:, 2] - x[:, 3]).mean(dim=-1)
-            return signal, "product", 0, 1
+            actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "product"}]
+            return signal, actions
+
         raise ValueError(f"unknown task: {self.task}")
 
     def sample(self, batch_size: int, device: str | torch.device) -> Batch:
         x = torch.randn(batch_size, self.slots, self.dim, device=device)
-        signal, expected, src, tgt = self.label_signal(x)
+        signal, actions = self.label_signal(x)
         y = (signal > 0).long()
-        return Batch(x=x, y=y, expected_primitive=expected, expected_src=src, expected_tgt=tgt)
+        first = actions[0]
+        return Batch(
+            x=x,
+            y=y,
+            expected_primitive=str(first["primitive"]),
+            expected_src=int(first["src"]),
+            expected_tgt=int(first["tgt"]),
+            expected_actions=actions,
+        )
 
     def oracle_accuracy(self, batch: Batch) -> float:
-        signal, _, _, _ = self.label_signal(batch.x)
+        signal, _ = self.label_signal(batch.x)
         pred = (signal > 0).long()
         return float((pred == batch.y).float().mean().detach().cpu())
