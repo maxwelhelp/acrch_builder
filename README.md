@@ -66,3 +66,7 @@ The synthetic proof run can use small anti-collapse losses so the expected primi
 ## v14 sequential sparse
 
 Use `FINAL_READ=last` for sequential tests. Check `active_cells`, `primitive_top_share`, `layer_ablation_delta`, and `layer_dependency_delta` in reports.
+
+## v15 signal-gated losses
+
+No epoch calendar. Structure losses are gated by current recovery/collapse/activity signals.

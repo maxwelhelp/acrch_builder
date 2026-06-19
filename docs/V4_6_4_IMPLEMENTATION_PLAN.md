@@ -279,3 +279,47 @@ PROGRAM_REPORT.md
 ```
 
 This fixes the main bypass risk: with `final_read=last`, Layer 0 cannot solve by direct output if Layer 1 is present.
+
+
+## v15_signal_gated_losses_20260619_2245
+
+Replaces calendar/epoch schedules with signal-gated loss weights.
+
+Signals:
+
+```text
+signal_expected_choice_mass
+signal_candidate_present
+signal_primitive_top_share
+signal_active_cells_soft
+signal_tape_mean
+```
+
+Gates:
+
+```text
+adaptive_recovery_gate:
+  opens when expected choice is alive
+
+adaptive_collapse_gate:
+  opens only when recovery is alive AND primitive top share is too high
+
+adaptive_sparse_gate:
+  opens only when recovery is alive AND too many cells are active
+
+adaptive_choice_boost:
+  boosts expected choice when recovery is weak
+```
+
+Effect:
+
+```text
+If expected_choice_mass is low:
+  train choice/sim/task, do not let sparsity/diversity kill recovery.
+
+If expected_choice_mass is high and collapse is high:
+  activate generic anti-collapse.
+
+If active cells are high after recovery:
+  activate sparse/tape budgets.
+```

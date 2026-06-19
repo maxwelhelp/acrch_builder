@@ -160,7 +160,7 @@ def summarize_trace(trace: Dict[str, object], batch, model: ActionMatrixModel) -
 
 
 @torch.no_grad()
-def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float, ablate_layer_output: Optional[int] = None, ablate_state_after: Optional[int] = None) -> Dict[str, float]:
+def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float, args=None, ablate_layer_output: Optional[int] = None, ablate_state_after: Optional[int] = None) -> Dict[str, float]:
     model.eval()
     total = 0
     correct = 0
@@ -180,6 +180,28 @@ def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float, 
         last_batch = batch
 
     out = summarize_trace(last_trace, last_batch, model)
+    signals = structure_signal_stats(last_trace, last_batch, model)
+    metric_args = args if args is not None else argparse.Namespace(
+        adapt_choice_floor=0.45,
+        adapt_top_share_floor=0.55,
+        adapt_sharpness=0.08,
+        adapt_cell_sharpness=1.5,
+        target_active_cells=3.0,
+        adapt_choice_boost=1.5,
+        lambda_choice=1.0,
+        lambda_non_expected_primitive=1.0,
+        lambda_primitive_usage_diversity=1.0,
+        lambda_cell_choice_diversity=1.0,
+        lambda_non_expected_active=1.0,
+        lambda_non_expected_tape=1.0,
+        lambda_non_expected_transform=1.0,
+        lambda_active_budget=1.0,
+        lambda_tape_budget=1.0,
+        lambda_layer_action_diversity=1.0,
+    )
+    gates = adaptive_loss_weights(signals, metric_args)
+    out.update({k: float(v.detach().cpu()) for k, v in signals.items()})
+    out.update({k: float(v.detach().cpu()) for k, v in gates.items() if k.startswith("adaptive_")})
     out.update({"val_loss": loss / total, "val_acc": correct / total, "oracle_acc": oracle_acc_sum / total})
     return out
 
@@ -298,6 +320,116 @@ def generic_anti_collapse_losses(trace: Dict[str, object], model: ActionMatrixMo
         "layer_action_diversity": mean_or_zero(layer_div_losses),
     }
 
+
+
+def structure_signal_stats(trace: Dict[str, object], batch, model: ActionMatrixModel) -> Dict[str, torch.Tensor]:
+    """Signal-based controller for regularization.
+
+    No epoch calendar. We read the current program state:
+      - are expected candidates present?
+      - is expected choice mass already alive?
+      - is one primitive dominating all cells?
+      - are too many cells active/tape-writing?
+
+    The structure losses are enabled only when the model has enough recovery
+    signal to not destroy learning.
+    """
+    s = model.slots
+    b = batch.x.shape[0]
+    actions_by_layer = _actions_by_layer(batch)
+
+    choice_masses = []
+    candidate_present = []
+    primitive_top_shares = []
+    active_means = []
+    tape_means = []
+    active_cells_soft = []
+
+    for layer_idx, layer0 in enumerate(trace["layers"]):
+        cand = layer0["candidate_ids"]
+        choice = layer0["choice"]
+        prim_dist_rows = _primitive_distribution(layer0, model.pm.num_primitives)
+        cell_dist = prim_dist_rows.view(b, s * s, -1).mean(dim=0)
+        global_prim = cell_dist.mean(dim=0)
+        primitive_top_shares.append(global_prim.max())
+
+        edge = layer0["edge_for_loss"]
+        write = layer0["write_for_loss"]
+        phase = layer0["phase_for_loss"]
+        active = (edge * write * phase).view(b, s, s)
+        active_means.append(active.mean())
+        active_cells_soft.append(active.mean(dim=0).sum())
+
+        tape = layer0["cell_tape_weight_for_loss"].view(b, s, s)
+        tape_means.append(tape.mean())
+
+        for act in actions_by_layer.get(layer_idx, []):
+            pid = model.pm.name_to_id[str(act["primitive"])]
+            src = int(act["src"])
+            tgt = int(act["tgt"])
+            rows = torch.arange(b, device=cand.device) * (s * s) + src * s + tgt
+            expected_mask = cand[rows] == pid
+            candidate_present.append(expected_mask.any(dim=-1).float().mean())
+            choice_masses.append((choice[rows] * expected_mask.float()).sum(dim=-1).mean())
+
+    device = next(model.parameters()).device
+    z = torch.zeros((), device=device)
+
+    def mean_or_zero(xs):
+        return torch.stack(xs).mean() if xs else z
+
+    return {
+        "signal_expected_choice_mass": mean_or_zero(choice_masses),
+        "signal_candidate_present": mean_or_zero(candidate_present),
+        "signal_primitive_top_share": mean_or_zero(primitive_top_shares),
+        "signal_active_mean": mean_or_zero(active_means),
+        "signal_tape_mean": mean_or_zero(tape_means),
+        "signal_active_cells_soft": mean_or_zero(active_cells_soft),
+    }
+
+
+def adaptive_loss_weights(signals: Dict[str, torch.Tensor], args) -> Dict[str, torch.Tensor]:
+    """Convert current program health signals into loss gates.
+
+    This is deliberately not epoch-based:
+      low expected_choice_mass  -> protect learning, disable heavy sparsity/diversity
+      high expected_choice_mass + high primitive_top_share -> enable anti-collapse
+      high expected_choice_mass + too many active cells -> enable sparse budget
+    """
+    choice = signals["signal_expected_choice_mass"].detach()
+    present = signals["signal_candidate_present"].detach()
+    top = signals["signal_primitive_top_share"].detach()
+    active_cells = signals["signal_active_cells_soft"].detach()
+
+    # Candidate must exist and expected choice must be alive before structure
+    # pressure is trusted.
+    recovery_gate = present * torch.sigmoid((choice - args.adapt_choice_floor) / args.adapt_sharpness)
+
+    # Only fight primitive collapse if recovery exists AND one primitive dominates.
+    collapse_gate = recovery_gate * torch.sigmoid((top - args.adapt_top_share_floor) / args.adapt_sharpness)
+
+    # Only sparsify if recovery exists AND active cells exceed target.
+    sparse_gate = recovery_gate * torch.sigmoid((active_cells - args.target_active_cells) / max(args.adapt_cell_sharpness, 1e-6))
+
+    # If expected choice is weak, expected-choice teacher gets boosted.
+    choice_boost = 1.0 + args.adapt_choice_boost * (1.0 - recovery_gate)
+
+    return {
+        "adaptive_recovery_gate": recovery_gate,
+        "adaptive_collapse_gate": collapse_gate,
+        "adaptive_sparse_gate": sparse_gate,
+        "adaptive_choice_boost": choice_boost,
+        "eff_lambda_choice": args.lambda_choice * choice_boost,
+        "eff_lambda_non_expected_primitive": args.lambda_non_expected_primitive * collapse_gate,
+        "eff_lambda_primitive_usage_diversity": args.lambda_primitive_usage_diversity * collapse_gate,
+        "eff_lambda_cell_choice_diversity": args.lambda_cell_choice_diversity * collapse_gate,
+        "eff_lambda_non_expected_active": args.lambda_non_expected_active * sparse_gate,
+        "eff_lambda_non_expected_tape": args.lambda_non_expected_tape * sparse_gate,
+        "eff_lambda_non_expected_transform": args.lambda_non_expected_transform * sparse_gate,
+        "eff_lambda_active_budget": args.lambda_active_budget * sparse_gate,
+        "eff_lambda_tape_budget": args.lambda_tape_budget * sparse_gate,
+        "eff_lambda_layer_action_diversity": args.lambda_layer_action_diversity * collapse_gate,
+    }
 
 def sim_targets_for_expected_actions(trace: Dict[str, object], batch, model: ActionMatrixModel) -> torch.Tensor:
     losses = []
@@ -489,12 +621,12 @@ def write_program_report(out_dir: Path, program: Dict[str, object], epoch: int) 
 def dependency_metrics(model, task, args, device: str, tau: float, normal_acc: float) -> Dict[str, float]:
     out: Dict[str, float] = {}
     if args.layers >= 1:
-        last_ablate = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, ablate_layer_output=args.layers - 1)
+        last_ablate = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, args=args, ablate_layer_output=args.layers - 1)
         out["layer_ablation_delta"] = normal_acc - last_ablate["val_acc"]
     else:
         out["layer_ablation_delta"] = 0.0
     if args.layers >= 2:
-        dep = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, ablate_state_after=0)
+        dep = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, args=args, ablate_state_after=0)
         out["layer_dependency_delta"] = normal_acc - dep["val_acc"]
     else:
         out["layer_dependency_delta"] = 0.0
@@ -547,23 +679,25 @@ def train(args) -> None:
                 sim_loss = sim_targets_for_expected_actions(trace, batch, model)
                 struct_losses = proof_slice_structure_losses(trace, batch, model, expected_id)
                 generic_losses = generic_anti_collapse_losses(trace, model, args.target_active_fraction, args.target_tape_fraction)
+                signals = structure_signal_stats(trace, batch, model)
+                gates = adaptive_loss_weights(signals, args)
                 mode = trace["layers"][0]["mode_for_loss"]
                 min_transform = F.relu(args.min_transform_mass - mode[:, 0].mean())
 
                 loss = (
                     ce
                     + args.lambda_sim * sim_loss
-                    + args.lambda_choice * struct_losses["expected_choice_loss"]
-                    + args.lambda_non_expected_primitive * struct_losses["non_expected_primitive_loss"]
+                    + gates["eff_lambda_choice"] * struct_losses["expected_choice_loss"]
                     + args.lambda_expected_active * struct_losses["expected_active_loss"]
-                    + args.lambda_non_expected_active * struct_losses["non_expected_active_loss"]
-                    + args.lambda_non_expected_tape * struct_losses["non_expected_tape_loss"]
-                    + args.lambda_non_expected_transform * struct_losses["non_expected_transform_loss"]
-                    + args.lambda_primitive_usage_diversity * generic_losses["primitive_usage_diversity"]
-                    + args.lambda_cell_choice_diversity * generic_losses["cell_choice_diversity"]
-                    + args.lambda_active_budget * generic_losses["active_budget"]
-                    + args.lambda_tape_budget * generic_losses["tape_budget"]
-                    + args.lambda_layer_action_diversity * generic_losses["layer_action_diversity"]
+                    + gates["eff_lambda_non_expected_primitive"] * struct_losses["non_expected_primitive_loss"]
+                    + gates["eff_lambda_non_expected_active"] * struct_losses["non_expected_active_loss"]
+                    + gates["eff_lambda_non_expected_tape"] * struct_losses["non_expected_tape_loss"]
+                    + gates["eff_lambda_non_expected_transform"] * struct_losses["non_expected_transform_loss"]
+                    + gates["eff_lambda_primitive_usage_diversity"] * generic_losses["primitive_usage_diversity"]
+                    + gates["eff_lambda_cell_choice_diversity"] * generic_losses["cell_choice_diversity"]
+                    + gates["eff_lambda_active_budget"] * generic_losses["active_budget"]
+                    + gates["eff_lambda_tape_budget"] * generic_losses["tape_budget"]
+                    + gates["eff_lambda_layer_action_diversity"] * generic_losses["layer_action_diversity"]
                     + args.lambda_collapse * min_transform
                 )
 
@@ -577,7 +711,7 @@ def train(args) -> None:
             correct += (logits.argmax(dim=-1) == batch.y).sum().item()
             loss_sum += loss.item() * args.batch_size
 
-        ev = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau)
+        ev = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, args=args)
         sdelta = sim_disabled_delta(model, task, args.eval_batch_size, device, tau)
         ev["sim_disabled_delta"] = sdelta
         ev["choice_without_sim_delta"] = sdelta
@@ -603,7 +737,7 @@ def train(args) -> None:
             f"edge_prog={ev['expected_edge_recovery']:.3f} "
             f"any_prog={ev['expected_any_recovery']:.3f} "
             f"active_cells={ev.get('active_cells', 0):.1f} "
-            f"top_share={ev.get('primitive_top_share', 0):.3f} "
+            f"top_share={ev.get('primitive_top_share', 0):.3f} gateR={ev.get('adaptive_recovery_gate', 0):.2f} gateC={ev.get('adaptive_collapse_gate', 0):.2f} gateS={ev.get('adaptive_sparse_gate', 0):.2f} "
             f"final={args.final_read} "
             f"cand={ev.get('expected_candidate_present', 0):.3f} "
             f"choice_mass={ev.get('expected_edge_choice_mass', 0):.3f} "
@@ -683,6 +817,12 @@ def parser():
     p.add_argument("--lambda-layer-action-diversity", type=float, default=0.05)
     p.add_argument("--target-active-fraction", type=float, default=0.18)
     p.add_argument("--target-tape-fraction", type=float, default=0.015)
+    p.add_argument("--target-active-cells", type=float, default=3.0)
+    p.add_argument("--adapt-choice-floor", type=float, default=0.45)
+    p.add_argument("--adapt-top-share-floor", type=float, default=0.55)
+    p.add_argument("--adapt-sharpness", type=float, default=0.08)
+    p.add_argument("--adapt-cell-sharpness", type=float, default=1.5)
+    p.add_argument("--adapt-choice-boost", type=float, default=1.5)
     p.add_argument("--lambda-collapse", type=float, default=0.01)
     p.add_argument("--min-transform-mass", type=float, default=0.15)
     p.add_argument("--seed", type=int, default=42)
