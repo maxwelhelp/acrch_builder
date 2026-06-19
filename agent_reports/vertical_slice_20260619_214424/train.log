@@ -1,0 +1,8 @@
+epoch 001/8 train=1.9416/50.16% val=0.6937/50.27% edge_prog=0.673 any_prog=0.670 cand=1.000 choice_mass=0.672 oracle=100.0% sim_delta=+0.0069
+epoch 002/8 train=2.4841/49.34% val=0.6941/50.74% edge_prog=0.667 any_prog=0.667 cand=1.000 choice_mass=0.657 oracle=100.0% sim_delta=+0.0071
+epoch 003/8 train=2.7876/50.84% val=0.6964/50.04% edge_prog=0.719 any_prog=0.694 cand=1.000 choice_mass=0.729 oracle=100.0% sim_delta=+0.0015
+epoch 004/8 train=2.7519/50.16% val=0.6930/50.04% edge_prog=0.861 any_prog=0.828 cand=1.000 choice_mass=0.835 oracle=100.0% sim_delta=+0.0037
+epoch 005/8 train=2.8729/52.09% val=0.6912/52.19% edge_prog=0.668 any_prog=0.669 cand=1.000 choice_mass=0.671 oracle=100.0% sim_delta=+0.0085
+epoch 006/8 train=3.4399/55.81% val=0.6695/60.78% edge_prog=0.667 any_prog=0.697 cand=1.000 choice_mass=0.667 oracle=100.0% sim_delta=+0.0152
+epoch 007/8 train=4.2631/63.77% val=0.6068/67.81% edge_prog=0.668 any_prog=0.785 cand=1.000 choice_mass=0.646 oracle=100.0% sim_delta=+0.0522
+epoch 008/8 train=5.1466/72.01% val=0.5409/73.20% edge_prog=0.667 any_prog=0.676 cand=1.000 choice_mass=0.667 oracle=100.0% sim_delta=+0.0304
