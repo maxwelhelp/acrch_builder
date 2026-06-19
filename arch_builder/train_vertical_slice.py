@@ -313,7 +313,7 @@ def proof_slice_structure_losses(trace: Dict[str, object], batch, model: ActionM
     }
 
 
-def generic_anti_collapse_losses(trace: Dict[str, object], model: ActionMatrixModel, target_active_fraction: float, target_tape_fraction: float) -> Dict[str, torch.Tensor]:
+def generic_anti_collapse_losses(trace: Dict[str, object], model: ActionMatrixModel, target_active_fraction: float, target_tape_fraction: float, target_active_cells: Optional[float] = None) -> Dict[str, torch.Tensor]:
     z = torch.zeros((), device=next(model.parameters()).device)
     same_primitive_losses, cell_similarity_losses = [], []
     active_budget_losses, tape_budget_losses, layer_distributions = [], [], []
@@ -343,8 +343,22 @@ def generic_anti_collapse_losses(trace: Dict[str, object], model: ActionMatrixMo
         edge = layer0["edge_for_loss"]
         write = layer0["write_for_loss"]
         phase = layer0["phase_for_loss"]
-        active = (edge * write * phase).mean()
-        active_budget_losses.append((active - target_active_fraction).pow(2))
+
+        # Match the acceptance metric: penalize soft active-cell count, not only
+        # mean activity. The old mean-only budget allowed all 16 cells to stay
+        # weakly active, which passed loss but failed Task 02.
+        active_grid = (edge * write * phase).view(b, s * s)
+        active_mean = active_grid.mean()
+        active_cell_count = active_grid.mean(dim=0).sum()
+        active_cell_target = (
+            float(target_active_cells)
+            if target_active_cells is not None
+            else float(target_active_fraction) * float(s * s)
+        )
+        active_budget_losses.append(
+            F.relu(active_cell_count - active_cell_target).pow(2) / float(s * s) ** 2
+            + F.relu(active_mean - target_active_fraction).pow(2)
+        )
 
         tape = layer0["cell_tape_weight_for_loss"].mean()
         tape_budget_losses.append((tape - target_tape_fraction).pow(2))
@@ -519,6 +533,7 @@ def compute_training_objective(
         model,
         args.target_active_fraction,
         args.target_tape_fraction,
+        args.target_active_cells,
     )
     signals = structure_signal_stats(trace, batch, model)
     gates = adaptive_loss_weights(signals, args)

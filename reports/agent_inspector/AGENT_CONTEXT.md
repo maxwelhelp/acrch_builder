@@ -18,7 +18,7 @@
 ## Risk nodes
 
 - `entrypoint` role=`entrypoint` degree=`110` file=`` line=``
-- `parser` role=`entrypoint` degree=`51` file=`arch_builder/train_vertical_slice.py` line=`904`
+- `parser` role=`entrypoint` degree=`51` file=`arch_builder/train_vertical_slice.py` line=`919`
 - `tools/agent_codegraph/build_agent_codegraph.py` role=`scanner` degree=`43` file=`` line=``
 - `controller` role=`controller` degree=`39` file=`` line=``
 - `memory` role=`memory` degree=`38` file=`` line=``
@@ -33,7 +33,7 @@
 - `tools/project_probe/probe_learning_loop.py` role=`entrypoint` degree=`24` file=`` line=``
 - `scanner` role=`scanner` degree=`23` file=`` line=``
 - `HybridScanner.__init__` role=`scanner` degree=`22` file=`arch_builder/hybrid_scanner.py` line=`14`
-- `train` role=`reporting` degree=`22` file=`arch_builder/train_vertical_slice.py` line=`757`
+- `train` role=`reporting` degree=`22` file=`arch_builder/train_vertical_slice.py` line=`772`
 - `arch_builder/model.py` role=`controller` degree=`21` file=`` line=``
 - `FuncVisitor._target` role=`memory` degree=`21` file=`tools/agent_codegraph/build_agent_codegraph.py` line=`188`
 - `FV._target` role=`memory` degree=`21` file=`tools/agent_inspector/inspect_project.py` line=`84`
@@ -45,7 +45,7 @@
 
 ## Probe metrics
 
-- `loss`: `9.038074493408203`
+- `loss`: `9.03807544708252`
 - `train_acc`: `0.375`
 - `gain_disabled_delta`: `-0.0031250715255737305`
 - `sim_result_disabled_delta`: `-0.006227254867553711`
@@ -60,8 +60,8 @@
 - `non_expected_tape_loss`: `0.0752803385257721`
 - `non_expected_transform_loss`: `0.5465383529663086`
 - `primitive_usage_diversity`: `0.0`
-- `cell_choice_diversity`: `0.010960831306874752`
-- `active_budget`: `0.004278274718672037`
+- `cell_choice_diversity`: `0.010960830375552177`
+- `active_budget`: `0.007639226503670216`
 - `tape_budget`: `0.0036056602839380503`
 - `layer_action_diversity`: `0.0`
 - `min_transform_loss`: `0.0`
@@ -134,7 +134,7 @@
 - `phase_pair_bias_std`: `0.0`
 - `cell_output_pair_bias_expected`: `0.0`
 - `cell_output_pair_bias_std`: `0.0`
-- `loss_accounting_error`: `1.2748618871682993e-07`
+- `loss_accounting_error`: `1.334045833800701e-07`
 
 ## Loss connectivity
 
@@ -147,8 +147,8 @@
 - `non_expected_tape_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.11549900156152165}`
 - `non_expected_transform_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.45246352996584216}`
 - `primitive_usage_diversity`: requires_grad=`True` applicable=`True` connected=`False` target_grad_norms=`{'choice_controller': 0.0, 'scanner': 0.0, 'simulator': 0.0}`
-- `cell_choice_diversity`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.021186203557206674, 'scanner': 0.04484954688858357, 'simulator': 0.08474400280735811}`
-- `active_budget`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.03693686811044719}`
+- `cell_choice_diversity`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.021186203557206674, 'scanner': 0.04484954682879316, 'simulator': 0.08474400282803325}`
+- `active_budget`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.07007441006616898}`
 - `tape_budget`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.01398009601464308}`
 - `layer_action_diversity`: requires_grad=`True` applicable=`True` connected=`False` target_grad_norms=`{'choice_controller': 0.0, 'scanner': 0.0, 'simulator': 0.0}`
 - `min_transform_loss`: requires_grad=`True` applicable=`True` connected=`False` target_grad_norms=`{'gate_controller': 0.0}`
