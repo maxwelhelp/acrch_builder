@@ -1,0 +1,211 @@
+{
+  "project_name": "acrch_builder",
+  "paths": {
+    "runtime_probe": "reports/agent_inspector/runtime_probe.json",
+    "out_dir": "reports/agent_inspector"
+  },
+  "static": {
+    "skip_dirs": [
+      ".git",
+      ".venv",
+      "venv",
+      "__pycache__",
+      ".pytest_cache",
+      "reports",
+      "agent_reports",
+      "runs",
+      "checkpoints",
+      "weights",
+      "data",
+      "datasets",
+      "wandb",
+      "node_modules"
+    ],
+    "code_extensions": [
+      ".py",
+      ".sh",
+      ".md",
+      ".json",
+      ".yml",
+      ".yaml",
+      ".toml"
+    ]
+  },
+  "roles": {
+    "entrypoint": [
+      "argparse",
+      "parser",
+      "main",
+      "train_vertical_slice",
+      "run_",
+      "commands/",
+      "validate"
+    ],
+    "data": [
+      "SyntheticKnownProgramTask",
+      "synthetic_tasks",
+      "Batch",
+      "expected_src",
+      "expected_tgt",
+      "expected_primitive",
+      "oracle_accuracy",
+      "task.sample"
+    ],
+    "primitive_matrix": [
+      "PrimitiveMatrix5x5",
+      "PrimitiveInfo",
+      "primitive_matrix",
+      "primitive",
+      "name_to_id",
+      "usage_ema",
+      "semantic_topk",
+      "local_window"
+    ],
+    "scanner": [
+      "HybridScanner",
+      "scanner",
+      "candidate",
+      "cand_ids",
+      "topk",
+      "top_k",
+      "semantic",
+      "usage"
+    ],
+    "simulator": [
+      "LowRankSimulator",
+      "simulator",
+      "predicted_gain",
+      "sim_logits",
+      "sim_component",
+      "sim_loss",
+      "sim_disabled_delta",
+      "disable_sim"
+    ],
+    "controller": [
+      "ActionMatrixLayer",
+      "choice_logits",
+      "choice",
+      "gumbel_softmax",
+      "mode_head",
+      "edge_gate",
+      "write_gate",
+      "phase_gate",
+      "edge_pair_bias",
+      "write_pair_bias",
+      "cell_output_gate",
+      "output_gate",
+      "gate",
+      "mode"
+    ],
+    "executor": [
+      "ActionExecutor",
+      "executor",
+      "primitive_out",
+      "transformed",
+      "cell_out",
+      "msg",
+      "edge_scale"
+    ],
+    "model_core": [
+      "ActionMatrixModel",
+      "model.py",
+      "forward",
+      "state",
+      "next_state",
+      "output_state",
+      "slot_embed",
+      "classifier",
+      "logits",
+      "memory"
+    ],
+    "memory": [
+      "memory",
+      "new_memory",
+      "flat_mem",
+      "state.mean",
+      "read",
+      "write",
+      "slot_embed"
+    ],
+    "credit": [
+      "CreditBuffer",
+      "credit",
+      "expected_edge_choice_loss",
+      "choice_loss",
+      "sim_loss",
+      "lambda_choice",
+      "lambda_sim",
+      "loss.backward",
+      "expected_edge_recovery",
+      "program_recovery_rate"
+    ],
+    "reporting": [
+      "reporting",
+      "write_json",
+      "append_csv",
+      "write_latest_report",
+      "metrics.csv",
+      "final_report.json",
+      "LATEST_RUN_REPORT"
+    ]
+  },
+  "loops": {
+    "main_learning_loop": [
+      "data",
+      "model_core",
+      "controller",
+      "executor",
+      "credit",
+      "model_core"
+    ],
+    "simulator_choice_loop": [
+      "scanner",
+      "simulator",
+      "controller",
+      "executor",
+      "credit",
+      "simulator"
+    ],
+    "memory_state_loop": [
+      "model_core",
+      "memory",
+      "scanner",
+      "controller",
+      "executor",
+      "model_core"
+    ],
+    "report_agent_loop": [
+      "entrypoint",
+      "reporting",
+      "credit",
+      "entrypoint"
+    ]
+  },
+  "runtime_contract": {
+    "critical_grad_groups": [
+      "controller",
+      "scanner",
+      "simulator",
+      "classifier",
+      "model_core"
+    ],
+    "optional_grad_groups": [
+      "executor",
+      "memory",
+      "primitive_matrix"
+    ],
+    "credit_path_order": [
+      "expected_edge_present",
+      "candidate_present",
+      "choice_mass",
+      "edge_active",
+      "recovery",
+      "recovery_loss_connected"
+    ],
+    "min_grad_norm": 1e-12,
+    "min_choice_mass": 0.001,
+    "min_edge_active": 0.001,
+    "min_recovery": 0.001
+  },
+  "probe_command": "bash commands/probe_learning_loop.sh"
+}

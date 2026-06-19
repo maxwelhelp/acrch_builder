@@ -23,12 +23,23 @@ class ActionMatrixLayer(nn.Module):
     train-time losses/reporting now enforce sparse useful structure.
     """
 
-    def __init__(self, dim: int, slots: int, primitive_matrix: PrimitiveMatrix5x5, top_k: int = 25, sim_rank: int = 16) -> None:
+    def __init__(
+        self,
+        dim: int,
+        slots: int,
+        primitive_matrix: PrimitiveMatrix5x5,
+        top_k: int = 25,
+        sim_rank: int = 16,
+        state_norm: str = "none",
+    ) -> None:
         super().__init__()
+        if state_norm not in {"none", "layernorm"}:
+            raise ValueError(f"state_norm must be none or layernorm, got {state_norm}")
         self.dim = dim
         self.slots = slots
         self.top_k = top_k
         self.pm = primitive_matrix
+        self.state_norm_mode = state_norm
 
         context_dim = dim * 5
         emb_dim = primitive_matrix.emb.shape[-1]
@@ -45,7 +56,7 @@ class ActionMatrixLayer(nn.Module):
         self.edge_op = nn.Linear(context_dim, 1)
         self.output_gate = nn.Linear(dim, 1)
         self.cell_output_gate = nn.Linear(context_dim, 1)
-        self.norm = nn.LayerNorm(dim)
+        self.norm = nn.LayerNorm(dim) if state_norm == "layernorm" else nn.Identity()
 
         # Pair priors are learnable anchors, not hardcoded expected edges.
         self.edge_pair_bias = nn.Parameter(torch.zeros(slots, slots))
@@ -70,26 +81,62 @@ class ActionMatrixLayer(nn.Module):
     def _flat_pair_bias(self, param: torch.Tensor, batch: int, dtype: torch.dtype, device: torch.device) -> torch.Tensor:
         return param.to(dtype=dtype, device=device).reshape(1, self.slots * self.slots, 1).expand(batch, -1, -1).reshape(batch * self.slots * self.slots, 1)
 
-    def forward(self, state: torch.Tensor, memory: torch.Tensor, tau: float = 1.0, disable_sim: bool = False):
+    def apply_state_update(
+        self,
+        state: torch.Tensor,
+        cell_value_grid: torch.Tensor,
+        cell_write_mass_grid: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Normalize incoming cell values and apply a bounded soft-OR write."""
+        write_mass = cell_write_mass_grid.clamp(0.0, 1.0)
+        mass_sum = write_mass.sum(dim=1)
+        write_value = (write_mass * cell_value_grid).sum(dim=1) / mass_sum.clamp_min(1e-8)
+        target_write_gate = 1.0 - (1.0 - write_mass).prod(dim=1)
+        next_state = (1.0 - target_write_gate) * state + target_write_gate * write_value
+        return self.norm(next_state), write_value, target_write_gate
+
+    def forward(
+        self,
+        state: torch.Tensor,
+        memory: torch.Tensor,
+        slot_address: torch.Tensor,
+        tau: float = 1.0,
+        disable_sim: bool = False,
+        disable_gain: bool = False,
+        disable_sim_result: bool = False,
+    ):
         b, s, d = state.shape
         src = state.unsqueeze(2).expand(b, s, s, d)
         tgt = state.unsqueeze(1).expand(b, s, s, d)
         mem = memory[:, None, None, :].expand(b, s, s, d)
-        context = torch.cat([src, tgt, src - tgt, src * tgt, mem], dim=-1)
+        source_address = slot_address.view(1, s, 1, d).expand(b, s, s, d)
+        target_address = slot_address.view(1, 1, s, d).expand(b, s, s, d)
+        control_src = src + source_address
+        control_tgt = tgt + target_address
+        context = torch.cat([control_src, control_tgt, src - tgt, src * tgt, mem], dim=-1)
 
         flat_context = context.reshape(b * s * s, -1)
         flat_src = src.reshape(b * s * s, d)
         flat_tgt = tgt.reshape(b * s * s, d)
         flat_mem = mem.reshape(b * s * s, d)
 
-        cand_ids, proposal_logits, scan_metrics = self.scanner(flat_context, flat_mem, self.pm)
+        cand_ids, proposal_logits, source_ids, scan_metrics = self.scanner(flat_context, flat_mem, self.pm)
         k = min(self.top_k, proposal_logits.shape[-1])
         top_vals, top_pos = proposal_logits.topk(k=k, dim=-1)
         top_ids = cand_ids.gather(1, top_pos)
+        top_source_ids = source_ids.gather(1, top_pos)
 
         sim, predicted_gain = self.simulator(flat_src, top_ids)
-        sim_component = torch.zeros_like(predicted_gain) if disable_sim else self.sim_logits(sim).squeeze(-1)
-        gain_component = torch.zeros_like(predicted_gain) if disable_sim else predicted_gain
+        sim_component = (
+            torch.zeros_like(predicted_gain)
+            if disable_sim or disable_sim_result
+            else self.sim_logits(sim).squeeze(-1)
+        )
+        gain_component = (
+            torch.zeros_like(predicted_gain)
+            if disable_sim or disable_gain
+            else predicted_gain
+        )
 
         context_component = self.context_logits(flat_context)[:, :k]
         choice_logits = (
@@ -99,6 +146,15 @@ class ActionMatrixLayer(nn.Module):
             + _ln_logits(top_vals)
         )
         choice = F.gumbel_softmax(choice_logits, tau=tau, hard=False, dim=-1) if self.training else F.softmax(choice_logits, dim=-1)
+
+        source_names = ("grid", "semantic", "usage", "random")
+        with torch.no_grad():
+            for source_id, source_name in enumerate(source_names):
+                source_mass = (choice * (top_source_ids == source_id).to(choice.dtype)).sum(dim=-1).mean()
+                scan_metrics[f"{source_name}_candidate_usage"] = float(source_mass.cpu())
+            scan_metrics["scanner_source_mass_sum"] = float(
+                sum(scan_metrics[f"{name}_candidate_usage"] for name in source_names)
+            )
 
         primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
         transformed = (choice.unsqueeze(-1) * primitive_out).sum(dim=1)
@@ -116,12 +172,20 @@ class ActionMatrixLayer(nn.Module):
         edge_scale = 0.25 + torch.sigmoid(self.edge_op(flat_context))
         active = edge * write * phase
 
-        cell_out = mode[:, 0:1] * transformed + mode[:, 1:2] * flat_src + mode[:, 2:3] * 0.0
-        msg = active * edge_scale * cell_out
-        msg_grid = msg.view(b, s, s, d)
+        enabled_mode_mass = mode[:, 0:1] + mode[:, 1:2]
+        cell_value = (
+            mode[:, 0:1] * transformed + mode[:, 1:2] * flat_src
+        ) / enabled_mode_mass.clamp_min(1e-8)
+        cell_write_mass = active * enabled_mode_mass
+        scaled_cell_value = edge_scale * cell_value
+        cell_value_grid = scaled_cell_value.view(b, s, s, d)
+        cell_write_mass_grid = cell_write_mass.view(b, s, s, 1)
 
-        incoming = msg_grid.sum(dim=1) / max(1, s)
-        next_state = self.norm(state + incoming)
+        next_state, write_value, target_write_gate = self.apply_state_update(
+            state,
+            cell_value_grid,
+            cell_write_mass_grid,
+        )
 
         cell_out_gate = torch.sigmoid(self.cell_output_gate(flat_context) + pair_cell_out)
         cell_tape_weight = cell_out_gate * active * mode[:, 0:1]
@@ -142,7 +206,11 @@ class ActionMatrixLayer(nn.Module):
 
         trace: Dict[str, object] = {
             "candidate_ids": top_ids.detach(),
+            "candidate_source_ids": top_source_ids.detach(),
             "choice": choice.detach(),
+            # Losses need the live distribution; reports intentionally use the
+            # detached `choice` field above.
+            "choice_for_loss": choice,
             "chosen": chosen.detach(),
             "predicted_gain": predicted_gain.detach(),
             "predicted_gain_for_loss": predicted_gain,
@@ -160,6 +228,12 @@ class ActionMatrixLayer(nn.Module):
             "cell_output_gate": cell_out_gate.detach(),
             "cell_tape_weight": cell_tape_weight.detach(),
             "cell_tape_weight_for_loss": cell_tape_weight,
+            "cell_write_mass": cell_write_mass.detach(),
+            "target_write_gate": target_write_gate.detach(),
+            "write_value": write_value.detach(),
+            "state_norm_mode": self.state_norm_mode,
+            "slot_address_used_by_controller": True,
+            "slot_address_used_by_executor": False,
             "edge_pair_bias": self.edge_pair_bias.detach(),
             "write_pair_bias": self.write_pair_bias.detach(),
             "phase_pair_bias": self.phase_pair_bias.detach(),
@@ -182,6 +256,7 @@ class ActionMatrixModel(nn.Module):
         sim_rank: int = 16,
         slot_embed_scale: float = 0.5,
         input_norm: str = "none",
+        state_norm: str = "none",
         final_read: str = "last",
     ) -> None:
         super().__init__()
@@ -193,10 +268,21 @@ class ActionMatrixModel(nn.Module):
         self.slots = slots
         self.num_layers = layers
         self.input_norm_mode = input_norm
+        self.state_norm_mode = state_norm
         self.final_read = final_read
         self.slot_embed = nn.Parameter(torch.randn(slots, dim) * slot_embed_scale)
         self.pm = PrimitiveMatrix5x5(embed_dim=32)
-        self.layers = nn.ModuleList([ActionMatrixLayer(dim, slots, self.pm, top_k=top_k, sim_rank=sim_rank) for _ in range(layers)])
+        self.layers = nn.ModuleList([
+            ActionMatrixLayer(
+                dim,
+                slots,
+                self.pm,
+                top_k=top_k,
+                sim_rank=sim_rank,
+                state_norm=state_norm,
+            )
+            for _ in range(layers)
+        ])
         self.input_norm = nn.LayerNorm(dim) if input_norm == "layernorm" else nn.Identity()
         self.layer_read_logits = nn.Parameter(torch.zeros(layers))
         self.classifier = nn.Linear(dim, classes)
@@ -218,17 +304,30 @@ class ActionMatrixModel(nn.Module):
         x: torch.Tensor,
         tau: float = 1.0,
         disable_sim: bool = False,
+        disable_gain: bool = False,
+        disable_sim_result: bool = False,
+        disable_slot_address: bool = False,
         ablate_layer_output: Optional[int] = None,
         ablate_state_after: Optional[int] = None,
     ):
         state = self.input_norm(x)
-        state = state + self.slot_embed.unsqueeze(0).to(dtype=state.dtype, device=state.device)
         memory = state.mean(dim=1)
+        slot_address = self.slot_embed.to(dtype=state.dtype, device=state.device)
+        if disable_slot_address:
+            slot_address = torch.zeros_like(slot_address)
 
         outputs = []
         traces = []
         for idx, layer in enumerate(self.layers):
-            state, out, memory, tr = layer(state, memory, tau=tau, disable_sim=disable_sim)
+            state, out, memory, tr = layer(
+                state,
+                memory,
+                slot_address,
+                tau=tau,
+                disable_sim=disable_sim,
+                disable_gain=disable_gain,
+                disable_sim_result=disable_sim_result,
+            )
             if ablate_state_after is not None and idx == ablate_state_after:
                 state = torch.zeros_like(state)
                 memory = torch.zeros_like(memory)
@@ -244,4 +343,7 @@ class ActionMatrixModel(nn.Module):
             "primitive_metrics": self.pm.metrics(),
             "final_read_mode": self.final_read,
             "final_read_weights": read_weights.detach(),
+            "state_norm_mode": self.state_norm_mode,
+            "slot_address_used_by_controller": not disable_slot_address,
+            "slot_address_used_by_executor": False,
         }

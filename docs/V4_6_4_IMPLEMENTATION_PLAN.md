@@ -323,3 +323,48 @@ If expected_choice_mass is high and collapse is high:
 If active cells are high after recovery:
   activate sparse/tape budgets.
 ```
+
+
+## v16_content_address_write_semantics_20260619
+
+Stage 3 closes the synthetic sequential execution contract:
+
+```text
+content state is separate from slot address
+slot address enters controller/scanner context only
+executor and memory consume content only
+disable contributes zero write mass
+incoming values are normalized by write mass
+target write uses bounded soft-OR
+state_norm is explicit; synthetic default is none
+```
+
+Forced-program oracle result:
+
+```text
+diff / merge / product / two_diff = 100%
+chain_diff_product raw/addressed = 100% / 100%
+all unit-write target errors = 0
+controller address choice delta > 0
+executor address output delta = 0
+```
+
+This fixes transport semantics only. Primitive collapse, learned sparsity, and
+decorative simulator behavior remain separate later stages.
+
+
+## v17_action_specific_diagnostics_20260619
+
+Stage 4 makes the vertical-slice reports diagnostic rather than averaged:
+
+```text
+one canonical objective shared by training and inspector
+raw/effective/weighted loss accounting per epoch
+per-action present/choice/recovery/active/tape metrics
+real grid/semantic/usage/random choice mass
+independent gain/sim-result/full simulator CE ablations
+choice_without_sim_delta measures primitive-distribution change
+```
+
+The report contract is accepted when scanner masses sum to one, loss accounting
+closes, and all expected actions appear separately in CSV/JSON/Markdown.

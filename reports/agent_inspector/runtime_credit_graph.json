@@ -1,0 +1,84 @@
+{
+  "schema": "runtime_credit_graph.v1",
+  "nodes": [
+    {
+      "id": "expected_edge_present",
+      "label": "expected_edge_present",
+      "kind": "credit_stage",
+      "value": true,
+      "status": "ok"
+    },
+    {
+      "id": "candidate_present",
+      "label": "candidate_present",
+      "kind": "credit_stage",
+      "value": true,
+      "status": "ok"
+    },
+    {
+      "id": "choice_mass",
+      "label": "choice_mass",
+      "kind": "credit_stage",
+      "value": 0.26534172892570496,
+      "status": "ok"
+    },
+    {
+      "id": "edge_active",
+      "label": "edge_active",
+      "kind": "credit_stage",
+      "value": 0.20415031909942627,
+      "status": "ok"
+    },
+    {
+      "id": "recovery",
+      "label": "recovery",
+      "kind": "credit_stage",
+      "value": 0.375,
+      "status": "ok"
+    },
+    {
+      "id": "recovery_loss_connected",
+      "label": "recovery_loss_connected",
+      "kind": "credit_stage",
+      "value": true,
+      "status": "ok"
+    }
+  ],
+  "edges": [
+    {
+      "source": "expected_edge_present",
+      "target": "candidate_present",
+      "kind": "credit_flow",
+      "status": "ok"
+    },
+    {
+      "source": "candidate_present",
+      "target": "choice_mass",
+      "kind": "credit_flow",
+      "status": "ok"
+    },
+    {
+      "source": "choice_mass",
+      "target": "edge_active",
+      "kind": "credit_flow",
+      "status": "ok"
+    },
+    {
+      "source": "edge_active",
+      "target": "recovery",
+      "kind": "credit_flow",
+      "status": "ok"
+    },
+    {
+      "source": "recovery",
+      "target": "recovery_loss_connected",
+      "kind": "credit_flow",
+      "status": "ok"
+    }
+  ],
+  "summary": {
+    "credit_closed": true,
+    "bad_stages": [],
+    "broken_edges": []
+  }
+}

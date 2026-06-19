@@ -1,0 +1,36 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/train_vertical_slice.py", line 188, in <module>
+    train(parser().parse_args())
+  File "/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/train_vertical_slice.py", line 95, in train
+    logits, trace = model(batch.x, tau=tau)
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/model.py", line 135, in forward
+    state, out, tr = layer(state, memory, tau=tau, disable_sim=disable_sim)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/model.py", line 82, in forward
+    primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/executor.py", line 88, in forward
+    out[mask] = self._single(name, src_k[mask], tgt_k[mask], mem_k[mask], flat_ids[mask])
+    ~~~^^^^^^
+RuntimeError: Index put requires the source and destination dtypes match, got Float for the destination and Half for the source.

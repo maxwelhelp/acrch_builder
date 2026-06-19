@@ -23,172 +23,51 @@ scan:
 roles:
   entrypoint:
     description: CLI commands, validation and experiment launch scripts.
-    keywords:
-      - "argparse"
-      - "parser"
-      - "main"
-      - "train_vertical_slice"
-      - "run_vertical_slice"
-      - "validate"
-      - "commands/"
-      - "run_"
-      - "bash"
+    keywords: ["argparse", "parser", "main", "train_vertical_slice", "run_vertical_slice", "validate", "commands/", "run_", "bash"]
 
   primitive_matrix:
     description: PrimitiveMatrix5x5, primitive ids, descriptors, embeddings, usage EMA.
-    keywords:
-      - "PrimitiveMatrix5x5"
-      - "PrimitiveInfo"
-      - "primitive_matrix"
-      - "primitive"
-      - "name_to_id"
-      - "usage_ema"
-      - "semantic_topk"
-      - "local_window"
+    keywords: ["PrimitiveMatrix5x5", "PrimitiveInfo", "primitive_matrix", "primitive", "name_to_id", "usage_ema", "semantic_topk", "local_window"]
 
   scanner:
     description: HybridScanner proposes candidate primitive ids from context/memory/usage/semantic signals.
-    keywords:
-      - "HybridScanner"
-      - "scanner"
-      - "candidate"
-      - "proposal"
-      - "cand_ids"
-      - "topk"
-      - "top_k"
-      - "semantic"
-      - "usage"
-      - "grid"
+    keywords: ["HybridScanner", "scanner", "candidate", "proposal", "cand_ids", "topk", "top_k", "semantic", "usage", "grid"]
 
   simulator:
     description: LowRankSimulator predicts primitive effect/gain and should affect controller choice.
-    keywords:
-      - "LowRankSimulator"
-      - "simulator"
-      - "predicted_gain"
-      - "sim_logits"
-      - "sim_component"
-      - "sim_loss"
-      - "sim_disabled_delta"
-      - "choice_without_sim_delta"
-      - "disable_sim"
+    keywords: ["LowRankSimulator", "simulator", "predicted_gain", "sim_logits", "sim_component", "sim_loss", "sim_disabled_delta", "choice_without_sim_delta", "disable_sim"]
 
   controller:
     description: ActionMatrix controller chooses primitive/action/mode/gates per source-target edge.
-    keywords:
-      - "ActionMatrixLayer"
-      - "choice_logits"
-      - "choice"
-      - "gumbel_softmax"
-      - "mode_head"
-      - "edge_gate"
-      - "write_gate"
-      - "phase_gate"
-      - "edge_pair_bias"
-      - "write_pair_bias"
-      - "cell_output_gate"
-      - "output_gate"
-      - "gate"
-      - "mode"
+    keywords: ["ActionMatrixLayer", "choice_logits", "choice", "gumbel_softmax", "mode_head", "edge_gate", "write_gate", "phase_gate", "edge_pair_bias", "write_pair_bias", "cell_output_gate", "output_gate", "gate", "mode"]
 
   executor:
     description: ActionExecutor applies selected primitive transformations on src/tgt/memory.
-    keywords:
-      - "ActionExecutor"
-      - "executor"
-      - "primitive_out"
-      - "transformed"
-      - "execute"
-      - "cell_out"
-      - "msg"
-      - "edge_scale"
+    keywords: ["ActionExecutor", "executor", "primitive_out", "transformed", "execute", "cell_out", "msg", "edge_scale"]
 
   model_core:
     description: Main differentiable state/memory/output path and classifier.
-    keywords:
-      - "ActionMatrixModel"
-      - "model.py"
-      - "forward"
-      - "state"
-      - "next_state"
-      - "output_state"
-      - "slot_embed"
-      - "classifier"
-      - "logits"
-      - "LayerNorm"
-      - "memory"
+    keywords: ["ActionMatrixModel", "model.py", "forward", "state", "next_state", "output_state", "slot_embed", "classifier", "logits", "LayerNorm", "memory"]
 
   memory:
     description: Memory tensor path and slot/memory read-write coupling.
-    keywords:
-      - "memory"
-      - "new_memory"
-      - "flat_mem"
-      - "mem"
-      - "state.mean"
-      - "read"
-      - "write"
-      - "slot_embed"
+    keywords: ["memory", "new_memory", "flat_mem", "mem", "state.mean", "read", "write", "slot_embed"]
 
   credit:
     description: Loss, teacher signal, ablation, credit buffer and metrics that feed later decisions.
-    keywords:
-      - "CreditBuffer"
-      - "credit"
-      - "expected_edge_choice_loss"
-      - "choice_loss"
-      - "sim_loss"
-      - "lambda_choice"
-      - "lambda_sim"
-      - "lambda_collapse"
-      - "cross_entropy"
-      - "loss.backward"
-      - "sim_disabled_delta"
-      - "expected_edge_recovery"
-      - "program_recovery_rate"
+    keywords: ["CreditBuffer", "credit", "expected_edge_choice_loss", "choice_loss", "sim_loss", "lambda_choice", "lambda_sim", "lambda_collapse", "cross_entropy", "loss.backward", "sim_disabled_delta", "expected_edge_recovery", "program_recovery_rate"]
 
   runtime_trace:
     description: Runtime trace tensors and reports proving what happened in a run.
-    keywords:
-      - "trace"
-      - "summarize_trace"
-      - "candidate_ids"
-      - "chosen"
-      - "mode_for_loss"
-      - "predicted_gain_for_loss"
-      - "cell_tape_weight"
-      - "metrics.csv"
-      - "final_report"
-      - "LATEST_RUN_REPORT"
+    keywords: ["trace", "summarize_trace", "candidate_ids", "chosen", "mode_for_loss", "predicted_gain_for_loss", "cell_tape_weight", "metrics.csv", "final_report", "LATEST_RUN_REPORT"]
 
   reporting:
     description: Report writers, csv/json/html outputs and latest report for agent analysis.
-    keywords:
-      - "reporting"
-      - "write_json"
-      - "append_csv"
-      - "write_latest_report"
-      - "REPORT_TO_CHATGPT"
-      - "metrics.csv"
-      - "final_report.json"
-      - "LATEST_RUN_REPORT"
+    keywords: ["reporting", "write_json", "append_csv", "write_latest_report", "REPORT_TO_CHATGPT", "metrics.csv", "final_report.json", "LATEST_RUN_REPORT"]
 
   data:
     description: SyntheticKnownProgramTask and known expected src/tgt/primitive labels.
-    keywords:
-      - "SyntheticKnownProgramTask"
-      - "synthetic_tasks"
-      - "Batch"
-      - "expected_src"
-      - "expected_tgt"
-      - "expected_primitive"
-      - "oracle_accuracy"
-      - "task.sample"
-      - "diff"
-      - "merge"
-      - "product"
-      - "memory"
-      - "semantic_rescue"
+    keywords: ["SyntheticKnownProgramTask", "synthetic_tasks", "Batch", "expected_src", "expected_tgt", "expected_primitive", "oracle_accuracy", "task.sample", "diff", "merge", "product", "memory", "semantic_rescue"]
 
 closed_loops:
   main_differentiable_learning_loop:
@@ -222,6 +101,7 @@ runtime:
     - "agent_reports/**/final_report.json"
     - "agent_reports/**/metrics.csv"
     - "agent_reports/**/credit_ablation_epoch_final.json"
+    - "reports/agent_inspector/runtime_probe.json"
     - "reports/agent_inspector/*.json"
     - "reports/agent_inspector/*.csv"
 
@@ -238,6 +118,10 @@ runtime:
     - "expected_edge_active"
     - "sim_disabled_delta"
     - "choice_without_sim_delta"
+    - "gain_disabled_delta"
+    - "sim_result_disabled_delta"
+    - "scanner_source_mass_sum"
+    - "loss_accounting_error"
     - "credit_items"
     - "credit_staleness_mean"
     - "credit_age_max"
@@ -249,7 +133,28 @@ runtime:
     - "cell_output_gate_mean"
     - "cell_tape_weight_mean"
 
+    - "controller_grad_norm"
+
+    - "scanner_grad_norm"
+
+    - "simulator_grad_norm"
+
+    - "executor_grad_norm"
+
+    - "classifier_grad_norm"
+
+    - "primitive_matrix_grad_norm"
+
+    - "model_core_grad_norm"
+
   positive_is_good:
+    - "model_core_grad_norm"
+    - "primitive_matrix_grad_norm"
+    - "classifier_grad_norm"
+    - "executor_grad_norm"
+    - "simulator_grad_norm"
+    - "scanner_grad_norm"
+    - "controller_grad_norm"
     - "train_acc"
     - "val_acc"
     - "best_acc"
@@ -277,3 +182,95 @@ agent_context:
     - "reports/agent_inspector/holes_report.md"
     - "reports/agent_inspector/runtime_summary.md"
     - "reports/agent_inspector/static_graph.json"
+
+
+runtime_graphs:
+  gradient_graph:
+    description: Loss-to-subsystem gradient/signal graph. Explicit grad_norm metrics are preferred; otherwise indirect metrics are marked honestly.
+    groups:
+      - id: controller
+        role: controller
+        metrics: ["expected_edge_choice_mass", "choice_entropy", "transform_mass"]
+        grad_metrics: ["controller_grad_norm", "grad_norm_controller", "ActionMatrixLayer_grad_norm"]
+      - id: scanner
+        role: scanner
+        metrics: ["expected_candidate_present"]
+        grad_metrics: ["scanner_grad_norm", "grad_norm_scanner", "HybridScanner_grad_norm"]
+      - id: simulator
+        role: simulator
+        metrics: ["sim_disabled_delta", "choice_without_sim_delta"]
+        grad_metrics: ["simulator_grad_norm", "grad_norm_simulator", "LowRankSimulator_grad_norm"]
+      - id: executor
+        role: executor
+        metrics: ["expected_edge_active", "cell_tape_weight_mean"]
+        grad_metrics: ["executor_grad_norm", "grad_norm_executor", "ActionExecutor_grad_norm"]
+      - id: memory
+        role: memory
+        metrics: ["cell_tape_weight_mean", "expected_edge_active"]
+        grad_metrics: ["memory_grad_norm", "grad_norm_memory"]
+      - id: classifier
+        role: model_core
+        metrics: ["train_acc", "val_acc", "best_acc"]
+        grad_metrics: ["classifier_grad_norm", "grad_norm_classifier"]
+      - id: primitive_matrix
+        role: primitive_matrix
+        metrics: ["program_recovery_rate", "expected_edge_recovery"]
+        grad_metrics: ["primitive_matrix_grad_norm", "pm_grad_norm", "primitive_embedding_grad_norm"]
+
+  credit_graph:
+    description: Known-program credit path from expected edge to loss.
+    stages:
+      - id: expected_edge
+        label: "expected src->tgt edge from synthetic task"
+        metrics: ["expected_candidate_present"]
+      - id: candidate
+        label: "expected primitive is in candidates"
+        metrics: ["expected_candidate_present"]
+      - id: choice
+        label: "controller assigns mass to expected primitive"
+        metrics: ["expected_edge_choice_mass"]
+      - id: primitive
+        label: "chosen primitive / program recovery"
+        metrics: ["program_recovery_rate", "expected_any_recovery"]
+      - id: simulator
+        label: "simulator affects choice/loss"
+        metrics: ["sim_disabled_delta", "choice_without_sim_delta"]
+      - id: executor
+        label: "edge active and cell tape writes"
+        metrics: ["expected_edge_active", "cell_tape_weight_mean"]
+      - id: recovery
+        label: "expected edge recovery"
+        metrics: ["expected_edge_recovery"]
+      - id: loss
+        label: "task loss / accuracy"
+        metrics: ["train_acc", "val_acc", "best_acc"]
+    links:
+      - ["expected_edge", "candidate"]
+      - ["candidate", "choice"]
+      - ["choice", "primitive"]
+      - ["primitive", "simulator"]
+      - ["simulator", "executor"]
+      - ["executor", "recovery"]
+      - ["recovery", "loss"]
+
+runtime_probe:
+  adapter: acrch_builder_vertical_slice
+  timeout_sec: 600
+  params:
+    task: diff
+    device: cuda
+    dim: 64
+    slots: 4
+    layers: 1
+    top_k: 25
+    sim_rank: 16
+    batch_size: 64
+    tau: 1.0
+    input_norm: none
+    lr: 0.0003
+    weight_decay: 0.0001
+    lambda_sim: 0.1
+    lambda_choice: 1.0
+    lambda_collapse: 0.01
+    min_transform_mass: 0.15
+    seed: 123

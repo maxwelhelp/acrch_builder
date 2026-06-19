@@ -1,0 +1,129 @@
+{
+  "schema": "runtime_gradient_graph.v1",
+  "nodes": [
+    {
+      "id": "loss",
+      "label": "loss",
+      "kind": "loss",
+      "status": "source"
+    },
+    {
+      "id": "controller",
+      "label": "controller",
+      "kind": "grad_group",
+      "grad_norm": 16.392895058145463,
+      "critical": true,
+      "status": "grad_ok"
+    },
+    {
+      "id": "scanner",
+      "label": "scanner",
+      "kind": "grad_group",
+      "grad_norm": 28.649144587963217,
+      "critical": true,
+      "status": "grad_ok"
+    },
+    {
+      "id": "simulator",
+      "label": "simulator",
+      "kind": "grad_group",
+      "grad_norm": 66.91575416626681,
+      "critical": true,
+      "status": "grad_ok"
+    },
+    {
+      "id": "classifier",
+      "label": "classifier",
+      "kind": "grad_group",
+      "grad_norm": 0.5945156073822719,
+      "critical": true,
+      "status": "grad_ok"
+    },
+    {
+      "id": "model_core",
+      "label": "model_core",
+      "kind": "grad_group",
+      "grad_norm": 74.65300867019255,
+      "critical": true,
+      "status": "grad_ok"
+    },
+    {
+      "id": "executor",
+      "label": "executor",
+      "kind": "grad_group",
+      "grad_norm": 0.011397423203654153,
+      "critical": false,
+      "status": "grad_ok"
+    },
+    {
+      "id": "memory",
+      "label": "memory",
+      "kind": "grad_group",
+      "grad_norm": null,
+      "critical": false,
+      "status": "not_measured"
+    },
+    {
+      "id": "primitive_matrix",
+      "label": "primitive_matrix",
+      "kind": "grad_group",
+      "grad_norm": 2.022829532623291,
+      "critical": false,
+      "status": "grad_ok"
+    }
+  ],
+  "edges": [
+    {
+      "source": "loss",
+      "target": "controller",
+      "kind": "gradient_path",
+      "status": "grad_ok"
+    },
+    {
+      "source": "loss",
+      "target": "scanner",
+      "kind": "gradient_path",
+      "status": "grad_ok"
+    },
+    {
+      "source": "loss",
+      "target": "simulator",
+      "kind": "gradient_path",
+      "status": "grad_ok"
+    },
+    {
+      "source": "loss",
+      "target": "classifier",
+      "kind": "gradient_path",
+      "status": "grad_ok"
+    },
+    {
+      "source": "loss",
+      "target": "model_core",
+      "kind": "gradient_path",
+      "status": "grad_ok"
+    },
+    {
+      "source": "loss",
+      "target": "executor",
+      "kind": "gradient_path",
+      "status": "grad_ok"
+    },
+    {
+      "source": "loss",
+      "target": "memory",
+      "kind": "gradient_path",
+      "status": "not_measured"
+    },
+    {
+      "source": "loss",
+      "target": "primitive_matrix",
+      "kind": "gradient_path",
+      "status": "grad_ok"
+    }
+  ],
+  "summary": {
+    "gradient_closed": true,
+    "bad_critical_groups": []
+  }
+}

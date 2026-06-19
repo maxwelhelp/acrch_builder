@@ -1,0 +1,318 @@
+{
+  "schema": "runtime_probe_contract.v3",
+  "project": "acrch_builder",
+  "producer": "tools/project_probe/probe_learning_loop.py",
+  "timestamp": 1781900475.907516,
+  "run_type": "one_batch_backward_probe",
+  "note": "Uses the same canonical objective as training; reports aggregate and per-loss autograd connectivity separately.",
+  "config": {
+    "task": "diff",
+    "device": "cpu",
+    "dim": 32,
+    "slots": 4,
+    "layers": 2,
+    "top_k": 25,
+    "sim_rank": 8,
+    "batch_size": 8,
+    "tau": 1.0,
+    "input_norm": "none"
+  },
+  "metrics": {
+    "loss": 6.961708068847656,
+    "train_acc": 0.125,
+    "gain_disabled_delta": -0.006433546543121338,
+    "sim_result_disabled_delta": 0.0003304481506347656,
+    "sim_disabled_delta": -0.005459249019622803,
+    "choice_without_sim_delta": 0.03723834082484245,
+    "ce_loss": 0.7869494557380676,
+    "sim_loss": 0.13663145899772644,
+    "expected_choice_loss": 2.5705406665802,
+    "non_expected_primitive_loss": 0.19173772633075714,
+    "expected_active_loss": 1.6482962369918823,
+    "non_expected_active_loss": 0.2256380319595337,
+    "non_expected_tape_loss": 0.06470074504613876,
+    "non_expected_transform_loss": 0.5253682136535645,
+    "primitive_usage_diversity": 0.0,
+    "cell_choice_diversity": 0.010454756207764149,
+    "active_budget": 0.0021053499076515436,
+    "tape_budget": 0.002501905430108309,
+    "layer_action_diversity": 0.0,
+    "min_transform_loss": 0.0,
+    "signal_expected_choice_mass": 0.26534172892570496,
+    "signal_candidate_present": 1.0,
+    "signal_primitive_top_share": 0.22199401259422302,
+    "signal_active_mean": 0.22459672391414642,
+    "signal_tape_mean": 0.06473812460899353,
+    "signal_active_cells_soft": 3.593547821044922,
+    "adaptive_recovery_gate": 0.09044378995895386,
+    "adaptive_collapse_gate": 0.0014743506908416748,
+    "adaptive_sparse_gate": 0.05405407026410103,
+    "adaptive_choice_boost": 2.3643343448638916,
+    "eff_lambda_choice": 2.3643343448638916,
+    "eff_lambda_non_expected_primitive": 0.0003685876727104187,
+    "eff_lambda_primitive_usage_diversity": 7.371753599727526e-05,
+    "eff_lambda_cell_choice_diversity": 7.371753599727526e-05,
+    "eff_lambda_non_expected_active": 0.0010810813400894403,
+    "eff_lambda_non_expected_tape": 0.0027027034666389227,
+    "eff_lambda_non_expected_transform": 0.0010810813400894403,
+    "eff_lambda_active_budget": 0.0010810813400894403,
+    "eff_lambda_tape_budget": 0.0010810813400894403,
+    "eff_lambda_layer_action_diversity": 7.371753599727526e-05,
+    "program_recovery_rate": 0.375,
+    "expected_edge_recovery": 0.375,
+    "expected_any_recovery": 0.2109375,
+    "expected_candidate_present": 1.0,
+    "expected_edge_choice_mass": 0.26534172892570496,
+    "expected_edge_active": 0.20415031909942627,
+    "transform_mass": 0.5282174050807953,
+    "skip_mass": 0.29092539846897125,
+    "disable_mass": 0.18085718154907227,
+    "choice_entropy": 1.4595040082931519,
+    "active_cells": 16.0,
+    "expected_top_cells": 8.0,
+    "primitive_top_share": 0.22199401259422302,
+    "active_edges_per_target": 4.0,
+    "final_read_last": 1.0,
+    "final_read_mean": 0.0,
+    "final_read_learned": 0.0,
+    "state_norm_none": 1.0,
+    "state_norm_layernorm": 0.0,
+    "slot_address_used_by_controller": 1.0,
+    "slot_address_used_by_executor": 0.0,
+    "primitive_embedding_rank": 25.0,
+    "primitive_pair_cos_mean": 0.32978546619415283,
+    "primitive_pair_cos_max": 0.9889096617698669,
+    "usage_entropy": 0.4713374376296997,
+    "action_L0_0_1_diff_present": 1.0,
+    "action_L0_0_1_diff_choice_mass": 0.26534172892570496,
+    "action_L0_0_1_diff_recovery": 0.375,
+    "action_L0_0_1_diff_active": 0.20415031909942627,
+    "action_L0_0_1_diff_tape": 0.07115307450294495,
+    "semantic_grid_mismatch": 0.400390625,
+    "grid_candidate_usage": 0.24252018332481384,
+    "semantic_candidate_usage": 0.21766570210456848,
+    "usage_candidate_usage": 0.4706409275531769,
+    "random_candidate_usage": 0.06917318655177951,
+    "scanner_source_mass_sum": 0.9999999995343387,
+    "edge_scale_mean": 1.008556067943573,
+    "cell_output_gate_mean": 0.5402731597423553,
+    "cell_tape_weight_mean": 0.06473812274634838,
+    "cell_write_mass_mean": 0.1852685660123825,
+    "target_write_gate_mean": 0.5458730459213257,
+    "edge_pair_bias_expected": 0.0,
+    "edge_pair_bias_std": 0.0,
+    "write_pair_bias_expected": 0.0,
+    "write_pair_bias_std": 0.0,
+    "phase_pair_bias_expected": 0.0,
+    "phase_pair_bias_std": 0.0,
+    "cell_output_pair_bias_expected": 0.0,
+    "cell_output_pair_bias_std": 0.0,
+    "loss_accounting_error": 1.8067987639369676e-07
+  },
+  "weighted_loss_contributions": {
+    "weighted_ce_loss": 0.7869494557380676,
+    "weighted_sim_loss": 0.013663145713508129,
+    "weighted_expected_choice_loss": 6.077617645263672,
+    "weighted_expected_active_loss": 0.08241481333971024,
+    "weighted_non_expected_primitive_loss": 7.067216210998595e-05,
+    "weighted_non_expected_active_loss": 0.0002439330710330978,
+    "weighted_non_expected_tape_loss": 0.00017486693104729056,
+    "weighted_non_expected_transform_loss": 0.0005679657915607095,
+    "weighted_primitive_usage_diversity": 0.0,
+    "weighted_cell_choice_diversity": 7.706988753852784e-07,
+    "weighted_active_budget": 2.276054601679789e-06,
+    "weighted_tape_budget": 2.7047633466281695e-06,
+    "weighted_layer_action_diversity": 0.0,
+    "weighted_min_transform_loss": 0.0
+  },
+  "loss_connectivity": {
+    "ce_loss": {
+      "value": 0.7869494557380676,
+      "requires_grad": true,
+      "grad_fn": "NllLossBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "choice_controller": 0.04798786609329644,
+        "gate_controller": 0.20654294563502415,
+        "scanner": 0.03675945355314609,
+        "simulator": 0.0854364661876969,
+        "executor": 0.011391311034654123,
+        "classifier": 0.5945156073822719
+      },
+      "connected_to_intended_target": true
+    },
+    "sim_loss": {
+      "value": 0.13663145899772644,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "simulator": 0.4089199768146404
+      },
+      "connected_to_intended_target": true
+    },
+    "expected_choice_loss": {
+      "value": 2.5705406665802,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "choice_controller": 6.928307996754425,
+        "scanner": 12.10381828003443,
+        "simulator": 28.278313555736958
+      },
+      "connected_to_intended_target": true
+    },
+    "non_expected_primitive_loss": {
+      "value": 0.19173772633075714,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "choice_controller": 0.48794930818634824,
+        "scanner": 1.4221591092968224,
+        "simulator": 3.7667408123058985
+      },
+      "connected_to_intended_target": true
+    },
+    "expected_active_loss": {
+      "value": 1.6482962369918823,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 4.390616789518021
+      },
+      "connected_to_intended_target": true
+    },
+    "non_expected_active_loss": {
+      "value": 0.2256380319595337,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.2660497623348922
+      },
+      "connected_to_intended_target": true
+    },
+    "non_expected_tape_loss": {
+      "value": 0.06470074504613876,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.11466064964427364
+      },
+      "connected_to_intended_target": true
+    },
+    "non_expected_transform_loss": {
+      "value": 0.5253682136535645,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.4960046617891794
+      },
+      "connected_to_intended_target": true
+    },
+    "primitive_usage_diversity": {
+      "value": 0.0,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "choice_controller": 0.0,
+        "scanner": 0.0,
+        "simulator": 0.0
+      },
+      "connected_to_intended_target": false
+    },
+    "cell_choice_diversity": {
+      "value": 0.010454756207764149,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "choice_controller": 0.03244269996836158,
+        "scanner": 0.08777970212936301,
+        "simulator": 0.1597834331487735
+      },
+      "connected_to_intended_target": true
+    },
+    "active_budget": {
+      "value": 0.0021053499076515436,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.028381592258114336
+      },
+      "connected_to_intended_target": true
+    },
+    "tape_budget": {
+      "value": 0.002501905430108309,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.012279669584669832
+      },
+      "connected_to_intended_target": true
+    },
+    "layer_action_diversity": {
+      "value": 0.0,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "choice_controller": 0.0,
+        "scanner": 0.0,
+        "simulator": 0.0
+      },
+      "connected_to_intended_target": false
+    },
+    "min_transform_loss": {
+      "value": 0.0,
+      "requires_grad": true,
+      "grad_fn": "ReluBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.0
+      },
+      "connected_to_intended_target": false
+    }
+  },
+  "grad_norms": {
+    "controller": 16.392895058145463,
+    "scanner": 28.649144587963217,
+    "simulator": 66.91575416626681,
+    "executor": 0.011397423203654153,
+    "memory": null,
+    "classifier": 0.5945156073822719,
+    "primitive_matrix": 2.022829532623291,
+    "model_core": 74.65300867019255
+  },
+  "credit_path": {
+    "expected_edge_present": true,
+    "candidate_present": true,
+    "choice_mass": 0.26534172892570496,
+    "edge_active": 0.20415031909942627,
+    "recovery": 0.375,
+    "recovery_loss_connected": true,
+    "simulator_influence": 0.03723834082484245
+  },
+  "ablations": {
+    "gain_disabled_delta": -0.006433546543121338,
+    "sim_result_disabled_delta": 0.0003304481506347656,
+    "sim_disabled_delta": -0.005459249019622803,
+    "choice_without_sim_delta": 0.03723834082484245
+  },
+  "health": {
+    "probe_api_ok": true,
+    "gradient_closed": true,
+    "credit_closed": true,
+    "recovery_loss_connected": true,
+    "recovery_ok": true,
+    "detached_enabled_losses": []
+  }
+}

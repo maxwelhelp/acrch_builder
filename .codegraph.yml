@@ -1,0 +1,86 @@
+# Agent CodeGraph config.
+# Universal analyzer + project-specific roles/loops.
+
+project_name: acrch_builder_or_any_python_project
+
+skip_dirs:
+  - .git
+  - .venv
+  - venv
+  - __pycache__
+  - .pytest_cache
+  - reports
+  - agent_reports
+  - runs
+  - checkpoints
+  - weights
+  - data
+  - datasets
+  - wandb
+  - node_modules
+
+code_extensions:
+  - .py
+  - .sh
+  - .md
+  - .yaml
+  - .yml
+  - .toml
+  - .json
+
+roles:
+  entrypoint:
+    description: Starts workflows, parses config, launches tests/training.
+    keywords: ["main", "argparse", "cli", "command", "run_", "train", "validate"]
+
+  controller:
+    description: Chooses actions/routes/modes/gates.
+    keywords: ["controller", "choice", "decision", "gate", "router", "select", "policy", "logits", "fanout", "boundary"]
+
+  model_core:
+    description: Main computation/backbone path.
+    keywords: ["model", "layer", "forward", "backbone", "network", "module", "state", "slot", "activation"]
+
+  memory:
+    description: Persistent/recurrent memory and state stores.
+    keywords: ["memory", "mem", "cache", "read", "write", "forget", "recall", "W_r", "W_w"]
+
+  credit:
+    description: Credit/ablation/reward/real-gain feedback.
+    keywords: ["credit", "ablation", "delta_loss", "gain", "ema", "reward", "score", "collector"]
+
+  council:
+    description: Simulator/council/auxiliary evaluator that calibrates decisions.
+    keywords: ["council", "simulator", "simulate", "lowrank", "sim", "aux", "predicted_gain", "sim_quality"]
+
+  scanner:
+    description: Candidate/proposal/search subsystem.
+    keywords: ["scanner", "proposal", "candidate", "search", "topk", "top_k", "semantic", "usage"]
+
+  executor:
+    description: Runs selected operations/actions.
+    keywords: ["executor", "execute", "apply", "operation", "primitive", "action", "edge"]
+
+  data:
+    description: Dataset/batch/input pipeline.
+    keywords: ["dataset", "dataloader", "batch", "sample", "loader", "input", "target", "synthetic"]
+
+  reporting:
+    description: Reports, metrics, traces, logs.
+    keywords: ["report", "metrics", "trace", "json", "csv", "html", "logger", "writer"]
+
+closed_loops:
+  main_learning_loop:
+    description: Decision must affect computation, computation must generate feedback, feedback must calibrate future decisions.
+    roles: ["controller", "model_core", "credit", "council", "controller"]
+    required: true
+
+  memory_feedback_loop:
+    description: Controller/backbone writes memory, later reads it, and credit sees the effect.
+    roles: ["controller", "model_core", "memory", "controller"]
+    required: false
+
+  experiment_report_loop:
+    description: Entrypoint runs experiment, reporting writes diagnostics, agent reads reports before next edit.
+    roles: ["entrypoint", "model_core", "reporting", "entrypoint"]
+    required: false

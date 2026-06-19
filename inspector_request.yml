@@ -1,0 +1,23 @@
+# Agent/user can edit this file to request focused inspection.
+# Then run: bash commands/build_focused_report.sh
+
+focus_roles:
+  - scanner
+  - controller
+  - simulator
+
+focus_files:
+  - arch_builder/model.py
+  - arch_builder/hybrid_scanner.py
+  - arch_builder/simulator.py
+
+focus_keywords:
+  - expected_edge
+  - choice_logits
+  - predicted_gain
+  - recovery
+
+questions:
+  - Where can candidate_present=1.0 but recovery=0 break?
+  - Which nodes connect scanner -> controller -> executor -> recovery?
+  - What files must be tested after changing this subsystem?

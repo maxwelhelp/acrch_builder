@@ -1,0 +1,678 @@
+{
+  "schema": "forced_program_oracle.v2",
+  "config": {
+    "device": "cpu",
+    "dim": 32,
+    "slots": 4,
+    "batch_size": 512,
+    "seed": 123
+  },
+  "state_update_contract": {
+    "state_norm_mode": "none",
+    "no_write_preserve_error": {
+      "mean_abs_error": 0.0,
+      "max_abs_error": 0.0
+    },
+    "no_write_gate_max": 0.0,
+    "unit_write_target_error": {
+      "mean_abs_error": 0.0,
+      "max_abs_error": 0.0
+    },
+    "unit_write_value_error": {
+      "mean_abs_error": 0.0,
+      "max_abs_error": 0.0
+    },
+    "unit_write_gate_min": 1.0,
+    "multiple_write_value_error": {
+      "mean_abs_error": 0.0,
+      "max_abs_error": 0.0
+    },
+    "multiple_write_target_error": {
+      "mean_abs_error": 0.0,
+      "max_abs_error": 0.0
+    },
+    "multiple_write_gate_error": {
+      "mean_abs_error": 0.0,
+      "max_abs_error": 0.0
+    },
+    "contract_pass": true
+  },
+  "raw_primitive_audit": [
+    {
+      "task": "diff",
+      "primitive": "diff",
+      "primitive_available": true,
+      "primitive_executed": true,
+      "mean_abs_error": 0.0,
+      "max_abs_error": 0.0,
+      "label_accuracy_from_primitive_output": 1.0
+    },
+    {
+      "task": "merge",
+      "primitive": "merge",
+      "primitive_available": true,
+      "primitive_executed": true,
+      "mean_abs_error": 0.0,
+      "max_abs_error": 0.0,
+      "label_accuracy_from_primitive_output": 1.0
+    },
+    {
+      "task": "product",
+      "primitive": "product",
+      "primitive_available": true,
+      "primitive_executed": true,
+      "mean_abs_error": 0.0,
+      "max_abs_error": 0.0,
+      "label_accuracy_from_primitive_output": 1.0
+    }
+  ],
+  "address_contamination_audit": [
+    {
+      "task": "diff",
+      "primitive": "diff",
+      "raw_label_accuracy": 1.0,
+      "addressed_label_accuracy": 1.0,
+      "address_output_delta": 0.0,
+      "address_label_flip_rate": 0.0
+    },
+    {
+      "task": "merge",
+      "primitive": "merge",
+      "raw_label_accuracy": 1.0,
+      "addressed_label_accuracy": 1.0,
+      "address_output_delta": 0.0,
+      "address_label_flip_rate": 0.0
+    },
+    {
+      "task": "product",
+      "primitive": "product",
+      "raw_label_accuracy": 1.0,
+      "addressed_label_accuracy": 1.0,
+      "address_output_delta": 0.0,
+      "address_label_flip_rate": 0.0
+    }
+  ],
+  "controller_address_audit": {
+    "controller_address_choice_delta": 0.023855894804000854,
+    "slot_address_used_by_controller": true,
+    "slot_address_used_by_executor": false,
+    "final_read_last_layer0_output_bypass_delta": 0.0
+  },
+  "sequential_state_audit": [
+    {
+      "task": "diff",
+      "action_invariants": [
+        {
+          "action": {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        }
+      ],
+      "invariants_pass": true,
+      "raw_content": {
+        "path": "raw_content",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      },
+      "addressed": {
+        "path": "addressed",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "task": "merge",
+      "action_invariants": [
+        {
+          "action": {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "merge"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        }
+      ],
+      "invariants_pass": true,
+      "raw_content": {
+        "path": "raw_content",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "merge",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      },
+      "addressed": {
+        "path": "addressed",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "merge",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "task": "product",
+      "action_invariants": [
+        {
+          "action": {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "product"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        }
+      ],
+      "invariants_pass": true,
+      "raw_content": {
+        "path": "raw_content",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "product",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      },
+      "addressed": {
+        "path": "addressed",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "product",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "task": "two_diff",
+      "action_invariants": [
+        {
+          "action": {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        },
+        {
+          "action": {
+            "layer": 0,
+            "src": 2,
+            "tgt": 3,
+            "primitive": "diff"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        }
+      ],
+      "invariants_pass": true,
+      "raw_content": {
+        "path": "raw_content",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 0,
+            "src": 2,
+            "tgt": 3,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      },
+      "addressed": {
+        "path": "addressed",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 0,
+            "src": 2,
+            "tgt": 3,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "task": "chain_diff_product",
+      "action_invariants": [
+        {
+          "action": {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        },
+        {
+          "action": {
+            "layer": 0,
+            "src": 2,
+            "tgt": 3,
+            "primitive": "diff"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        },
+        {
+          "action": {
+            "layer": 1,
+            "src": 1,
+            "tgt": 3,
+            "primitive": "product"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        }
+      ],
+      "invariants_pass": true,
+      "raw_content": {
+        "path": "raw_content",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 0,
+            "src": 2,
+            "tgt": 3,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 1,
+            "src": 1,
+            "tgt": 3,
+            "primitive": "product",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      },
+      "addressed": {
+        "path": "addressed",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 0,
+            "src": 2,
+            "tgt": 3,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 1,
+            "src": 1,
+            "tgt": 3,
+            "primitive": "product",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "state_update_contract_pass": true,
+    "raw_primitive_pass": true,
+    "invariants_pass": true,
+    "address_content_separated": true,
+    "controller_address_alive": true,
+    "final_read_last_has_no_layer0_output_bypass": true,
+    "sequential_contract_pass": true
+  }
+}

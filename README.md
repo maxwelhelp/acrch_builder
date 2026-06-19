@@ -54,6 +54,7 @@ The synthetic proof slice uses an explicit expected-edge choice loss to verify t
 ## v8 run note
 
 For synthetic proof-slice use `INPUT_NORM=none` because `TASK=diff` depends on feature mean.
+Use `STATE_NORM=none` so sequential primitive values are not destroyed between layers.
 
 ## Program report
 

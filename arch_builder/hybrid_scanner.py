@@ -45,7 +45,7 @@ class HybridScanner(nn.Module):
         memory: torch.Tensor,
         primitive_matrix: PrimitiveMatrix5x5,
         prev_action_emb: torch.Tensor | None = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, float]]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float]]:
         n = context.shape[0]
         device = context.device
 
@@ -87,10 +87,6 @@ class HybridScanner(nn.Module):
                 sem_not_grid.append(sum(1 for x in sem if x not in grid) / max(1, len(sem)))
             metrics = {
                 "semantic_grid_mismatch": float(sum(sem_not_grid) / max(1, len(sem_not_grid))),
-                "grid_candidate_usage": 0.0,
-                "semantic_candidate_usage": 0.0,
-                "usage_candidate_usage": 0.0,
-                "random_candidate_usage": 0.0,
             }
 
-        return candidate_ids, proposal_logits, metrics
+        return candidate_ids, proposal_logits, source_ids, metrics

@@ -31,11 +31,73 @@ class CreditBuffer:
         }
 
 
+def _rng_state():
+    cpu = torch.random.get_rng_state()
+    cuda = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+    return cpu, cuda
+
+
+def _restore_rng(state) -> None:
+    cpu, cuda = state
+    torch.random.set_rng_state(cpu)
+    if cuda is not None:
+        torch.cuda.set_rng_state_all(cuda)
+
+
+def _primitive_distribution(trace, num_primitives: int) -> torch.Tensor:
+    distributions = []
+    for layer in trace["layers"]:
+        candidate_ids = layer["candidate_ids"]
+        choice = layer["choice"]
+        out = torch.zeros(
+            candidate_ids.shape[0],
+            num_primitives,
+            device=choice.device,
+            dtype=choice.dtype,
+        )
+        out.scatter_add_(1, candidate_ids, choice)
+        distributions.append(out)
+    return torch.cat(distributions, dim=0)
+
+
+@torch.no_grad()
+def simulator_ablation_metrics(model, task, batch_size: int, device: str, tau: float) -> Dict[str, float]:
+    was_training = model.training
+    model.eval()
+    batch = task.sample(batch_size, device)
+    state = _rng_state()
+    usage_state = model.pm.usage_score.detach().clone()
+
+    def run(**kwargs):
+        _restore_rng(state)
+        model.pm.usage_score.copy_(usage_state)
+        return model(batch.x, tau=tau, **kwargs)
+
+    logits_full, trace_full = run()
+    logits_no_gain, _ = run(disable_gain=True)
+    logits_no_result, _ = run(disable_sim_result=True)
+    logits_no_sim, trace_no_sim = run(disable_sim=True)
+
+    ce_full = F.cross_entropy(logits_full, batch.y)
+    ce_no_gain = F.cross_entropy(logits_no_gain, batch.y)
+    ce_no_result = F.cross_entropy(logits_no_result, batch.y)
+    ce_no_sim = F.cross_entropy(logits_no_sim, batch.y)
+
+    dist_full = _primitive_distribution(trace_full, model.pm.num_primitives)
+    dist_no_sim = _primitive_distribution(trace_no_sim, model.pm.num_primitives)
+    choice_delta = (dist_full.float() - dist_no_sim.float()).abs().mean()
+
+    model.pm.usage_score.copy_(usage_state)
+    model.train(was_training)
+    return {
+        "gain_disabled_delta": float((ce_no_gain - ce_full).cpu()),
+        "sim_result_disabled_delta": float((ce_no_result - ce_full).cpu()),
+        "sim_disabled_delta": float((ce_no_sim - ce_full).cpu()),
+        "choice_without_sim_delta": float(choice_delta.cpu()),
+    }
+
+
 @torch.no_grad()
 def sim_disabled_delta(model, task, batch_size: int, device: str, tau: float) -> float:
-    batch = task.sample(batch_size, device)
-    logits, _ = model(batch.x, tau=tau, disable_sim=False)
-    logits_no, _ = model(batch.x, tau=tau, disable_sim=True)
-    ce = F.cross_entropy(logits, batch.y)
-    ce_no = F.cross_entropy(logits_no, batch.y)
-    return float((ce_no - ce).detach().cpu())
+    """Compatibility wrapper for callers that only need full-simulator CE delta."""
+    return simulator_ablation_metrics(model, task, batch_size, device, tau)["sim_disabled_delta"]

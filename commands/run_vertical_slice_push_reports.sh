@@ -23,6 +23,7 @@ SIM_RANK="${SIM_RANK:-16}"
 DEVICE="${DEVICE:-cuda}"
 AMP="${AMP:-fp16}"
 INPUT_NORM="${INPUT_NORM:-none}"
+STATE_NORM="${STATE_NORM:-none}"
 FINAL_READ="${FINAL_READ:-last}"
 LR="${LR:-3e-4}"
 TARGET_TAPE_FRACTION="${TARGET_TAPE_FRACTION:-0.015}"
@@ -71,6 +72,7 @@ python -m arch_builder.train_vertical_slice \
   --device "$DEVICE" \
   --amp "$AMP" \
   --input-norm "$INPUT_NORM" \
+  --state-norm "$STATE_NORM" \
   --final-read "$FINAL_READ" \
   --lr "$LR" \
   --lambda-choice "$LAMBDA_CHOICE" \
