@@ -1,0 +1,5 @@
+epoch 001/5 train=0.7671/49.71% val=0.7333/49.69% prog=0.000 sim_delta=+0.0000
+epoch 002/5 train=0.7424/50.68% val=0.7103/50.94% prog=0.000 sim_delta=-0.0000
+epoch 003/5 train=0.7335/50.41% val=0.7064/50.62% prog=0.000 sim_delta=-0.0000
+epoch 004/5 train=0.7290/50.16% val=0.6992/50.62% prog=0.000 sim_delta=+0.0000
+epoch 005/5 train=0.7290/50.55% val=0.7008/49.22% prog=0.000 sim_delta=+0.0000
