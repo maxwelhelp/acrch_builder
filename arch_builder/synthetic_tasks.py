@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import torch
 
@@ -10,23 +10,16 @@ import torch
 class Batch:
     x: torch.Tensor
     y: torch.Tensor
-
-    # Legacy first expected action for old reports.
     expected_primitive: str
     expected_src: int
     expected_tgt: int
-
-    # Full known-program target for proof-slice.
-    # Each action: {"layer": int, "src": int, "tgt": int, "primitive": str}
     expected_actions: List[Dict[str, object]]
 
 
 class SyntheticKnownProgramTask:
     """Known-program tasks for vertical-slice debugging.
 
-    These tasks are not the final training regime. They are microscopes:
-    we know the intended program and check whether ActionMatrix layers can
-    discover/execute/report it.
+    These tasks are microscopes, not final real-task training.
     """
 
     def __init__(self, task: str = "diff", slots: int = 4, dim: int = 64, classes: int = 2) -> None:
@@ -35,7 +28,7 @@ class SyntheticKnownProgramTask:
         self.dim = dim
         self.classes = classes
 
-    def label_signal(self, x: torch.Tensor) -> tuple[torch.Tensor, List[Dict[str, object]]]:
+    def label_signal(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[Dict[str, object]]]:
         if self.task == "diff":
             signal = (x[:, 0] - x[:, 1]).mean(dim=-1)
             actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"}]
@@ -60,11 +53,6 @@ class SyntheticKnownProgramTask:
             return signal, actions
 
         if self.task == "chain_diff_product":
-            # Intended two-stage program:
-            #   layer0: d01 = x0 - x1, d23 = x2 - x3
-            #   layer1: product(d01, d23)
-            # This is intentionally harder and can expose whether layer1 really
-            # uses layer0 state or whether layer0/product-collapse solves it.
             signal = ((x[:, 0] - x[:, 1]) * (x[:, 2] - x[:, 3])).mean(dim=-1)
             actions = [
                 {"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"},
