@@ -1,0 +1,43 @@
+# Latest vertical slice report
+
+- report_dir: `agent_reports/task01_single_primitive/merge_seed3`
+- task: `merge`
+- epochs: `5`
+- state_norm_mode: `none`
+- best_acc: `0.901171875`
+- last_acc: `0.901171875`
+- program_recovery_rate: `1.0`
+- expected_edge_recovery: `1.0`
+- expected_any_recovery: `0.239990234375`
+- expected_edge_active: `0.9135090112686157`
+- expected_candidate_present: `1.0`
+- expected_edge_choice_mass: `0.9995080828666687`
+- gain_disabled_delta: `0.024477988481521606`
+- sim_result_disabled_delta: `0.0038190633058547974`
+- sim_disabled_delta: `0.054945677518844604`
+- choice_without_sim_delta: `0.033392634242773056`
+- semantic_grid_mismatch: `0.38885498046875`
+- grid_candidate_usage: `0.568916380405426`
+- semantic_candidate_usage: `0.16778086125850677`
+- usage_candidate_usage: `0.2262963056564331`
+- random_candidate_usage: `0.0370064415037632`
+- scanner_source_mass_sum: `0.9999999888241291`
+- skip_mass: `0.30448776483535767`
+- transform_mass: `0.38067764043807983`
+- disable_mass: `0.3148345947265625`
+- oracle_acc: `1.0`
+- edge_pair_bias_expected: `0.08371472358703613`
+- write_pair_bias_expected: `0.08527275174856186`
+- phase_pair_bias_expected: `0.08414903283119202`
+- cell_output_pair_bias_expected: `0.0989193320274353`
+- edge_pair_bias_std: `0.07766857743263245`
+- write_pair_bias_std: `0.08116204291582108`
+- choice_entropy: `0.78094083070755`
+- edge_scale_mean: `1.1362924575805664`
+- cell_output_gate_mean: `0.49482864141464233`
+- cell_tape_weight_mean: `0.12321469187736511`
+
+## Conclusion
+vertical slice completed
+
+Program details: `PROGRAM_REPORT.md` and `program_epoch_XXX.json`.
