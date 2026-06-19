@@ -1,0 +1,279 @@
+# Agent Project Inspector config for maxwelhelp/acrch_builder
+# Project: Primitive Matrix Scanner / ActionMatrix Program vertical slice.
+
+project_name: acrch_builder
+
+scan:
+  skip_dirs:
+    - .git
+    - .venv
+    - venv
+    - __pycache__
+    - .pytest_cache
+    - reports
+    - runs
+    - checkpoints
+    - weights
+    - data
+    - datasets
+    - wandb
+    - node_modules
+  code_extensions: [".py", ".sh", ".md", ".yaml", ".yml", ".toml", ".json"]
+
+roles:
+  entrypoint:
+    description: CLI commands, validation and experiment launch scripts.
+    keywords:
+      - "argparse"
+      - "parser"
+      - "main"
+      - "train_vertical_slice"
+      - "run_vertical_slice"
+      - "validate"
+      - "commands/"
+      - "run_"
+      - "bash"
+
+  primitive_matrix:
+    description: PrimitiveMatrix5x5, primitive ids, descriptors, embeddings, usage EMA.
+    keywords:
+      - "PrimitiveMatrix5x5"
+      - "PrimitiveInfo"
+      - "primitive_matrix"
+      - "primitive"
+      - "name_to_id"
+      - "usage_ema"
+      - "semantic_topk"
+      - "local_window"
+
+  scanner:
+    description: HybridScanner proposes candidate primitive ids from context/memory/usage/semantic signals.
+    keywords:
+      - "HybridScanner"
+      - "scanner"
+      - "candidate"
+      - "proposal"
+      - "cand_ids"
+      - "topk"
+      - "top_k"
+      - "semantic"
+      - "usage"
+      - "grid"
+
+  simulator:
+    description: LowRankSimulator predicts primitive effect/gain and should affect controller choice.
+    keywords:
+      - "LowRankSimulator"
+      - "simulator"
+      - "predicted_gain"
+      - "sim_logits"
+      - "sim_component"
+      - "sim_loss"
+      - "sim_disabled_delta"
+      - "choice_without_sim_delta"
+      - "disable_sim"
+
+  controller:
+    description: ActionMatrix controller chooses primitive/action/mode/gates per source-target edge.
+    keywords:
+      - "ActionMatrixLayer"
+      - "choice_logits"
+      - "choice"
+      - "gumbel_softmax"
+      - "mode_head"
+      - "edge_gate"
+      - "write_gate"
+      - "phase_gate"
+      - "edge_pair_bias"
+      - "write_pair_bias"
+      - "cell_output_gate"
+      - "output_gate"
+      - "gate"
+      - "mode"
+
+  executor:
+    description: ActionExecutor applies selected primitive transformations on src/tgt/memory.
+    keywords:
+      - "ActionExecutor"
+      - "executor"
+      - "primitive_out"
+      - "transformed"
+      - "execute"
+      - "cell_out"
+      - "msg"
+      - "edge_scale"
+
+  model_core:
+    description: Main differentiable state/memory/output path and classifier.
+    keywords:
+      - "ActionMatrixModel"
+      - "model.py"
+      - "forward"
+      - "state"
+      - "next_state"
+      - "output_state"
+      - "slot_embed"
+      - "classifier"
+      - "logits"
+      - "LayerNorm"
+      - "memory"
+
+  memory:
+    description: Memory tensor path and slot/memory read-write coupling.
+    keywords:
+      - "memory"
+      - "new_memory"
+      - "flat_mem"
+      - "mem"
+      - "state.mean"
+      - "read"
+      - "write"
+      - "slot_embed"
+
+  credit:
+    description: Loss, teacher signal, ablation, credit buffer and metrics that feed later decisions.
+    keywords:
+      - "CreditBuffer"
+      - "credit"
+      - "expected_edge_choice_loss"
+      - "choice_loss"
+      - "sim_loss"
+      - "lambda_choice"
+      - "lambda_sim"
+      - "lambda_collapse"
+      - "cross_entropy"
+      - "loss.backward"
+      - "sim_disabled_delta"
+      - "expected_edge_recovery"
+      - "program_recovery_rate"
+
+  runtime_trace:
+    description: Runtime trace tensors and reports proving what happened in a run.
+    keywords:
+      - "trace"
+      - "summarize_trace"
+      - "candidate_ids"
+      - "chosen"
+      - "mode_for_loss"
+      - "predicted_gain_for_loss"
+      - "cell_tape_weight"
+      - "metrics.csv"
+      - "final_report"
+      - "LATEST_RUN_REPORT"
+
+  reporting:
+    description: Report writers, csv/json/html outputs and latest report for agent analysis.
+    keywords:
+      - "reporting"
+      - "write_json"
+      - "append_csv"
+      - "write_latest_report"
+      - "REPORT_TO_CHATGPT"
+      - "metrics.csv"
+      - "final_report.json"
+      - "LATEST_RUN_REPORT"
+
+  data:
+    description: SyntheticKnownProgramTask and known expected src/tgt/primitive labels.
+    keywords:
+      - "SyntheticKnownProgramTask"
+      - "synthetic_tasks"
+      - "Batch"
+      - "expected_src"
+      - "expected_tgt"
+      - "expected_primitive"
+      - "oracle_accuracy"
+      - "task.sample"
+      - "diff"
+      - "merge"
+      - "product"
+      - "memory"
+      - "semantic_rescue"
+
+closed_loops:
+  main_differentiable_learning_loop:
+    description: Loss must flow through ActionMatrix output back into controller/scanner/simulator/executor/model parameters.
+    roles: ["data", "model_core", "controller", "executor", "credit", "model_core"]
+    required: true
+
+  simulator_choice_loop:
+    description: Simulator predicted_gain/sim_component must influence choice_logits; disabling simulator should change loss/choice.
+    roles: ["scanner", "simulator", "controller", "executor", "credit", "simulator"]
+    required: true
+
+  known_program_recovery_loop:
+    description: Known expected edge/primitive supervises choice and is measured by recovery/candidate metrics.
+    roles: ["data", "scanner", "controller", "executor", "runtime_trace", "credit", "controller"]
+    required: true
+
+  memory_state_loop:
+    description: State produces memory, memory enters context/scanner/executor, memory updates from next_state.
+    roles: ["model_core", "memory", "scanner", "controller", "executor", "model_core"]
+    required: false
+
+  report_agent_loop:
+    description: Run writes reports; agent reads reports; next edit preserves or repairs loops.
+    roles: ["entrypoint", "reporting", "runtime_trace", "credit", "entrypoint"]
+    required: false
+
+runtime:
+  report_globs:
+    - "LATEST_RUN_REPORT.md"
+    - "agent_reports/**/final_report.json"
+    - "agent_reports/**/metrics.csv"
+    - "agent_reports/**/credit_ablation_epoch_final.json"
+    - "reports/agent_inspector/*.json"
+    - "reports/agent_inspector/*.csv"
+
+  required_metrics:
+    - "train_acc"
+    - "val_acc"
+    - "best_acc"
+    - "oracle_acc"
+    - "program_recovery_rate"
+    - "expected_edge_recovery"
+    - "expected_any_recovery"
+    - "expected_candidate_present"
+    - "expected_edge_choice_mass"
+    - "expected_edge_active"
+    - "sim_disabled_delta"
+    - "choice_without_sim_delta"
+    - "credit_items"
+    - "credit_staleness_mean"
+    - "credit_age_max"
+    - "transform_mass"
+    - "skip_mass"
+    - "disable_mass"
+    - "choice_entropy"
+    - "edge_scale_mean"
+    - "cell_output_gate_mean"
+    - "cell_tape_weight_mean"
+
+  positive_is_good:
+    - "train_acc"
+    - "val_acc"
+    - "best_acc"
+    - "program_recovery_rate"
+    - "expected_edge_recovery"
+    - "expected_candidate_present"
+    - "expected_edge_choice_mass"
+    - "expected_edge_active"
+    - "sim_disabled_delta"
+    - "choice_without_sim_delta"
+    - "transform_mass"
+    - "cell_tape_weight_mean"
+
+agent_context:
+  include:
+    - ".inspector.yml"
+    - "README.md"
+    - "docs/AGENT_WORKFLOW.md"
+    - "docs/ARCHITECTURE.md"
+    - "docs/V4_6_4_PRIMITIVE_MATRIX_SCANNER_PLAN.md"
+    - "docs/V4_6_4_IMPLEMENTATION_PLAN.md"
+    - "LATEST_RUN_REPORT.md"
+    - "reports/agent_inspector/AGENT_CONTEXT.md"
+    - "reports/agent_inspector/static_summary.md"
+    - "reports/agent_inspector/holes_report.md"
+    - "reports/agent_inspector/runtime_summary.md"
+    - "reports/agent_inspector/static_graph.json"
