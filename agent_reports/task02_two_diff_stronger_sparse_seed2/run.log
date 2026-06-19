@@ -1,0 +1,6 @@
+=== TASK02 two_diff stronger sparse SEED=2 OUT=agent_reports/task02_two_diff_stronger_sparse_seed2 ===
+epoch 001/5 train=2.3043/49.23% val=0.6928/52.34% edge_prog=1.000 any_prog=0.555 active_cells=16.0 top_share=0.487 gateR=1.00 gateC=0.91 gateS=0.66 final=last cand=1.000 choice_mass=0.990 oracle=100.0% sim_delta=+0.0088
+epoch 002/5 train=0.8187/65.02% val=0.4935/76.02% edge_prog=1.000 any_prog=0.275 active_cells=16.0 top_share=0.300 gateR=1.00 gateC=0.50 gateS=0.72 final=last cand=1.000 choice_mass=0.998 oracle=100.0% sim_delta=+0.0949
+epoch 003/5 train=0.6023/76.91% val=0.4433/77.89% edge_prog=1.000 any_prog=0.258 active_cells=16.0 top_share=0.290 gateR=1.00 gateC=0.47 gateS=0.75 final=last cand=1.000 choice_mass=0.999 oracle=100.0% sim_delta=+0.0817
+epoch 004/5 train=0.5421/79.66% val=0.3899/81.72% edge_prog=1.000 any_prog=0.264 active_cells=16.0 top_share=0.273 gateR=1.00 gateC=0.42 gateS=0.76 final=last cand=1.000 choice_mass=0.999 oracle=100.0% sim_delta=+0.0784
+epoch 005/5 train=0.5200/80.52% val=0.3774/81.88% edge_prog=1.000 any_prog=0.262 active_cells=16.0 top_share=0.270 gateR=1.00 gateC=0.41 gateS=0.76 final=last cand=1.000 choice_mass=0.999 oracle=100.0% sim_delta=+0.0576

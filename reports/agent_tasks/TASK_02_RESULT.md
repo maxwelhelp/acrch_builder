@@ -2,26 +2,21 @@
 
 Task: multi-cell anti-collapse on `two_diff`.
 
-Baseline:
-- rec=1.0
-- choice_mass≈1.0
-- active_cells=9 / program_active_cells=10
-- program_expected_top_cells=6
-- verdict=primitive_collapse
+| Run | OK | best_acc | cand | choice_mass | recovery | top_cells | active_cells | top_share | verdict |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `agent_reports/task02_two_diff_stronger_sparse_seed1` | True | 0.9230 | 1.000 | 0.9997 | 1.000 | 4 | 8 | 0.2615 | sparse_or_partly_sparse_program |
+| `agent_reports/task02_two_diff_stronger_sparse_seed2` | False | 0.8187 | 1.000 | 0.9991 | 1.000 | 4 | 16 | 0.2696 | sparse_or_partly_sparse_program |
+| `agent_reports/task02_two_diff_stronger_sparse_seed3` | True | 0.9309 | 1.000 | 0.9995 | 1.000 | 4 | 8 | 0.2532 | sparse_or_partly_sparse_program |
 
-Stronger sparse config seed1:
-- best_acc=0.9230
-- expected_candidate_present=1.0
-- expected_edge_choice_mass=0.99965
-- expected_edge_recovery=1.0
-- program_expected_top_cells=[4]
-- program_active_cells=[8]
-- primitive_top_share=0.2615
-- verdict=sparse_or_partly_sparse_program
-- sim_disabled_delta=+0.00475
-- choice_without_sim_delta=0.0238
-- loss_accounting_error=6.3e-10
+Acceptance:
+- both expected actions present=1
+- choice_mass>=0.70
+- recovery>=0.80
+- expected_top_cells<=4
+- active_cells<16
+- primitive_top_share<0.85
+- program verdict != primitive_collapse
+- validation accuracy > random
 
-Conclusion:
-- Task 02 fix works on seed1.
-- Need seeds 2/3 with same config before PASS.
+Verdict: PARTIAL.
+Next: inspect failed rows before Task 03.

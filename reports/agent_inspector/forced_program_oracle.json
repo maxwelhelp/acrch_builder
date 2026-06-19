@@ -1,7 +1,7 @@
 {
   "schema": "forced_program_oracle.v2",
   "config": {
-    "device": "cpu",
+    "device": "cuda",
     "dim": 32,
     "slots": 4,
     "batch_size": 512,
@@ -24,12 +24,12 @@
     },
     "unit_write_gate_min": 1.0,
     "multiple_write_value_error": {
-      "mean_abs_error": 0.0,
-      "max_abs_error": 0.0
+      "mean_abs_error": 1.599735810486891e-08,
+      "max_abs_error": 2.384185791015625e-07
     },
     "multiple_write_target_error": {
-      "mean_abs_error": 0.0,
-      "max_abs_error": 0.0
+      "mean_abs_error": 1.0431904229335487e-08,
+      "max_abs_error": 2.384185791015625e-07
     },
     "multiple_write_gate_error": {
       "mean_abs_error": 0.0,
@@ -93,7 +93,7 @@
     }
   ],
   "controller_address_audit": {
-    "controller_address_choice_delta": 0.023855894804000854,
+    "controller_address_choice_delta": 0.024518121033906937,
     "slot_address_used_by_controller": true,
     "slot_address_used_by_executor": false,
     "final_read_last_layer0_output_bypass_delta": 0.0

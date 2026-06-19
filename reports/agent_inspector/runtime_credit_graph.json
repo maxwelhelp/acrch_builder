@@ -19,21 +19,21 @@
       "id": "choice_mass",
       "label": "choice_mass",
       "kind": "credit_stage",
-      "value": 0.26534172892570496,
+      "value": 0.11993330717086792,
       "status": "ok"
     },
     {
       "id": "edge_active",
       "label": "edge_active",
       "kind": "credit_stage",
-      "value": 0.20415031909942627,
+      "value": 0.2189171016216278,
       "status": "ok"
     },
     {
       "id": "recovery",
       "label": "recovery",
       "kind": "credit_stage",
-      "value": 0.375,
+      "value": 0.125,
       "status": "ok"
     },
     {
