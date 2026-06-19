@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/train_vertical_slice.py", line 225, in <module>
+    train(parser().parse_args())
+  File "/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/train_vertical_slice.py", line 111, in train
+    logits, trace = model(batch.x, tau=tau)
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/model.py", line 191, in forward
+    state, out, memory, tr = layer(state, memory, tau=tau, disable_sim=disable_sim)
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/main/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/model.py", line 127, in forward
+    output_tape_state = cell_tape.sum(dim=(1, 2)) / denom.squeeze(-1)
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~
+RuntimeError: The size of tensor a (64) must match the size of tensor b (128) at non-singleton dimension 1

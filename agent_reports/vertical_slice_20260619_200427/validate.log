@@ -1,0 +1,8 @@
+[validate] cleanup stale pycache
+[validate] py_compile
+[validate] import smoke
+ActionMatrixModel ['identity', 'gated_keep', 'diff', 'contrast', 'smooth']
+[validate] cli help
+[validate] cleanup generated pycache
+[validate] forbidden files
+[validate] OK
