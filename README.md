@@ -6,6 +6,8 @@ Main workflow is in:
 
 ```text
 docs/AGENT_WORKFLOW.md
+
+docs/V4_6_4_PRIMITIVE_MATRIX_SCANNER_PLAN.md
 ```
 
 Current target is not the full huge architecture. Current target is the first proof slice:

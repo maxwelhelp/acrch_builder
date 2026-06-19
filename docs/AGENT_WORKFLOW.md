@@ -13,6 +13,7 @@ This repository is the main workspace for the Primitive Matrix Scanner / ActionM
    read README.md
    read docs/AGENT_WORKFLOW.md
    read docs/ARCHITECTURE.md
+   read docs/V4_6_4_PRIMITIVE_MATRIX_SCANNER_PLAN.md
    read docs/V4_6_4_IMPLEMENTATION_PLAN.md
    inspect exact files that will be changed
 
@@ -54,3 +55,7 @@ Do not commit model weights, checkpoints, safetensors, pyc, or cache files.
 Do not move to real audio or plug-in transformer work until the vertical slice is understood.
 Every run must produce reports that can be committed without weights.
 ```
+
+## Canonical architecture plan
+
+`docs/V4_6_4_PRIMITIVE_MATRIX_SCANNER_PLAN.md` is the design contract. Keep it in sync with implementation decisions.

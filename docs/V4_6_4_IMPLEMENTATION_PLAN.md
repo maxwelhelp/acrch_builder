@@ -1,5 +1,7 @@
 # v4.6.4 implementation plan
 
+Canonical plan: `docs/V4_6_4_PRIMITIVE_MATRIX_SCANNER_PLAN.md`.
+
 ## Stage A: vertical slice
 
 Implemented in this archive:
