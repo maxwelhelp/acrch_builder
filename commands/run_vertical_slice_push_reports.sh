@@ -23,7 +23,10 @@ SIM_RANK="${SIM_RANK:-16}"
 DEVICE="${DEVICE:-cuda}"
 AMP="${AMP:-fp16}"
 INPUT_NORM="${INPUT_NORM:-none}"
+FINAL_READ="${FINAL_READ:-last}"
 LR="${LR:-3e-4}"
+TARGET_TAPE_FRACTION="${TARGET_TAPE_FRACTION:-0.015}"
+TARGET_ACTIVE_FRACTION="${TARGET_ACTIVE_FRACTION:-0.18}"
 LAMBDA_NON_EXPECTED_TRANSFORM="${LAMBDA_NON_EXPECTED_TRANSFORM:-0.02}"
 LAMBDA_LAYER_ACTION_DIVERSITY="${LAMBDA_LAYER_ACTION_DIVERSITY:-0.05}"
 LAMBDA_TAPE_BUDGET="${LAMBDA_TAPE_BUDGET:-0.02}"
@@ -62,6 +65,7 @@ python -m arch_builder.train_vertical_slice \
   --device "$DEVICE" \
   --amp "$AMP" \
   --input-norm "$INPUT_NORM" \
+  --final-read "$FINAL_READ" \
   --lr "$LR" \
   --lambda-choice "$LAMBDA_CHOICE" \
   --lambda-non-expected-primitive "$LAMBDA_NON_EXPECTED_PRIMITIVE" \

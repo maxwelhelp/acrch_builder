@@ -62,3 +62,7 @@ Each run writes `PROGRAM_REPORT.md` inside the run directory. It shows the Actio
 ## v10 anti-collapse
 
 The synthetic proof run can use small anti-collapse losses so the expected primitive is not selected in every cell. Check `PROGRAM_REPORT.md` for `program_verdict`, `expected_top_cells`, and `active_cells`.
+
+## v14 sequential sparse
+
+Use `FINAL_READ=last` for sequential tests. Check `active_cells`, `primitive_top_share`, `layer_ablation_delta`, and `layer_dependency_delta` in reports.

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 import torch.nn as nn
@@ -17,13 +17,10 @@ def _ln_logits(x: torch.Tensor) -> torch.Tensor:
 
 
 class ActionMatrixLayer(nn.Module):
-    """One ActionMatrix layer.
+    """One sequential ActionMatrix layer.
 
-    v8 proof-slice fixes:
-    - no feature LayerNorm on raw synthetic input by default;
-    - direct cell output tape is kept;
-    - pair-index biases give edge gates a structural anchor;
-    - positive edge scale avoids tanh-zero dead start.
+    Inside the layer edges are still soft all-to-all for gradient flow, but
+    train-time losses/reporting now enforce sparse useful structure.
     """
 
     def __init__(self, dim: int, slots: int, primitive_matrix: PrimitiveMatrix5x5, top_k: int = 25, sim_rank: int = 16) -> None:
@@ -50,9 +47,7 @@ class ActionMatrixLayer(nn.Module):
         self.cell_output_gate = nn.Linear(context_dim, 1)
         self.norm = nn.LayerNorm(dim)
 
-        # Learnable pair-address priors. They are not hardcoded to (0,1).
-        # They let the gates specialize per source->target edge instead of
-        # trying to infer pair identity only through slot vectors.
+        # Pair priors are learnable anchors, not hardcoded expected edges.
         self.edge_pair_bias = nn.Parameter(torch.zeros(slots, slots))
         self.write_pair_bias = nn.Parameter(torch.zeros(slots, slots))
         self.phase_pair_bias = nn.Parameter(torch.zeros(slots, slots))
@@ -63,9 +58,9 @@ class ActionMatrixLayer(nn.Module):
     def _init_gate_priors(self) -> None:
         with torch.no_grad():
             self.mode_head.bias.zero_()
-            self.mode_head.bias[0] = 0.6    # transform
-            self.mode_head.bias[1] = -0.2   # skip
-            self.mode_head.bias[2] = -0.6   # disable
+            self.mode_head.bias[0] = 0.6
+            self.mode_head.bias[1] = -0.2
+            self.mode_head.bias[2] = -0.6
             self.edge_gate.bias.fill_(0.5)
             self.write_gate.bias.fill_(0.5)
             self.phase_gate.bias.fill_(0.5)
@@ -118,8 +113,6 @@ class ActionMatrixLayer(nn.Module):
         write = torch.sigmoid(self.write_gate(flat_context) + pair_write)
         phase = torch.sigmoid(self.phase_gate(flat_context) + pair_phase)
 
-        # Positive scale avoids the tanh-zero dead start. Signed edge ops can be
-        # reintroduced after the proof slice is alive.
         edge_scale = 0.25 + torch.sigmoid(self.edge_op(flat_context))
         active = edge * write * phase
 
@@ -189,34 +182,66 @@ class ActionMatrixModel(nn.Module):
         sim_rank: int = 16,
         slot_embed_scale: float = 0.5,
         input_norm: str = "none",
+        final_read: str = "last",
     ) -> None:
         super().__init__()
         if input_norm not in {"none", "layernorm"}:
             raise ValueError(f"input_norm must be none or layernorm, got {input_norm}")
+        if final_read not in {"last", "mean", "learned"}:
+            raise ValueError(f"final_read must be last, mean, or learned, got {final_read}")
         self.dim = dim
         self.slots = slots
+        self.num_layers = layers
         self.input_norm_mode = input_norm
+        self.final_read = final_read
         self.slot_embed = nn.Parameter(torch.randn(slots, dim) * slot_embed_scale)
         self.pm = PrimitiveMatrix5x5(embed_dim=32)
         self.layers = nn.ModuleList([ActionMatrixLayer(dim, slots, self.pm, top_k=top_k, sim_rank=sim_rank) for _ in range(layers)])
         self.input_norm = nn.LayerNorm(dim) if input_norm == "layernorm" else nn.Identity()
-        # No LayerNorm here: proof TASK=diff label is encoded in feature mean.
+        self.layer_read_logits = nn.Parameter(torch.zeros(layers))
         self.classifier = nn.Linear(dim, classes)
 
-    def forward(self, x: torch.Tensor, tau: float = 1.0, disable_sim: bool = False):
-        # For synthetic proof tasks default input_norm=none. LayerNorm(dim) would
-        # remove mean(x0)-mean(x1), which is exactly the TASK=diff label signal.
+    def _merge_outputs(self, outputs: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
+        stack = torch.stack(outputs, dim=0)  # [L,B,D]
+        if self.final_read == "last":
+            weights = torch.zeros(len(outputs), device=stack.device, dtype=stack.dtype)
+            weights[-1] = 1.0
+            return stack[-1], weights
+        if self.final_read == "mean":
+            weights = torch.ones(len(outputs), device=stack.device, dtype=stack.dtype) / len(outputs)
+            return stack.mean(dim=0), weights
+        weights = F.softmax(self.layer_read_logits[: len(outputs)].to(dtype=stack.dtype), dim=0)
+        return (weights[:, None, None] * stack).sum(dim=0), weights
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        tau: float = 1.0,
+        disable_sim: bool = False,
+        ablate_layer_output: Optional[int] = None,
+        ablate_state_after: Optional[int] = None,
+    ):
         state = self.input_norm(x)
         state = state + self.slot_embed.unsqueeze(0).to(dtype=state.dtype, device=state.device)
         memory = state.mean(dim=1)
 
         outputs = []
         traces = []
-        for layer in self.layers:
+        for idx, layer in enumerate(self.layers):
             state, out, memory, tr = layer(state, memory, tau=tau, disable_sim=disable_sim)
+            if ablate_state_after is not None and idx == ablate_state_after:
+                state = torch.zeros_like(state)
+                memory = torch.zeros_like(memory)
+            if ablate_layer_output is not None and idx == ablate_layer_output:
+                out = torch.zeros_like(out)
             outputs.append(out)
             traces.append(tr)
 
-        final = torch.stack(outputs, dim=0).mean(dim=0)
+        final, read_weights = self._merge_outputs(outputs)
         logits = self.classifier(final)
-        return logits, {"layers": traces, "primitive_metrics": self.pm.metrics()}
+        return logits, {
+            "layers": traces,
+            "primitive_metrics": self.pm.metrics(),
+            "final_read_mode": self.final_read,
+            "final_read_weights": read_weights.detach(),
+        }

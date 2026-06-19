@@ -255,3 +255,27 @@ layer_action_diversity:
 ```
 
 These are generic anti-collapse losses. They do not know that the expected primitive is `diff`.
+
+
+## v14_sequential_sparse_20260619_2215
+
+Adds sequential/sparse proof controls:
+
+```text
+--final-read last|mean|learned
+  last is default for sequential tests.
+
+active_cells / expected_top_cells / primitive_top_share / active_edges_per_target
+  logged every epoch.
+
+layer_ablation_delta
+  accuracy drop after zeroing final layer output.
+
+layer_dependency_delta
+  accuracy drop after zeroing state after layer0 in multi-layer runs.
+
+PROGRAM_REPORT.md
+  now prints flow: input -> Layer 0 -> Layer 1 -> final_read:<mode>
+```
+
+This fixes the main bypass risk: with `final_read=last`, Layer 0 cannot solve by direct output if Layer 1 is present.
