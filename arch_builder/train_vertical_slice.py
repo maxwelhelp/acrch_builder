@@ -50,7 +50,6 @@ def summarize_trace(trace: Dict[str, object], expected_id: int, slots: int, expe
 
     expected_candidate_present = expected_mask.any(dim=-1).float().mean().item()
     expected_edge_choice_mass = (expected_choice * expected_mask.float()).sum(dim=-1).mean().item()
-
     expected_edge_recovery = (expected_edge_chosen == expected_id).float().mean().item()
     expected_any_recovery = (chosen_edges == expected_id).float().mean().item()
     expected_edge_active = active[:, expected_src, expected_tgt].mean().item()
@@ -75,6 +74,12 @@ def summarize_trace(trace: Dict[str, object], expected_id: int, slots: int, expe
         out["cell_output_gate_mean"] = cell_output_gate.mean().item()
     if cell_tape_weight is not None:
         out["cell_tape_weight_mean"] = cell_tape_weight.mean().item()
+
+    for key in ["edge_pair_bias", "write_pair_bias", "phase_pair_bias", "cell_output_pair_bias"]:
+        if key in layer0:
+            mat = layer0[key]
+            out[f"{key}_expected"] = mat[expected_src, expected_tgt].item()
+            out[f"{key}_std"] = mat.float().std().item()
     return out
 
 @torch.no_grad()
@@ -83,6 +88,7 @@ def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float) 
     total = 0
     correct = 0
     loss = 0.0
+    oracle_acc_sum = 0.0
     last_trace = None
     last_batch = None
     for _ in range(steps):
@@ -91,12 +97,13 @@ def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float) 
         loss += F.cross_entropy(logits, batch.y).item() * batch_size
         correct += (logits.argmax(dim=-1) == batch.y).sum().item()
         total += batch_size
+        oracle_acc_sum += task.oracle_accuracy(batch) * batch_size
         last_trace = trace
         last_batch = batch
 
     expected_id = model.pm.name_to_id[last_batch.expected_primitive]
     out = summarize_trace(last_trace, expected_id, model.slots, last_batch.expected_src, last_batch.expected_tgt)
-    out.update({"val_loss": loss / total, "val_acc": correct / total})
+    out.update({"val_loss": loss / total, "val_acc": correct / total, "oracle_acc": oracle_acc_sum / total})
     return out
 
 
@@ -129,7 +136,7 @@ def train(args) -> None:
     latest_report = Path(args.latest_report)
 
     task = SyntheticKnownProgramTask(task=args.task, slots=args.slots, dim=args.dim)
-    model = ActionMatrixModel(dim=args.dim, slots=args.slots, layers=args.layers, classes=2, top_k=args.top_k, sim_rank=args.sim_rank).to(device)
+    model = ActionMatrixModel(dim=args.dim, slots=args.slots, layers=args.layers, classes=2, top_k=args.top_k, sim_rank=args.sim_rank, input_norm=args.input_norm).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=(device.startswith("cuda") and args.amp == "fp16"))
     dtype = amp_dtype(args.amp)
@@ -210,7 +217,7 @@ def train(args) -> None:
             f"val={ev['val_loss']:.4f}/{100*ev['val_acc']:.2f}% "
             f"edge_prog={ev['expected_edge_recovery']:.3f} "
             f"any_prog={ev['expected_any_recovery']:.3f} "
-            f"sim_delta={sdelta:+.4f}",
+            f"cand={ev.get('expected_candidate_present', 0):.3f} choice_mass={ev.get('expected_edge_choice_mass', 0):.3f} oracle={100*ev.get('oracle_acc', 0):.1f}% sim_delta={sdelta:+.4f}",
             flush=True,
         )
 
@@ -250,6 +257,7 @@ def parser():
     p.add_argument("--eval-steps", type=int, default=10)
     p.add_argument("--eval-batch-size", type=int, default=256)
     p.add_argument("--device", default="cuda")
+    p.add_argument("--input-norm", default="none", choices=["none", "layernorm"])
     p.add_argument("--amp", default="fp16", choices=["none", "fp16", "bf16"])
     p.add_argument("--lr", type=float, default=3e-4)
     p.add_argument("--weight-decay", type=float, default=1e-4)

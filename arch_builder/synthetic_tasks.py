@@ -23,31 +23,31 @@ class SyntheticKnownProgramTask:
         self.dim = dim
         self.classes = classes
 
-    def sample(self, batch_size: int, device: str | torch.device) -> Batch:
-        x = torch.randn(batch_size, self.slots, self.dim, device=device)
-
+    def label_signal(self, x: torch.Tensor) -> tuple[torch.Tensor, str, int, int]:
         if self.task == "diff":
             signal = (x[:, 0] - x[:, 1]).mean(dim=-1)
-            expected = "diff"
-            src, tgt = 0, 1
-        elif self.task == "merge":
+            return signal, "diff", 0, 1
+        if self.task == "merge":
             signal = (x[:, 0] + x[:, 1]).mean(dim=-1)
-            expected = "merge"
-            src, tgt = 0, 1
-        elif self.task == "product":
+            return signal, "merge", 0, 1
+        if self.task == "product":
             signal = (x[:, 0] * x[:, 1]).mean(dim=-1)
-            expected = "product"
-            src, tgt = 0, 1
-        elif self.task == "memory":
+            return signal, "product", 0, 1
+        if self.task == "memory":
             signal = x.mean(dim=(1, 2))
-            expected = "memory_write"
-            src, tgt = 0, 1
-        elif self.task == "semantic_rescue":
+            return signal, "memory_write", 0, 1
+        if self.task == "semantic_rescue":
             signal = (x[:, 0] * x[:, 1]).mean(dim=-1) - (x[:, 2] - x[:, 3]).mean(dim=-1)
-            expected = "product"
-            src, tgt = 0, 1
-        else:
-            raise ValueError(f"unknown task: {self.task}")
+            return signal, "product", 0, 1
+        raise ValueError(f"unknown task: {self.task}")
 
+    def sample(self, batch_size: int, device: str | torch.device) -> Batch:
+        x = torch.randn(batch_size, self.slots, self.dim, device=device)
+        signal, expected, src, tgt = self.label_signal(x)
         y = (signal > 0).long()
         return Batch(x=x, y=y, expected_primitive=expected, expected_src=src, expected_tgt=tgt)
+
+    def oracle_accuracy(self, batch: Batch) -> float:
+        signal, _, _, _ = self.label_signal(batch.x)
+        pred = (signal > 0).long()
+        return float((pred == batch.y).float().mean().detach().cpu())

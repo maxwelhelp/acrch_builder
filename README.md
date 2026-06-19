@@ -50,3 +50,7 @@ The run script commits and pushes reports only. No weights/checkpoints are commi
 ## v7 note
 
 The synthetic proof slice uses an explicit expected-edge choice loss to verify that the ActionMatrix can execute a known program before moving to unsupervised credit.
+
+## v8 run note
+
+For synthetic proof-slice use `INPUT_NORM=none` because `TASK=diff` depends on feature mean.

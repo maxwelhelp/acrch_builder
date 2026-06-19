@@ -19,12 +19,11 @@ def _ln_logits(x: torch.Tensor) -> torch.Tensor:
 class ActionMatrixLayer(nn.Module):
     """One ActionMatrix layer.
 
-    v5 fixes the first proof-slice bottleneck:
-    - slot identity exists in ActionMatrixModel;
-    - selected primitive now has a direct cell-output tape, not only a weak
-      residual into target slots;
-    - edge scale is positive/non-zero at initialization instead of tanh≈0;
-    - transform mode has a small prior, skip/disable are not free defaults.
+    v8 proof-slice fixes:
+    - no feature LayerNorm on raw synthetic input by default;
+    - direct cell output tape is kept;
+    - pair-index biases give edge gates a structural anchor;
+    - positive edge scale avoids tanh-zero dead start.
     """
 
     def __init__(self, dim: int, slots: int, primitive_matrix: PrimitiveMatrix5x5, top_k: int = 25, sim_rank: int = 16) -> None:
@@ -51,11 +50,17 @@ class ActionMatrixLayer(nn.Module):
         self.cell_output_gate = nn.Linear(context_dim, 1)
         self.norm = nn.LayerNorm(dim)
 
+        # Learnable pair-address priors. They are not hardcoded to (0,1).
+        # They let the gates specialize per source->target edge instead of
+        # trying to infer pair identity only through slot vectors.
+        self.edge_pair_bias = nn.Parameter(torch.zeros(slots, slots))
+        self.write_pair_bias = nn.Parameter(torch.zeros(slots, slots))
+        self.phase_pair_bias = nn.Parameter(torch.zeros(slots, slots))
+        self.cell_output_pair_bias = nn.Parameter(torch.zeros(slots, slots))
+
         self._init_gate_priors()
 
     def _init_gate_priors(self) -> None:
-        # Avoid the first-slice dead start where all messages are multiplied by
-        # tanh(0)≈0 or by low transform mass.
         with torch.no_grad():
             self.mode_head.bias.zero_()
             self.mode_head.bias[0] = 0.6    # transform
@@ -66,6 +71,9 @@ class ActionMatrixLayer(nn.Module):
             self.phase_gate.bias.fill_(0.5)
             self.edge_op.bias.fill_(1.0)
             self.cell_output_gate.bias.fill_(0.2)
+
+    def _flat_pair_bias(self, param: torch.Tensor, batch: int, dtype: torch.dtype, device: torch.device) -> torch.Tensor:
+        return param.to(dtype=dtype, device=device).reshape(1, self.slots * self.slots, 1).expand(batch, -1, -1).reshape(batch * self.slots * self.slots, 1)
 
     def forward(self, state: torch.Tensor, memory: torch.Tensor, tau: float = 1.0, disable_sim: bool = False):
         b, s, d = state.shape
@@ -89,7 +97,6 @@ class ActionMatrixLayer(nn.Module):
         gain_component = torch.zeros_like(predicted_gain) if disable_sim else predicted_gain
 
         context_component = self.context_logits(flat_context)[:, :k]
-
         choice_logits = (
             _ln_logits(context_component)
             + _ln_logits(gain_component)
@@ -101,10 +108,15 @@ class ActionMatrixLayer(nn.Module):
         primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
         transformed = (choice.unsqueeze(-1) * primitive_out).sum(dim=1)
 
+        pair_edge = self._flat_pair_bias(self.edge_pair_bias, b, flat_context.dtype, flat_context.device)
+        pair_write = self._flat_pair_bias(self.write_pair_bias, b, flat_context.dtype, flat_context.device)
+        pair_phase = self._flat_pair_bias(self.phase_pair_bias, b, flat_context.dtype, flat_context.device)
+        pair_cell_out = self._flat_pair_bias(self.cell_output_pair_bias, b, flat_context.dtype, flat_context.device)
+
         mode = F.softmax(self.mode_head(flat_context), dim=-1)
-        edge = torch.sigmoid(self.edge_gate(flat_context))
-        write = torch.sigmoid(self.write_gate(flat_context))
-        phase = torch.sigmoid(self.phase_gate(flat_context))
+        edge = torch.sigmoid(self.edge_gate(flat_context) + pair_edge)
+        write = torch.sigmoid(self.write_gate(flat_context) + pair_write)
+        phase = torch.sigmoid(self.phase_gate(flat_context) + pair_phase)
 
         # Positive scale avoids the tanh-zero dead start. Signed edge ops can be
         # reintroduced after the proof slice is alive.
@@ -118,13 +130,9 @@ class ActionMatrixLayer(nn.Module):
         incoming = msg_grid.sum(dim=1) / max(1, s)
         next_state = self.norm(state + incoming)
 
-        # Direct output tape from cells: the classifier can now see the executed
-        # ActionMatrix result, not only a diluted residual after target-slot sum.
-        cell_out_gate = torch.sigmoid(self.cell_output_gate(flat_context))
+        cell_out_gate = torch.sigmoid(self.cell_output_gate(flat_context) + pair_cell_out)
         cell_tape_weight = cell_out_gate * active * mode[:, 0:1]
         cell_tape = (cell_tape_weight * transformed).view(b, s, s, d)
-        # denom must stay [B, 1] so it broadcasts over feature dim D.
-        # Squeezing to [B] breaks broadcasting against [B, D].
         denom = cell_tape_weight.view(b, s, s, 1).sum(dim=(1, 2)).clamp_min(1e-5)
         output_tape_state = cell_tape.sum(dim=(1, 2)) / denom
 
@@ -155,6 +163,10 @@ class ActionMatrixLayer(nn.Module):
             "output_gate": slot_output_gate.detach(),
             "cell_output_gate": cell_out_gate.detach(),
             "cell_tape_weight": cell_tape_weight.detach(),
+            "edge_pair_bias": self.edge_pair_bias.detach(),
+            "write_pair_bias": self.write_pair_bias.detach(),
+            "phase_pair_bias": self.phase_pair_bias.detach(),
+            "cell_output_pair_bias": self.cell_output_pair_bias.detach(),
             "scan_metrics": scan_metrics,
         }
 
@@ -172,18 +184,24 @@ class ActionMatrixModel(nn.Module):
         top_k: int = 25,
         sim_rank: int = 16,
         slot_embed_scale: float = 0.5,
+        input_norm: str = "none",
     ) -> None:
         super().__init__()
+        if input_norm not in {"none", "layernorm"}:
+            raise ValueError(f"input_norm must be none or layernorm, got {input_norm}")
         self.dim = dim
         self.slots = slots
+        self.input_norm_mode = input_norm
         self.slot_embed = nn.Parameter(torch.randn(slots, dim) * slot_embed_scale)
         self.pm = PrimitiveMatrix5x5(embed_dim=32)
         self.layers = nn.ModuleList([ActionMatrixLayer(dim, slots, self.pm, top_k=top_k, sim_rank=sim_rank) for _ in range(layers)])
-        self.input_norm = nn.LayerNorm(dim)
-        # Do not remove mean information here: diff task label is encoded in mean(x0-x1).
+        self.input_norm = nn.LayerNorm(dim) if input_norm == "layernorm" else nn.Identity()
+        # No LayerNorm here: proof TASK=diff label is encoded in feature mean.
         self.classifier = nn.Linear(dim, classes)
 
     def forward(self, x: torch.Tensor, tau: float = 1.0, disable_sim: bool = False):
+        # For synthetic proof tasks default input_norm=none. LayerNorm(dim) would
+        # remove mean(x0)-mean(x1), which is exactly the TASK=diff label signal.
         state = self.input_norm(x)
         state = state + self.slot_embed.unsqueeze(0).to(dtype=state.dtype, device=state.device)
         memory = state.mean(dim=1)

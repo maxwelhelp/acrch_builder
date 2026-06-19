@@ -22,6 +22,7 @@ TOP_K="${TOP_K:-25}"
 SIM_RANK="${SIM_RANK:-16}"
 DEVICE="${DEVICE:-cuda}"
 AMP="${AMP:-fp16}"
+INPUT_NORM="${INPUT_NORM:-none}"
 LR="${LR:-3e-4}"
 
 mkdir -p "$REPORT_DIR"
@@ -49,6 +50,7 @@ python -m arch_builder.train_vertical_slice \
   --sim-rank "$SIM_RANK" \
   --device "$DEVICE" \
   --amp "$AMP" \
+  --input-norm "$INPUT_NORM" \
   --lr "$LR" \
   --out-dir "$REPORT_DIR" \
   --latest-report "$LATEST_REPORT" \

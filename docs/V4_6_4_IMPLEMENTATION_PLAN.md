@@ -106,3 +106,31 @@ reports expected_candidate_present and expected_edge_choice_mass
 ```
 
 This choice loss is only for the synthetic known-program proof slice. It must be annealed or removed in later real-task stages.
+
+
+## v8 raw-input and pair-bias correction
+
+Diagnosis from v6/v7 discussion:
+
+```text
+TASK=diff label is sign(mean(x0-x1)).
+Feature LayerNorm on input removes per-sample feature mean.
+Therefore input_norm=layernorm can destroy the label signal before the program sees it.
+```
+
+v8 changes:
+
+```text
+input_norm defaults to none for proof-slice
+--input-norm none/layernorm switch added
+oracle_acc metric added to verify synthetic task itself
+learnable source->target pair biases added to edge/write/phase/output gates
+expected_candidate_present and expected_edge_choice_mass logged every epoch
+```
+
+Universal rule:
+
+```text
+normalization is a domain adapter choice, not part of the core ActionMatrix.
+For synthetic proof tasks use raw/basic input. For real tasks add normalization only when honesty audits show it does not remove task signal.
+```

@@ -37,7 +37,7 @@ def write_latest_report(path: Path, report_dir: str, summary: Dict[str, object])
         "expected_edge_recovery", "expected_any_recovery", "expected_edge_active", "expected_candidate_present", "expected_edge_choice_mass",
         "sim_disabled_delta", "choice_without_sim_delta",
         "semantic_grid_mismatch", "skip_mass", "transform_mass", "disable_mass",
-        "choice_entropy", "edge_scale_mean", "cell_output_gate_mean", "cell_tape_weight_mean",
+        "oracle_acc", "edge_pair_bias_expected", "write_pair_bias_expected", "phase_pair_bias_expected", "cell_output_pair_bias_expected", "edge_pair_bias_std", "write_pair_bias_std", "choice_entropy", "edge_scale_mean", "cell_output_gate_mean", "cell_tape_weight_mean",
     ]:
         if k in summary:
             lines.append(f"- {k}: `{summary[k]}`")
