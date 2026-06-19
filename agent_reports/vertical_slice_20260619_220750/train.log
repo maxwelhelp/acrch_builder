@@ -1,0 +1,8 @@
+epoch 001/8 train=4.6602/49.91% val=0.6938/49.80% edge_prog=0.066 any_prog=0.064 active_cells=16.0 top_share=0.282 final=last cand=1.000 choice_mass=0.083 oracle=100.0% sim_delta=+0.0040
+epoch 002/8 train=5.9938/49.20% val=0.6936/50.43% edge_prog=0.021 any_prog=0.012 active_cells=16.0 top_share=0.386 final=last cand=1.000 choice_mass=0.037 oracle=100.0% sim_delta=+0.0062
+epoch 003/8 train=6.5854/49.99% val=0.6943/51.17% edge_prog=0.070 any_prog=0.068 active_cells=14.5 top_share=0.444 final=last cand=1.000 choice_mass=0.087 oracle=100.0% sim_delta=-0.0017
+epoch 004/8 train=7.9569/50.09% val=0.6931/50.43% edge_prog=0.033 any_prog=0.025 active_cells=11.0 top_share=0.402 final=last cand=1.000 choice_mass=0.036 oracle=100.0% sim_delta=+0.0051
+epoch 005/8 train=8.6437/50.10% val=0.6924/51.60% edge_prog=0.007 any_prog=0.008 active_cells=10.5 top_share=0.404 final=last cand=1.000 choice_mass=0.020 oracle=100.0% sim_delta=+0.0018
+epoch 006/8 train=7.8984/51.60% val=0.6885/53.83% edge_prog=0.099 any_prog=0.058 active_cells=10.0 top_share=0.439 final=last cand=1.000 choice_mass=0.102 oracle=100.0% sim_delta=+0.0122
+epoch 007/8 train=8.7993/56.73% val=0.6559/61.91% edge_prog=0.176 any_prog=0.118 active_cells=8.5 top_share=0.405 final=last cand=1.000 choice_mass=0.135 oracle=100.0% sim_delta=+0.0528
+epoch 008/8 train=11.3480/64.33% val=0.6254/65.04% edge_prog=0.204 any_prog=0.173 active_cells=8.0 top_share=0.458 final=last cand=1.000 choice_mass=0.199 oracle=100.0% sim_delta=+0.0407
