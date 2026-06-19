@@ -75,3 +75,34 @@ PyTorch aligns `[B]` with the last dimension `D`, so it crashed. v6 keeps denom 
 ```text
 output_tape_state = [B, D] / [B, 1]
 ```
+
+
+## v7 proof-slice correction
+
+The v6 report showed:
+
+```text
+edge_prog dropped to 0
+val_acc stayed random
+sim_delta became slightly positive
+```
+
+Diagnosis:
+
+```text
+1. Classifier LayerNorm removed the mean signal of TASK=diff.
+   y = sign(mean(x0-x1)), so LayerNorm over features destroys this simple proof signal.
+
+2. Sim target trained predicted_gain, but the choice path still did not have a
+   direct known-program teacher signal for the expected edge during the proof slice.
+```
+
+v7 fixes:
+
+```text
+classifier is Linear(dim, classes), no LayerNorm
+expected_edge_choice_loss trains choice mass on expected primitive at expected edge
+reports expected_candidate_present and expected_edge_choice_mass
+```
+
+This choice loss is only for the synthetic known-program proof slice. It must be annealed or removed in later real-task stages.

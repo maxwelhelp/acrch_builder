@@ -180,7 +180,8 @@ class ActionMatrixModel(nn.Module):
         self.pm = PrimitiveMatrix5x5(embed_dim=32)
         self.layers = nn.ModuleList([ActionMatrixLayer(dim, slots, self.pm, top_k=top_k, sim_rank=sim_rank) for _ in range(layers)])
         self.input_norm = nn.LayerNorm(dim)
-        self.classifier = nn.Sequential(nn.LayerNorm(dim), nn.Linear(dim, classes))
+        # Do not remove mean information here: diff task label is encoded in mean(x0-x1).
+        self.classifier = nn.Linear(dim, classes)
 
     def forward(self, x: torch.Tensor, tau: float = 1.0, disable_sim: bool = False):
         state = self.input_norm(x)

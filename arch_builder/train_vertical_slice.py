@@ -30,6 +30,7 @@ def summarize_trace(trace: Dict[str, object], expected_id: int, slots: int, expe
 
     mode = layer0["mode"]
     choice = layer0["choice"]
+    cand = layer0["candidate_ids"]
     scan = layer0["scan_metrics"]
 
     edge = layer0["edge"].view(-1, slots, slots, 1)
@@ -37,14 +38,29 @@ def summarize_trace(trace: Dict[str, object], expected_id: int, slots: int, expe
     phase = layer0["phase"].view(-1, slots, slots, 1)
     active = (edge * write * phase).squeeze(-1)
 
+    edge_scale = layer0.get("edge_scale")
+    cell_output_gate = layer0.get("cell_output_gate")
+    cell_tape_weight = layer0.get("cell_tape_weight")
+
+    batch_n = chosen_edges.shape[0]
+    expected_rows = torch.arange(batch_n, device=chosen_flat.device) * (slots * slots) + expected_src * slots + expected_tgt
+    expected_choice = choice[expected_rows]
+    expected_cands = cand[expected_rows]
+    expected_mask = expected_cands == expected_id
+
+    expected_candidate_present = expected_mask.any(dim=-1).float().mean().item()
+    expected_edge_choice_mass = (expected_choice * expected_mask.float()).sum(dim=-1).mean().item()
+
     expected_edge_recovery = (expected_edge_chosen == expected_id).float().mean().item()
     expected_any_recovery = (chosen_edges == expected_id).float().mean().item()
     expected_edge_active = active[:, expected_src, expected_tgt].mean().item()
 
-    return {
+    out = {
         "program_recovery_rate": expected_edge_recovery,
         "expected_edge_recovery": expected_edge_recovery,
         "expected_any_recovery": expected_any_recovery,
+        "expected_candidate_present": expected_candidate_present,
+        "expected_edge_choice_mass": expected_edge_choice_mass,
         "expected_edge_active": expected_edge_active,
         "transform_mass": mode[:, 0].mean().item(),
         "skip_mass": mode[:, 1].mean().item(),
@@ -53,7 +69,13 @@ def summarize_trace(trace: Dict[str, object], expected_id: int, slots: int, expe
         **{k: float(v) for k, v in scan.items()},
         **{k: float(v) for k, v in trace.get("primitive_metrics", {}).items()},
     }
-
+    if edge_scale is not None:
+        out["edge_scale_mean"] = edge_scale.mean().item()
+    if cell_output_gate is not None:
+        out["cell_output_gate_mean"] = cell_output_gate.mean().item()
+    if cell_tape_weight is not None:
+        out["cell_tape_weight_mean"] = cell_tape_weight.mean().item()
+    return out
 
 @torch.no_grad()
 def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float) -> Dict[str, float]:
@@ -76,6 +98,28 @@ def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float) 
     out = summarize_trace(last_trace, expected_id, model.slots, last_batch.expected_src, last_batch.expected_tgt)
     out.update({"val_loss": loss / total, "val_acc": correct / total})
     return out
+
+
+def expected_edge_choice_loss(trace: Dict[str, object], batch, model: ActionMatrixModel, expected_id: int) -> torch.Tensor:
+    """Known-program vertical-slice supervision.
+
+    This is not the final learning rule. It is a proof-slice teacher signal that
+    checks whether the ActionMatrix path can execute the known primitive on the
+    known edge. Later stages must anneal/remove it.
+    """
+    layer0 = trace["layers"][0]
+    cand = layer0["candidate_ids"]
+    choice = layer0["choice"]
+    edges_per_sample = model.slots * model.slots
+    edge_index = batch.expected_src * model.slots + batch.expected_tgt
+    rows = torch.arange(batch.x.shape[0], device=cand.device) * edges_per_sample + edge_index
+    expected_mask = cand[rows] == expected_id
+    choice_mass = (choice[rows] * expected_mask.float()).sum(dim=-1).clamp_min(1e-8)
+    # If candidate is absent, do not create infinite loss; the candidate-presence
+    # metric will expose that separately.
+    present = expected_mask.any(dim=-1).float()
+    loss = -(present * choice_mass.log()).sum() / present.sum().clamp_min(1.0)
+    return loss
 
 
 def train(args) -> None:
@@ -127,9 +171,10 @@ def train(args) -> None:
                 )
 
                 sim_loss = F.mse_loss(pred_gain.float(), sim_target.float())
+                choice_loss = expected_edge_choice_loss(trace, batch, model, expected_id)
                 mode = trace["layers"][0]["mode_for_loss"]
                 min_transform = F.relu(args.min_transform_mass - mode[:, 0].mean())
-                loss = ce + args.lambda_sim * sim_loss + args.lambda_collapse * min_transform
+                loss = ce + args.lambda_sim * sim_loss + args.lambda_choice * choice_loss + args.lambda_collapse * min_transform
 
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
@@ -213,6 +258,7 @@ def parser():
     p.add_argument("--tau-min", type=float, default=0.3)
     p.add_argument("--tau-decay", type=float, default=0.92)
     p.add_argument("--lambda-sim", type=float, default=0.1)
+    p.add_argument("--lambda-choice", type=float, default=1.0)
     p.add_argument("--lambda-collapse", type=float, default=0.01)
     p.add_argument("--min-transform-mass", type=float, default=0.15)
     p.add_argument("--seed", type=int, default=42)

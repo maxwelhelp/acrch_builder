@@ -46,3 +46,7 @@ bash commands/run_vertical_slice_push_reports.sh
 ```
 
 The run script commits and pushes reports only. No weights/checkpoints are committed.
+
+## v7 note
+
+The synthetic proof slice uses an explicit expected-edge choice loss to verify that the ActionMatrix can execute a known program before moving to unsupervised credit.
