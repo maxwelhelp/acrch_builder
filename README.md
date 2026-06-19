@@ -54,3 +54,11 @@ The synthetic proof slice uses an explicit expected-edge choice loss to verify t
 ## v8 run note
 
 For synthetic proof-slice use `INPUT_NORM=none` because `TASK=diff` depends on feature mean.
+
+## Program report
+
+Each run writes `PROGRAM_REPORT.md` inside the run directory. It shows the ActionMatrix table: which primitive each source->target cell selected, choice mass, and active mass.
+
+## v10 anti-collapse
+
+The synthetic proof run can use small anti-collapse losses so the expected primitive is not selected in every cell. Check `PROGRAM_REPORT.md` for `program_verdict`, `expected_top_cells`, and `active_cells`.

@@ -24,6 +24,12 @@ DEVICE="${DEVICE:-cuda}"
 AMP="${AMP:-fp16}"
 INPUT_NORM="${INPUT_NORM:-none}"
 LR="${LR:-3e-4}"
+LAMBDA_NON_EXPECTED_TRANSFORM="${LAMBDA_NON_EXPECTED_TRANSFORM:-0.02}"
+LAMBDA_NON_EXPECTED_TAPE="${LAMBDA_NON_EXPECTED_TAPE:-0.05}"
+LAMBDA_NON_EXPECTED_ACTIVE="${LAMBDA_NON_EXPECTED_ACTIVE:-0.02}"
+LAMBDA_EXPECTED_ACTIVE="${LAMBDA_EXPECTED_ACTIVE:-0.05}"
+LAMBDA_NON_EXPECTED_PRIMITIVE="${LAMBDA_NON_EXPECTED_PRIMITIVE:-0.25}"
+LAMBDA_CHOICE="${LAMBDA_CHOICE:-1.0}"
 
 mkdir -p "$REPORT_DIR"
 
@@ -52,6 +58,12 @@ python -m arch_builder.train_vertical_slice \
   --amp "$AMP" \
   --input-norm "$INPUT_NORM" \
   --lr "$LR" \
+  --lambda-choice "$LAMBDA_CHOICE" \
+  --lambda-non-expected-primitive "$LAMBDA_NON_EXPECTED_PRIMITIVE" \
+  --lambda-expected-active "$LAMBDA_EXPECTED_ACTIVE" \
+  --lambda-non-expected-active "$LAMBDA_NON_EXPECTED_ACTIVE" \
+  --lambda-non-expected-tape "$LAMBDA_NON_EXPECTED_TAPE" \
+  --lambda-non-expected-transform "$LAMBDA_NON_EXPECTED_TRANSFORM" \
   --out-dir "$REPORT_DIR" \
   --latest-report "$LATEST_REPORT" \
   2>&1 | tee "$REPORT_DIR/train.log"

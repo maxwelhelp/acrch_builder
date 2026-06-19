@@ -134,3 +134,69 @@ Universal rule:
 normalization is a domain adapter choice, not part of the core ActionMatrix.
 For synthetic proof tasks use raw/basic input. For real tasks add normalization only when honesty audits show it does not remove task signal.
 ```
+
+
+## v9 readable ActionMatrix report
+
+v8 proved the synthetic proof-slice can reach high accuracy, but the report did not answer the most important question clearly:
+
+```text
+what program was actually assembled?
+```
+
+v9 adds:
+
+```text
+PROGRAM_REPORT.md
+program_epoch_XXX.json
+per-cell top primitive
+per-cell choice mass
+per-cell active mass
+per-cell transform/skip/disable mass
+expected primitive mass on every edge
+expected edge marked in the table
+```
+
+This is required before claiming the system built a logical program.
+
+
+## v10 anti-collapse proof-slice
+
+Problem after v8:
+
+```text
+high accuracy but expected_any_recovery≈1.0
+=> the proof-slice likely selected diff in most cells, not a sparse program.
+```
+
+v10 adds small synthetic-only structure losses:
+
+```text
+expected_choice_loss:
+  choose expected primitive on expected edge
+
+non_expected_primitive_loss:
+  penalize expected primitive mass on non-expected edges
+
+expected_active_loss:
+  keep expected edge active
+
+non_expected_active_loss:
+  reduce active mass outside expected edge
+
+non_expected_tape_loss:
+  reduce output-tape write outside expected edge
+
+non_expected_transform_loss:
+  reduce transform mode outside expected edge
+```
+
+It also adds a readable program verdict:
+
+```text
+program_verdict = primitive_collapse / sparse_or_partly_sparse_program / not_recovered
+expected_top_cells
+active_cells
+```
+
+These losses are only for known-program synthetic proof. They are not the final unsupervised real-task training rule.
