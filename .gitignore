@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+runs/
+.cache/
+.env
+.venv/
