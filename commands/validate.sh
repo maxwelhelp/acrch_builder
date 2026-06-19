@@ -3,6 +3,15 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
+cleanup_pycache() {
+  find . -type d -name "__pycache__" -prune -exec rm -rf {} + || true
+  find . -type f -name "*.pyc" -delete || true
+  find . -type f -name "*.pyo" -delete || true
+}
+
+echo "[validate] cleanup stale pycache"
+cleanup_pycache
+
 echo "[validate] py_compile"
 python -m py_compile arch_builder/*.py
 
@@ -16,8 +25,11 @@ PY
 echo "[validate] cli help"
 python -m arch_builder.train_vertical_slice --help >/dev/null
 
+echo "[validate] cleanup generated pycache"
+cleanup_pycache
+
 echo "[validate] forbidden files"
-if find . -type f \( -name '*.pt' -o -name '*.pth' -o -name '*.ckpt' -o -name '*.safetensors' -o -name '*.pyc' \) | grep .; then
+if find . -type f \( -name '*.pt' -o -name '*.pth' -o -name '*.ckpt' -o -name '*.safetensors' -o -name '*.pyc' -o -name '*.pyo' \) | grep .; then
   echo "forbidden weight/cache file found" >&2
   exit 4
 fi
