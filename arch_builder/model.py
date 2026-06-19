@@ -17,6 +17,16 @@ def _ln_logits(x: torch.Tensor) -> torch.Tensor:
 
 
 class ActionMatrixLayer(nn.Module):
+    """One ActionMatrix layer.
+
+    v5 fixes the first proof-slice bottleneck:
+    - slot identity exists in ActionMatrixModel;
+    - selected primitive now has a direct cell-output tape, not only a weak
+      residual into target slots;
+    - edge scale is positive/non-zero at initialization instead of tanh≈0;
+    - transform mode has a small prior, skip/disable are not free defaults.
+    """
+
     def __init__(self, dim: int, slots: int, primitive_matrix: PrimitiveMatrix5x5, top_k: int = 25, sim_rank: int = 16) -> None:
         super().__init__()
         self.dim = dim
@@ -32,13 +42,30 @@ class ActionMatrixLayer(nn.Module):
 
         self.context_logits = nn.Linear(context_dim, top_k)
         self.sim_logits = nn.Linear(dim, 1)
-        self.mode_head = nn.Linear(context_dim, 3)
+        self.mode_head = nn.Linear(context_dim, 3)  # transform / skip / disable
         self.edge_gate = nn.Linear(context_dim, 1)
         self.write_gate = nn.Linear(context_dim, 1)
         self.phase_gate = nn.Linear(context_dim, 1)
         self.edge_op = nn.Linear(context_dim, 1)
         self.output_gate = nn.Linear(dim, 1)
+        self.cell_output_gate = nn.Linear(context_dim, 1)
         self.norm = nn.LayerNorm(dim)
+
+        self._init_gate_priors()
+
+    def _init_gate_priors(self) -> None:
+        # Avoid the first-slice dead start where all messages are multiplied by
+        # tanh(0)≈0 or by low transform mass.
+        with torch.no_grad():
+            self.mode_head.bias.zero_()
+            self.mode_head.bias[0] = 0.6    # transform
+            self.mode_head.bias[1] = -0.2   # skip
+            self.mode_head.bias[2] = -0.6   # disable
+            self.edge_gate.bias.fill_(0.5)
+            self.write_gate.bias.fill_(0.5)
+            self.phase_gate.bias.fill_(0.5)
+            self.edge_op.bias.fill_(1.0)
+            self.cell_output_gate.bias.fill_(0.2)
 
     def forward(self, state: torch.Tensor, memory: torch.Tensor, tau: float = 1.0, disable_sim: bool = False):
         b, s, d = state.shape
@@ -78,17 +105,33 @@ class ActionMatrixLayer(nn.Module):
         edge = torch.sigmoid(self.edge_gate(flat_context))
         write = torch.sigmoid(self.write_gate(flat_context))
         phase = torch.sigmoid(self.phase_gate(flat_context))
-        sign = torch.tanh(self.edge_op(flat_context))
+
+        # Positive scale avoids the tanh-zero dead start. Signed edge ops can be
+        # reintroduced after the proof slice is alive.
+        edge_scale = 0.25 + torch.sigmoid(self.edge_op(flat_context))
+        active = edge * write * phase
 
         cell_out = mode[:, 0:1] * transformed + mode[:, 1:2] * flat_src + mode[:, 2:3] * 0.0
-        msg = edge * write * phase * sign * cell_out
-        msg = msg.view(b, s, s, d)
+        msg = active * edge_scale * cell_out
+        msg_grid = msg.view(b, s, s, d)
 
-        incoming = msg.sum(dim=1) / max(1, s)
+        incoming = msg_grid.sum(dim=1) / max(1, s)
         next_state = self.norm(state + incoming)
 
-        output_gate = torch.sigmoid(self.output_gate(next_state)).squeeze(-1)
-        output_state = (output_gate.unsqueeze(-1) * next_state).sum(dim=1) / output_gate.sum(dim=1, keepdim=True).clamp_min(1e-5)
+        # Direct output tape from cells: the classifier can now see the executed
+        # ActionMatrix result, not only a diluted residual after target-slot sum.
+        cell_out_gate = torch.sigmoid(self.cell_output_gate(flat_context))
+        cell_tape_weight = cell_out_gate * active * mode[:, 0:1]
+        cell_tape = (cell_tape_weight * transformed).view(b, s, s, d)
+        denom = cell_tape_weight.view(b, s, s, 1).sum(dim=(1, 2)).clamp_min(1e-5)
+        output_tape_state = cell_tape.sum(dim=(1, 2)) / denom.squeeze(-1)
+
+        slot_output_gate = torch.sigmoid(self.output_gate(next_state)).squeeze(-1)
+        slot_output_state = (
+            slot_output_gate.unsqueeze(-1) * next_state
+        ).sum(dim=1) / slot_output_gate.sum(dim=1, keepdim=True).clamp_min(1e-5)
+
+        output_state = output_tape_state + 0.10 * slot_output_state
 
         chosen = top_ids.gather(1, choice.argmax(dim=-1, keepdim=True)).squeeze(1)
         with torch.no_grad():
@@ -105,7 +148,11 @@ class ActionMatrixLayer(nn.Module):
             "edge": edge.detach(),
             "write": write.detach(),
             "phase": phase.detach(),
-            "output_gate": output_gate.detach(),
+            "edge_scale": edge_scale.detach(),
+            "active": active.detach(),
+            "output_gate": slot_output_gate.detach(),
+            "cell_output_gate": cell_out_gate.detach(),
+            "cell_tape_weight": cell_tape_weight.detach(),
             "scan_metrics": scan_metrics,
         }
 

@@ -34,10 +34,10 @@ def write_latest_report(path: Path, report_dir: str, summary: Dict[str, object])
     lines.append(f"- report_dir: `{report_dir}`")
     for k in [
         "task", "epochs", "best_acc", "last_acc", "program_recovery_rate",
-        "expected_edge_recovery", "expected_any_recovery", "expected_edge_active",
+        "expected_edge_recovery", "expected_any_recovery", "expected_edge_active", "expected_edge_choice_mass",
         "sim_disabled_delta", "choice_without_sim_delta",
         "semantic_grid_mismatch", "skip_mass", "transform_mass", "disable_mass",
-        "choice_entropy",
+        "choice_entropy", "edge_scale_mean", "cell_output_gate_mean", "cell_tape_weight_mean",
     ]:
         if k in summary:
             lines.append(f"- {k}: `{summary[k]}`")

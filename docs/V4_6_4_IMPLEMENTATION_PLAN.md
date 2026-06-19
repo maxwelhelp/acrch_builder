@@ -39,3 +39,23 @@ real audio
 plug-in wrappers
 TokenSlotAdapter
 ```
+
+
+## v5 proof-slice correction
+
+The v4 run proved slot identity and expected-edge primitive recovery, but accuracy stayed random. Diagnosis:
+
+```text
+edge_prog high + val_acc random =
+  primitive choice was supervised by sim target,
+  but the selected cell result was diluted before the classifier.
+```
+
+v5 fixes:
+
+```text
+positive non-zero edge_scale instead of tanh-zero start
+small transform prior
+direct cell output tape
+metrics: expected_edge_choice_mass, edge_scale_mean, cell_output_gate_mean, cell_tape_weight_mean
+```
