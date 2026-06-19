@@ -221,6 +221,84 @@ def proof_slice_structure_losses(trace: Dict[str, object], batch, model: ActionM
     }
 
 
+
+def _primitive_distribution(layer0: Dict[str, torch.Tensor], num_primitives: int) -> torch.Tensor:
+    """Return [rows, P] primitive probability mass from candidate choice."""
+    cand = layer0["candidate_ids"]
+    choice = layer0["choice"]
+    rows = cand.shape[0]
+    out = torch.zeros(rows, num_primitives, device=choice.device, dtype=choice.dtype)
+    out.scatter_add_(1, cand, choice)
+    return out
+
+
+def generic_anti_collapse_losses(trace: Dict[str, object], model: ActionMatrixModel) -> Dict[str, torch.Tensor]:
+    """Generic anti-collapse losses.
+
+    These do NOT know that the task uses diff or which edge is expected.
+    They are inspired by v3:
+      - class/read diversity -> here: cell primitive diversity
+      - phase balance -> here: active/output budget
+      - slot_div -> here: action diversity across cells and layers
+    """
+    z = torch.zeros((), device=next(model.parameters()).device)
+    same_primitive_losses = []
+    cell_similarity_losses = []
+    active_budget_losses = []
+    tape_budget_losses = []
+    layer_distributions = []
+
+    for layer0 in trace["layers"]:
+        prim_dist_rows = _primitive_distribution(layer0, model.pm.num_primitives)  # [B*S*S, P]
+        b_edges = prim_dist_rows.shape[0]
+        s = model.slots
+        b = b_edges // (s * s)
+
+        # Distribution averaged per ActionMatrix cell: [S*S, P]
+        cell_dist = prim_dist_rows.view(b, s * s, -1).mean(dim=0)
+        cell_dist = cell_dist / cell_dist.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+
+        # 1) Cap one primitive dominating all cells.
+        global_prim = cell_dist.mean(dim=0)
+        top_share = global_prim.max()
+        same_primitive_losses.append(F.relu(top_share - 0.45).pow(2))
+
+        # 2) Prevent all cells having identical choice distributions.
+        normed = F.normalize(cell_dist.float(), dim=-1)
+        sim = normed @ normed.t()
+        off = sim[~torch.eye(sim.shape[0], dtype=torch.bool, device=sim.device)]
+        cell_similarity_losses.append(F.relu(off - 0.70).pow(2).mean())
+
+        # 3) Active budget: not all cells active, not all dead.
+        edge = layer0["edge_for_loss"]
+        write = layer0["write_for_loss"]
+        phase = layer0["phase_for_loss"]
+        active = (edge * write * phase).mean()
+        active_budget_losses.append((active - 0.25).pow(2))
+
+        # 4) Output tape budget: small but alive.
+        tape = layer0["cell_tape_weight_for_loss"].mean()
+        tape_budget_losses.append((tape - 0.025).pow(2))
+
+        layer_distributions.append(global_prim)
+
+    # 5) Adjacent layers should not use identical primitive mix.
+    layer_div_losses = []
+    for a, b in zip(layer_distributions, layer_distributions[1:]):
+        cos = F.cosine_similarity(a.float(), b.float(), dim=0)
+        layer_div_losses.append(F.relu(cos - 0.80).pow(2))
+
+    def mean_or_zero(xs):
+        return torch.stack(xs).mean() if xs else z
+
+    return {
+        "primitive_usage_diversity": mean_or_zero(same_primitive_losses),
+        "cell_choice_diversity": mean_or_zero(cell_similarity_losses),
+        "active_budget": mean_or_zero(active_budget_losses),
+        "tape_budget": mean_or_zero(tape_budget_losses),
+        "layer_action_diversity": mean_or_zero(layer_div_losses),
+    }
+
 def sim_targets_for_expected_actions(trace: Dict[str, object], batch, model: ActionMatrixModel) -> torch.Tensor:
     losses = []
     b = batch.x.shape[0]
@@ -436,6 +514,7 @@ def train(args) -> None:
 
                 sim_loss = sim_targets_for_expected_actions(trace, batch, model)
                 struct_losses = proof_slice_structure_losses(trace, batch, model, expected_id)
+                generic_losses = generic_anti_collapse_losses(trace, model)
                 mode = trace["layers"][0]["mode_for_loss"]
                 min_transform = F.relu(args.min_transform_mass - mode[:, 0].mean())
 
@@ -448,6 +527,11 @@ def train(args) -> None:
                     + args.lambda_non_expected_active * struct_losses["non_expected_active_loss"]
                     + args.lambda_non_expected_tape * struct_losses["non_expected_tape_loss"]
                     + args.lambda_non_expected_transform * struct_losses["non_expected_transform_loss"]
+                    + args.lambda_primitive_usage_diversity * generic_losses["primitive_usage_diversity"]
+                    + args.lambda_cell_choice_diversity * generic_losses["cell_choice_diversity"]
+                    + args.lambda_active_budget * generic_losses["active_budget"]
+                    + args.lambda_tape_budget * generic_losses["tape_budget"]
+                    + args.lambda_layer_action_diversity * generic_losses["layer_action_diversity"]
                     + args.lambda_collapse * min_transform
                 )
 
@@ -550,6 +634,11 @@ def parser():
     p.add_argument("--lambda-non-expected-active", type=float, default=0.02)
     p.add_argument("--lambda-non-expected-tape", type=float, default=0.05)
     p.add_argument("--lambda-non-expected-transform", type=float, default=0.02)
+    p.add_argument("--lambda-primitive-usage-diversity", type=float, default=0.05)
+    p.add_argument("--lambda-cell-choice-diversity", type=float, default=0.05)
+    p.add_argument("--lambda-active-budget", type=float, default=0.02)
+    p.add_argument("--lambda-tape-budget", type=float, default=0.02)
+    p.add_argument("--lambda-layer-action-diversity", type=float, default=0.05)
     p.add_argument("--lambda-collapse", type=float, default=0.01)
     p.add_argument("--min-transform-mass", type=float, default=0.15)
     p.add_argument("--seed", type=int, default=42)

@@ -218,3 +218,40 @@ TASK=chain_diff_product LAYERS=2:
 ```
 
 `PROGRAM_REPORT.md` now reports every layer separately.
+
+
+## v13_generic_diversity_20260619_2155
+
+Looked at `simple_butterfly_matrix_v3`: it did not solve collapse by hardcoding a primitive ban.
+It used soft differentiable structure pressure:
+
+```text
+class_read_diversity_loss
+phase_balance_loss
+slot_diversity_loss
+write_budget
+update_alive
+weak class/phase priors
+class/pair matrix states
+```
+
+v13 transfers the idea generically:
+
+```text
+primitive_usage_diversity:
+  cap one primitive dominating all cells
+
+cell_choice_diversity:
+  cells should not have identical primitive distributions
+
+active_budget:
+  not all cells active, not all dead
+
+tape_budget:
+  output tape alive but not everywhere
+
+layer_action_diversity:
+  adjacent layers should not use the same primitive mix
+```
+
+These are generic anti-collapse losses. They do not know that the expected primitive is `diff`.
