@@ -1,0 +1,5 @@
+epoch 001/5 train=1.0424/50.03% val=0.6951/49.61% edge_prog=1.000 any_prog=1.000 sim_delta=+0.0106
+epoch 002/5 train=1.4833/49.37% val=0.6942/49.73% edge_prog=0.789 any_prog=0.807 sim_delta=+0.0049
+epoch 003/5 train=0.9550/49.77% val=0.6937/49.69% edge_prog=0.992 any_prog=0.995 sim_delta=+0.0011
+epoch 004/5 train=0.7854/49.57% val=0.6957/47.93% edge_prog=0.980 any_prog=0.990 sim_delta=-0.0052
+epoch 005/5 train=0.7462/49.98% val=0.6929/50.55% edge_prog=1.000 any_prog=1.000 sim_delta=+0.0008
