@@ -1,0 +1,8 @@
+epoch 001/8 train=10.6893/49.38% val=0.6948/48.44% edge_prog=0.146 any_prog=0.150 active_cells=16.0 top_share=0.528 gateR=0.02 gateC=0.01 gateS=0.02 final=last cand=1.000 choice_mass=0.129 oracle=100.0% sim_delta=+0.0124
+epoch 002/8 train=11.4470/49.24% val=0.6943/48.71% edge_prog=0.242 any_prog=0.210 active_cells=16.0 top_share=0.607 gateR=0.03 gateC=0.02 gateS=0.03 final=last cand=1.000 choice_mass=0.167 oracle=100.0% sim_delta=+0.0148
+epoch 003/8 train=11.5700/50.34% val=0.6947/50.04% edge_prog=0.372 any_prog=0.314 active_cells=16.0 top_share=0.681 gateR=0.11 gateC=0.09 gateS=0.11 final=last cand=1.000 choice_mass=0.283 oracle=100.0% sim_delta=+0.0007
+epoch 004/8 train=11.7742/49.80% val=0.6932/49.88% edge_prog=0.272 any_prog=0.232 active_cells=16.0 top_share=0.638 gateR=0.05 gateC=0.04 gateS=0.05 final=last cand=1.000 choice_mass=0.220 oracle=100.0% sim_delta=+0.0076
+epoch 005/8 train=15.8690/49.41% val=0.6940/49.30% edge_prog=0.094 any_prog=0.063 active_cells=16.0 top_share=0.697 gateR=0.01 gateC=0.01 gateS=0.01 final=last cand=1.000 choice_mass=0.082 oracle=100.0% sim_delta=+0.0020
+epoch 006/8 train=18.7386/49.93% val=0.6937/49.49% edge_prog=0.051 any_prog=0.026 active_cells=16.0 top_share=0.706 gateR=0.01 gateC=0.01 gateS=0.01 final=last cand=1.000 choice_mass=0.051 oracle=100.0% sim_delta=+0.0015
+epoch 007/8 train=24.8988/50.45% val=0.6933/50.94% edge_prog=0.020 any_prog=0.022 active_cells=16.0 top_share=0.699 gateR=0.01 gateC=0.00 gateS=0.01 final=last cand=1.000 choice_mass=0.031 oracle=100.0% sim_delta=+0.0085
+epoch 008/8 train=25.7595/50.77% val=0.6932/50.43% edge_prog=0.046 any_prog=0.034 active_cells=16.0 top_share=0.697 gateR=0.01 gateC=0.01 gateS=0.01 final=last cand=1.000 choice_mass=0.047 oracle=100.0% sim_delta=-0.0006
