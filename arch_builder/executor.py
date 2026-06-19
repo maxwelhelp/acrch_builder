@@ -1,16 +1,21 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import List
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from .primitive_matrix import PrimitiveMatrix5x5
 
 
 class ActionExecutor(nn.Module):
-    """Full primitive execution for selected candidates."""
+    """Full primitive execution for selected candidates.
+
+    AMP can make different primitive branches return different dtypes. The
+    executor keeps a single output buffer and casts every branch result back to
+    that buffer dtype before masked assignment. This prevents fp16/fp32 index-put
+    crashes while keeping the surrounding autocast behavior intact.
+    """
 
     def __init__(self, dim: int, primitive_matrix: PrimitiveMatrix5x5) -> None:
         super().__init__()
@@ -76,7 +81,6 @@ class ActionExecutor(nn.Module):
         candidate_ids: torch.Tensor, # [N,K]
     ) -> torch.Tensor:
         n, k = candidate_ids.shape
-        outs: List[torch.Tensor] = []
         flat_ids = candidate_ids.reshape(-1)
         src_k = src.unsqueeze(1).expand(n, k, src.shape[-1]).reshape(n * k, -1)
         tgt_k = tgt.unsqueeze(1).expand_as(src.unsqueeze(1).expand(n, k, src.shape[-1])).reshape(n * k, -1)
@@ -85,5 +89,6 @@ class ActionExecutor(nn.Module):
         for pid, name in enumerate(self.names):
             mask = flat_ids == pid
             if mask.any():
-                out[mask] = self._single(name, src_k[mask], tgt_k[mask], mem_k[mask], flat_ids[mask])
+                branch = self._single(name, src_k[mask], tgt_k[mask], mem_k[mask], flat_ids[mask])
+                out[mask] = branch.to(dtype=out.dtype, device=out.device)
         return out.view(n, k, -1)
