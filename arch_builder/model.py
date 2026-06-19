@@ -123,8 +123,10 @@ class ActionMatrixLayer(nn.Module):
         cell_out_gate = torch.sigmoid(self.cell_output_gate(flat_context))
         cell_tape_weight = cell_out_gate * active * mode[:, 0:1]
         cell_tape = (cell_tape_weight * transformed).view(b, s, s, d)
+        # denom must stay [B, 1] so it broadcasts over feature dim D.
+        # Squeezing to [B] breaks broadcasting against [B, D].
         denom = cell_tape_weight.view(b, s, s, 1).sum(dim=(1, 2)).clamp_min(1e-5)
-        output_tape_state = cell_tape.sum(dim=(1, 2)) / denom.squeeze(-1)
+        output_tape_state = cell_tape.sum(dim=(1, 2)) / denom
 
         slot_output_gate = torch.sigmoid(self.output_gate(next_state)).squeeze(-1)
         slot_output_state = (

@@ -59,3 +59,19 @@ small transform prior
 direct cell output tape
 metrics: expected_edge_choice_mass, edge_scale_mean, cell_output_gate_mean, cell_tape_weight_mean
 ```
+
+
+## v6 output tape shape fix
+
+v5 introduced a direct cell output tape but had a broadcasting bug:
+
+```text
+cell_tape.sum(dim=(1,2)) -> [B, D]
+denom.squeeze(-1)        -> [B]
+```
+
+PyTorch aligns `[B]` with the last dimension `D`, so it crashed. v6 keeps denom as `[B, 1]`:
+
+```text
+output_tape_state = [B, D] / [B, 1]
+```
