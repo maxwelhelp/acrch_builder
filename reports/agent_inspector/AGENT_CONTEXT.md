@@ -60,7 +60,7 @@
 - `non_expected_tape_loss`: `0.0752803385257721`
 - `non_expected_transform_loss`: `0.5465383529663086`
 - `primitive_usage_diversity`: `0.0`
-- `cell_choice_diversity`: `0.010960830375552177`
+- `cell_choice_diversity`: `0.010960831306874752`
 - `active_budget`: `0.007639226503670216`
 - `tape_budget`: `0.0036056602839380503`
 - `layer_action_diversity`: `0.0`
@@ -147,7 +147,7 @@
 - `non_expected_tape_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.11549900156152165}`
 - `non_expected_transform_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.45246352996584216}`
 - `primitive_usage_diversity`: requires_grad=`True` applicable=`True` connected=`False` target_grad_norms=`{'choice_controller': 0.0, 'scanner': 0.0, 'simulator': 0.0}`
-- `cell_choice_diversity`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.021186203557206674, 'scanner': 0.04484954682879316, 'simulator': 0.08474400282803325}`
+- `cell_choice_diversity`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.021186203557206674, 'scanner': 0.04484954389347954, 'simulator': 0.08474400228745255}`
 - `active_budget`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.07007441006616898}`
 - `tape_budget`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.01398009601464308}`
 - `layer_action_diversity`: requires_grad=`True` applicable=`True` connected=`False` target_grad_norms=`{'choice_controller': 0.0, 'scanner': 0.0, 'simulator': 0.0}`

@@ -52,6 +52,19 @@ class SyntheticKnownProgramTask:
             actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "product"}]
             return signal, actions
 
+        if self.task == "chain_diff_merge":
+            # Layer0 computes two diffs into slots 1 and 3.
+            # Layer1 merges these layer0 outputs: sign(mean((x0-x1) + (x2-x3))).
+            d01 = x[:, 0] - x[:, 1]
+            d23 = x[:, 2] - x[:, 3]
+            signal = (d01 + d23).mean(dim=-1)
+            actions = [
+                {"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"},
+                {"layer": 0, "src": 2, "tgt": 3, "primitive": "diff"},
+                {"layer": 1, "src": 1, "tgt": 3, "primitive": "merge"},
+            ]
+            return signal, actions
+
         if self.task == "chain_diff_product":
             signal = ((x[:, 0] - x[:, 1]) * (x[:, 2] - x[:, 3])).mean(dim=-1)
             actions = [

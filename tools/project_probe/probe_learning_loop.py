@@ -60,7 +60,7 @@ def safe_float(value: Any, default: float = 0.0) -> float:
 def parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description="One-batch autograd probe for the current acrch_builder API.")
     ap.add_argument("--out", default="reports/agent_inspector/runtime_probe.json")
-    ap.add_argument("--task", default="diff", choices=["diff", "two_diff", "merge", "product", "chain_diff_product", "semantic_rescue"])
+    ap.add_argument("--task", default="diff", choices=["diff", "two_diff", "merge", "product", "chain_diff_merge", "chain_diff_product", "semantic_rescue"])
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--dim", type=int, default=32)
     ap.add_argument("--slots", type=int, default=4)

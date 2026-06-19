@@ -473,6 +473,199 @@
       }
     },
     {
+      "task": "chain_diff_merge",
+      "action_invariants": [
+        {
+          "action": {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        },
+        {
+          "action": {
+            "layer": 0,
+            "src": 2,
+            "tgt": 3,
+            "primitive": "diff"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        },
+        {
+          "action": {
+            "layer": 1,
+            "src": 1,
+            "tgt": 3,
+            "primitive": "merge"
+          },
+          "primitive_available": true,
+          "layer_valid": true,
+          "source_valid": true,
+          "target_valid": true,
+          "valid": true
+        }
+      ],
+      "invariants_pass": true,
+      "raw_content": {
+        "path": "raw_content",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 0,
+            "src": 2,
+            "tgt": 3,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 1,
+            "src": 1,
+            "tgt": 3,
+            "primitive": "merge",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      },
+      "addressed": {
+        "path": "addressed",
+        "read_rule": "mean_terminal_action_outputs",
+        "final_label_accuracy": 1.0,
+        "first_divergence": null,
+        "actions": [
+          {
+            "layer": 0,
+            "src": 0,
+            "tgt": 1,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 0,
+            "src": 2,
+            "tgt": 3,
+            "primitive": "diff",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          },
+          {
+            "layer": 1,
+            "src": 1,
+            "tgt": 3,
+            "primitive": "merge",
+            "input_src_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "input_tgt_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "primitive_output_error": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            },
+            "target_slot_error_after_state_update": {
+              "mean_abs_error": 0.0,
+              "max_abs_error": 0.0
+            }
+          }
+        ]
+      }
+    },
+    {
       "task": "chain_diff_product",
       "action_invariants": [
         {

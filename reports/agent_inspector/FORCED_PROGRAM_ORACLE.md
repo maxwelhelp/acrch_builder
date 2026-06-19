@@ -29,6 +29,10 @@
 - `two_diff`: invariants=`True` raw_path_accuracy=`1.0000` addressed_path_accuracy=`1.0000` raw_first_divergence=`None` addressed_first_divergence=`None`
   - L0 0->1 diff: input_src_mae=`0` input_tgt_mae=`0` primitive_mae=`0` target_after_update_mae=`0`
   - L0 2->3 diff: input_src_mae=`0` input_tgt_mae=`0` primitive_mae=`0` target_after_update_mae=`0`
+- `chain_diff_merge`: invariants=`True` raw_path_accuracy=`1.0000` addressed_path_accuracy=`1.0000` raw_first_divergence=`None` addressed_first_divergence=`None`
+  - L0 0->1 diff: input_src_mae=`0` input_tgt_mae=`0` primitive_mae=`0` target_after_update_mae=`0`
+  - L0 2->3 diff: input_src_mae=`0` input_tgt_mae=`0` primitive_mae=`0` target_after_update_mae=`0`
+  - L1 1->3 merge: input_src_mae=`0` input_tgt_mae=`0` primitive_mae=`0` target_after_update_mae=`0`
 - `chain_diff_product`: invariants=`True` raw_path_accuracy=`1.0000` addressed_path_accuracy=`1.0000` raw_first_divergence=`None` addressed_first_divergence=`None`
   - L0 0->1 diff: input_src_mae=`0` input_tgt_mae=`0` primitive_mae=`0` target_after_update_mae=`0`
   - L0 2->3 diff: input_src_mae=`0` input_tgt_mae=`0` primitive_mae=`0` target_after_update_mae=`0`

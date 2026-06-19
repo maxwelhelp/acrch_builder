@@ -11,7 +11,7 @@ from typing import Any
 import torch
 
 
-AUDIT_TASKS = ("diff", "merge", "product", "two_diff", "chain_diff_product")
+AUDIT_TASKS = ("diff", "merge", "product", "two_diff", "chain_diff_merge", "chain_diff_product")
 PRIMITIVE_TASKS = ("diff", "merge", "product")
 
 

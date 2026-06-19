@@ -918,7 +918,7 @@ def train(args) -> None:
 
 def parser():
     p = argparse.ArgumentParser()
-    p.add_argument("--task", default="diff", choices=["diff", "two_diff", "merge", "product", "chain_diff_product", "semantic_rescue"])
+    p.add_argument("--task", default="diff", choices=["diff", "two_diff", "merge", "product", "chain_diff_merge", "chain_diff_product", "semantic_rescue"])
     p.add_argument("--dim", type=int, default=64)
     p.add_argument("--slots", type=int, default=4)
     p.add_argument("--layers", type=int, default=1)

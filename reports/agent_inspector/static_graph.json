@@ -149,13 +149,6 @@
       "line": 16
     },
     {
-      "id": "state:arch_builder/credit.py:CreditBuffer:decay",
-      "label": "decay",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/credit.py"
-    },
-    {
       "id": "state:arch_builder/credit.py:CreditBuffer:ages",
       "label": "ages",
       "kind": "state",
@@ -165,6 +158,13 @@
     {
       "id": "state:arch_builder/credit.py:CreditBuffer:values",
       "label": "values",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/credit.py"
+    },
+    {
+      "id": "state:arch_builder/credit.py:CreditBuffer:decay",
+      "label": "decay",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/credit.py"
@@ -247,20 +247,6 @@
       "line": 12
     },
     {
-      "id": "state:arch_builder/executor.py:ActionExecutor:channel",
-      "label": "channel",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/executor.py"
-    },
-    {
-      "id": "state:arch_builder/executor.py:ActionExecutor:low_a",
-      "label": "low_a",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/executor.py"
-    },
-    {
       "id": "state:arch_builder/executor.py:ActionExecutor:gate",
       "label": "gate",
       "kind": "state",
@@ -275,13 +261,6 @@
       "file": "arch_builder/executor.py"
     },
     {
-      "id": "state:arch_builder/executor.py:ActionExecutor:dim",
-      "label": "dim",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/executor.py"
-    },
-    {
       "id": "state:arch_builder/executor.py:ActionExecutor:names",
       "label": "names",
       "kind": "state",
@@ -289,8 +268,29 @@
       "file": "arch_builder/executor.py"
     },
     {
+      "id": "state:arch_builder/executor.py:ActionExecutor:low_a",
+      "label": "low_a",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/executor.py"
+    },
+    {
       "id": "state:arch_builder/executor.py:ActionExecutor:ctx",
       "label": "ctx",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/executor.py"
+    },
+    {
+      "id": "state:arch_builder/executor.py:ActionExecutor:channel",
+      "label": "channel",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/executor.py"
+    },
+    {
+      "id": "state:arch_builder/executor.py:ActionExecutor:dim",
+      "label": "dim",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/executor.py"
@@ -342,8 +342,8 @@
       "line": 14
     },
     {
-      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:context_proj",
-      "label": "context_proj",
+      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:before_proj",
+      "label": "before_proj",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/hybrid_scanner.py"
@@ -356,17 +356,17 @@
       "file": "arch_builder/hybrid_scanner.py"
     },
     {
-      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:random_k",
-      "label": "random_k",
+      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:source_type",
+      "label": "source_type",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/hybrid_scanner.py"
     },
     {
-      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:before_proj",
-      "label": "before_proj",
+      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:semantic_k",
+      "label": "semantic_k",
       "kind": "state",
-      "role": "unknown",
+      "role": "scanner",
       "file": "arch_builder/hybrid_scanner.py"
     },
     {
@@ -384,10 +384,10 @@
       "file": "arch_builder/hybrid_scanner.py"
     },
     {
-      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:semantic_k",
-      "label": "semantic_k",
+      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:anchor",
+      "label": "anchor",
       "kind": "state",
-      "role": "scanner",
+      "role": "unknown",
       "file": "arch_builder/hybrid_scanner.py"
     },
     {
@@ -398,8 +398,15 @@
       "file": "arch_builder/hybrid_scanner.py"
     },
     {
-      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:anchor",
-      "label": "anchor",
+      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:context_proj",
+      "label": "context_proj",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/hybrid_scanner.py"
+    },
+    {
+      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:random_k",
+      "label": "random_k",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/hybrid_scanner.py"
@@ -409,13 +416,6 @@
       "label": "usage_k",
       "kind": "state",
       "role": "scanner",
-      "file": "arch_builder/hybrid_scanner.py"
-    },
-    {
-      "id": "state:arch_builder/hybrid_scanner.py:HybridScanner:source_type",
-      "label": "source_type",
-      "kind": "state",
-      "role": "unknown",
       "file": "arch_builder/hybrid_scanner.py"
     },
     {
@@ -473,20 +473,6 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
-      "label": "mode_head",
-      "kind": "state",
-      "role": "controller",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:phase_pair_bias",
-      "label": "phase_pair_bias",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/model.py"
-    },
-    {
       "id": "state:arch_builder/model.py:ActionMatrixLayer:scanner",
       "label": "scanner",
       "kind": "state",
@@ -494,31 +480,10 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:pm",
-      "label": "pm",
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:state_norm_mode",
+      "label": "state_norm_mode",
       "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:executor",
-      "label": "executor",
-      "kind": "state",
-      "role": "executor",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:simulator",
-      "label": "simulator",
-      "kind": "state",
-      "role": "simulator",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:top_k",
-      "label": "top_k",
-      "kind": "state",
-      "role": "scanner",
+      "role": "controller",
       "file": "arch_builder/model.py"
     },
     {
@@ -529,27 +494,6 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:slots",
-      "label": "slots",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:edge_pair_bias",
-      "label": "edge_pair_bias",
-      "kind": "state",
-      "role": "controller",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:edge_gate",
-      "label": "edge_gate",
-      "kind": "state",
-      "role": "controller",
-      "file": "arch_builder/model.py"
-    },
-    {
       "id": "state:arch_builder/model.py:ActionMatrixLayer:cell_output_pair_bias",
       "label": "cell_output_pair_bias",
       "kind": "state",
@@ -557,36 +501,8 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:context_logits",
-      "label": "context_logits",
-      "kind": "state",
-      "role": "model_core",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
-      "label": "phase_gate",
-      "kind": "state",
-      "role": "controller",
-      "file": "arch_builder/model.py"
-    },
-    {
       "id": "state:arch_builder/model.py:ActionMatrixLayer:norm",
       "label": "norm",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:write_pair_bias",
-      "label": "write_pair_bias",
-      "kind": "state",
-      "role": "controller",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:dim",
-      "label": "dim",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/model.py"
@@ -599,8 +515,57 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:state_norm_mode",
-      "label": "state_norm_mode",
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:dim",
+      "label": "dim",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:edge_pair_bias",
+      "label": "edge_pair_bias",
+      "kind": "state",
+      "role": "controller",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:pm",
+      "label": "pm",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:sim_logits",
+      "label": "sim_logits",
+      "kind": "state",
+      "role": "simulator",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:executor",
+      "label": "executor",
+      "kind": "state",
+      "role": "executor",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:edge_gate",
+      "label": "edge_gate",
+      "kind": "state",
+      "role": "controller",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:context_logits",
+      "label": "context_logits",
+      "kind": "state",
+      "role": "model_core",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:write_pair_bias",
+      "label": "write_pair_bias",
       "kind": "state",
       "role": "controller",
       "file": "arch_builder/model.py"
@@ -613,6 +578,13 @@
       "file": "arch_builder/model.py"
     },
     {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:top_k",
+      "label": "top_k",
+      "kind": "state",
+      "role": "scanner",
+      "file": "arch_builder/model.py"
+    },
+    {
       "id": "state:arch_builder/model.py:ActionMatrixLayer:write_gate",
       "label": "write_gate",
       "kind": "state",
@@ -620,10 +592,38 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:sim_logits",
-      "label": "sim_logits",
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:slots",
+      "label": "slots",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:simulator",
+      "label": "simulator",
       "kind": "state",
       "role": "simulator",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:phase_pair_bias",
+      "label": "phase_pair_bias",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
+      "label": "phase_gate",
+      "kind": "state",
+      "role": "controller",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
+      "label": "mode_head",
+      "kind": "state",
+      "role": "controller",
       "file": "arch_builder/model.py"
     },
     {
@@ -666,17 +666,17 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixLayer:_flat_pair_bias",
-      "label": "_flat_pair_bias",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/model.py"
-    },
-    {
       "id": "state:arch_builder/model.py:ActionMatrixLayer:apply_state_update",
       "label": "apply_state_update",
       "kind": "state",
       "role": "model_core",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixLayer:_flat_pair_bias",
+      "label": "_flat_pair_bias",
+      "kind": "state",
+      "role": "unknown",
       "file": "arch_builder/model.py"
     },
     {
@@ -695,17 +695,10 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixModel:input_norm_mode",
-      "label": "input_norm_mode",
+      "id": "state:arch_builder/model.py:ActionMatrixModel:state_norm_mode",
+      "label": "state_norm_mode",
       "kind": "state",
       "role": "controller",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixModel:slots",
-      "label": "slots",
-      "kind": "state",
-      "role": "unknown",
       "file": "arch_builder/model.py"
     },
     {
@@ -730,8 +723,29 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixModel:num_layers",
-      "label": "num_layers",
+      "id": "state:arch_builder/model.py:ActionMatrixModel:classifier",
+      "label": "classifier",
+      "kind": "state",
+      "role": "model_core",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixModel:input_norm_mode",
+      "label": "input_norm_mode",
+      "kind": "state",
+      "role": "controller",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixModel:slot_embed",
+      "label": "slot_embed",
+      "kind": "state",
+      "role": "model_core",
+      "file": "arch_builder/model.py"
+    },
+    {
+      "id": "state:arch_builder/model.py:ActionMatrixModel:layers",
+      "label": "layers",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/model.py"
@@ -744,31 +758,17 @@
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixModel:classifier",
-      "label": "classifier",
-      "kind": "state",
-      "role": "model_core",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixModel:state_norm_mode",
-      "label": "state_norm_mode",
-      "kind": "state",
-      "role": "controller",
-      "file": "arch_builder/model.py"
-    },
-    {
-      "id": "state:arch_builder/model.py:ActionMatrixModel:layers",
-      "label": "layers",
+      "id": "state:arch_builder/model.py:ActionMatrixModel:slots",
+      "label": "slots",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/model.py"
     },
     {
-      "id": "state:arch_builder/model.py:ActionMatrixModel:slot_embed",
-      "label": "slot_embed",
+      "id": "state:arch_builder/model.py:ActionMatrixModel:num_layers",
+      "label": "num_layers",
       "kind": "state",
-      "role": "model_core",
+      "role": "unknown",
       "file": "arch_builder/model.py"
     },
     {
@@ -834,20 +834,6 @@
       "line": 63
     },
     {
-      "id": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:register_buffer",
-      "label": "register_buffer",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/primitive_matrix.py"
-    },
-    {
-      "id": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:_descriptor_matrix",
-      "label": "_descriptor_matrix",
-      "kind": "state",
-      "role": "unknown",
-      "file": "arch_builder/primitive_matrix.py"
-    },
-    {
       "id": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:grid",
       "label": "grid",
       "kind": "state",
@@ -862,8 +848,15 @@
       "file": "arch_builder/primitive_matrix.py"
     },
     {
-      "id": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:infos",
-      "label": "infos",
+      "id": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:register_buffer",
+      "label": "register_buffer",
+      "kind": "state",
+      "role": "unknown",
+      "file": "arch_builder/primitive_matrix.py"
+    },
+    {
+      "id": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:_descriptor_matrix",
+      "label": "_descriptor_matrix",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/primitive_matrix.py"
@@ -880,6 +873,13 @@
       "label": "name_to_id",
       "kind": "state",
       "role": "primitive_matrix",
+      "file": "arch_builder/primitive_matrix.py"
+    },
+    {
+      "id": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:infos",
+      "label": "infos",
+      "kind": "state",
+      "role": "unknown",
       "file": "arch_builder/primitive_matrix.py"
     },
     {
@@ -1040,8 +1040,8 @@
       "file": "arch_builder/simulator.py"
     },
     {
-      "id": "state:arch_builder/simulator.py:LowRankSimulator:to_rank",
-      "label": "to_rank",
+      "id": "state:arch_builder/simulator.py:LowRankSimulator:prim_emb",
+      "label": "prim_emb",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/simulator.py"
@@ -1054,8 +1054,8 @@
       "file": "arch_builder/simulator.py"
     },
     {
-      "id": "state:arch_builder/simulator.py:LowRankSimulator:prim_emb",
-      "label": "prim_emb",
+      "id": "state:arch_builder/simulator.py:LowRankSimulator:to_rank",
+      "label": "to_rank",
       "kind": "state",
       "role": "unknown",
       "file": "arch_builder/simulator.py"
@@ -1073,7 +1073,7 @@
       "label": "arch_builder/synthetic_tasks.py",
       "kind": "file",
       "role": "data",
-      "lines": 88
+      "lines": 101
     },
     {
       "id": "class:arch_builder/synthetic_tasks.py:Batch",
@@ -1141,7 +1141,7 @@
       "kind": "function",
       "role": "data",
       "file": "arch_builder/synthetic_tasks.py",
-      "line": 71
+      "line": 84
     },
     {
       "id": "state:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask:label_signal",
@@ -1156,7 +1156,7 @@
       "kind": "function",
       "role": "data",
       "file": "arch_builder/synthetic_tasks.py",
-      "line": 85
+      "line": 98
     },
     {
       "id": "file:arch_builder/train_vertical_slice.py",
@@ -1332,104 +1332,8 @@
       "line": 919
     },
     {
-      "id": "arg:--lambda-primitive-usage-diversity",
-      "label": "--lambda-primitive-usage-diversity",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--amp",
-      "label": "--amp",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--target-tape-fraction",
-      "label": "--target-tape-fraction",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--task",
-      "label": "--task",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--input-norm",
-      "label": "--input-norm",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--tau-min",
-      "label": "--tau-min",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lambda-non-expected-active",
-      "label": "--lambda-non-expected-active",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lambda-layer-action-diversity",
-      "label": "--lambda-layer-action-diversity",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lambda-collapse",
-      "label": "--lambda-collapse",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--sim-rank",
-      "label": "--sim-rank",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--eval-steps",
-      "label": "--eval-steps",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lambda-sim",
-      "label": "--lambda-sim",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--adapt-top-share-floor",
-      "label": "--adapt-top-share-floor",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--target-active-fraction",
-      "label": "--target-active-fraction",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lambda-non-expected-transform",
-      "label": "--lambda-non-expected-transform",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--batch-size",
-      "label": "--batch-size",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--steps-per-epoch",
-      "label": "--steps-per-epoch",
+      "id": "arg:--adapt-cell-sharpness",
+      "label": "--adapt-cell-sharpness",
       "kind": "config_arg",
       "role": "entrypoint"
     },
@@ -1440,38 +1344,8 @@
       "role": "entrypoint"
     },
     {
-      "id": "arg:--device",
-      "label": "--device",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--adapt-choice-floor",
-      "label": "--adapt-choice-floor",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--slots",
-      "label": "--slots",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--eval-batch-size",
-      "label": "--eval-batch-size",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lambda-choice",
-      "label": "--lambda-choice",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--tau-start",
-      "label": "--tau-start",
+      "id": "arg:--input-norm",
+      "label": "--input-norm",
       "kind": "config_arg",
       "role": "entrypoint"
     },
@@ -1482,128 +1356,14 @@
       "role": "entrypoint"
     },
     {
-      "id": "arg:--target-active-cells",
-      "label": "--target-active-cells",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lambda-expected-active",
-      "label": "--lambda-expected-active",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--final-read",
-      "label": "--final-read",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lambda-non-expected-primitive",
-      "label": "--lambda-non-expected-primitive",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lr",
-      "label": "--lr",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
       "id": "arg:--lambda-cell-choice-diversity",
       "label": "--lambda-cell-choice-diversity",
       "kind": "config_arg",
       "role": "entrypoint"
     },
     {
-      "id": "arg:--tau-decay",
-      "label": "--tau-decay",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--out-dir",
-      "label": "--out-dir",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--seed",
-      "label": "--seed",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--min-transform-mass",
-      "label": "--min-transform-mass",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--lambda-non-expected-tape",
-      "label": "--lambda-non-expected-tape",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--grad-clip",
-      "label": "--grad-clip",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--weight-decay",
-      "label": "--weight-decay",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--layers",
-      "label": "--layers",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--adapt-choice-boost",
-      "label": "--adapt-choice-boost",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--dim",
-      "label": "--dim",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--max-steps",
-      "label": "--max-steps",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--epochs",
-      "label": "--epochs",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--adapt-sharpness",
-      "label": "--adapt-sharpness",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--state-norm",
-      "label": "--state-norm",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--top-k",
-      "label": "--top-k",
+      "id": "arg:--adapt-top-share-floor",
+      "label": "--adapt-top-share-floor",
       "kind": "config_arg",
       "role": "entrypoint"
     },
@@ -1614,8 +1374,248 @@
       "role": "entrypoint"
     },
     {
-      "id": "arg:--adapt-cell-sharpness",
-      "label": "--adapt-cell-sharpness",
+      "id": "arg:--eval-steps",
+      "label": "--eval-steps",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--tau-decay",
+      "label": "--tau-decay",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--slots",
+      "label": "--slots",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--top-k",
+      "label": "--top-k",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-choice",
+      "label": "--lambda-choice",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--amp",
+      "label": "--amp",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--state-norm",
+      "label": "--state-norm",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--weight-decay",
+      "label": "--weight-decay",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--target-active-fraction",
+      "label": "--target-active-fraction",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-collapse",
+      "label": "--lambda-collapse",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--dim",
+      "label": "--dim",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-primitive-usage-diversity",
+      "label": "--lambda-primitive-usage-diversity",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--seed",
+      "label": "--seed",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-non-expected-primitive",
+      "label": "--lambda-non-expected-primitive",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--out-dir",
+      "label": "--out-dir",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--final-read",
+      "label": "--final-read",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--tau-min",
+      "label": "--tau-min",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--adapt-choice-floor",
+      "label": "--adapt-choice-floor",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lr",
+      "label": "--lr",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--batch-size",
+      "label": "--batch-size",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--layers",
+      "label": "--layers",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--tau-start",
+      "label": "--tau-start",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-layer-action-diversity",
+      "label": "--lambda-layer-action-diversity",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-non-expected-active",
+      "label": "--lambda-non-expected-active",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--eval-batch-size",
+      "label": "--eval-batch-size",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--target-active-cells",
+      "label": "--target-active-cells",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--sim-rank",
+      "label": "--sim-rank",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-sim",
+      "label": "--lambda-sim",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--task",
+      "label": "--task",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--steps-per-epoch",
+      "label": "--steps-per-epoch",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-expected-active",
+      "label": "--lambda-expected-active",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-non-expected-transform",
+      "label": "--lambda-non-expected-transform",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--device",
+      "label": "--device",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--lambda-non-expected-tape",
+      "label": "--lambda-non-expected-tape",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--adapt-sharpness",
+      "label": "--adapt-sharpness",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--grad-clip",
+      "label": "--grad-clip",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--epochs",
+      "label": "--epochs",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--adapt-choice-boost",
+      "label": "--adapt-choice-boost",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--target-tape-fraction",
+      "label": "--target-tape-fraction",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--min-transform-mass",
+      "label": "--min-transform-mass",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--max-steps",
+      "label": "--max-steps",
       "kind": "config_arg",
       "role": "entrypoint"
     },
@@ -2041,15 +2041,15 @@
       "line": 174
     },
     {
-      "id": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:visit",
-      "label": "visit",
+      "id": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:_target",
+      "label": "_target",
       "kind": "state",
       "role": "unknown",
       "file": "tools/agent_codegraph/build_agent_codegraph.py"
     },
     {
-      "id": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:_target",
-      "label": "_target",
+      "id": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:visit",
+      "label": "visit",
       "kind": "state",
       "role": "unknown",
       "file": "tools/agent_codegraph/build_agent_codegraph.py"
@@ -2288,17 +2288,17 @@
       "line": 48
     },
     {
+      "id": "state:tools/agent_inspector/inspect_project.py:FV:self_writes",
+      "label": "self_writes",
+      "kind": "state",
+      "role": "memory",
+      "file": "tools/agent_inspector/inspect_project.py"
+    },
+    {
       "id": "state:tools/agent_inspector/inspect_project.py:FV:calls",
       "label": "calls",
       "kind": "state",
       "role": "unknown",
-      "file": "tools/agent_inspector/inspect_project.py"
-    },
-    {
-      "id": "state:tools/agent_inspector/inspect_project.py:FV:self_reads",
-      "label": "self_reads",
-      "kind": "state",
-      "role": "memory",
       "file": "tools/agent_inspector/inspect_project.py"
     },
     {
@@ -2309,8 +2309,8 @@
       "file": "tools/agent_inspector/inspect_project.py"
     },
     {
-      "id": "state:tools/agent_inspector/inspect_project.py:FV:self_writes",
-      "label": "self_writes",
+      "id": "state:tools/agent_inspector/inspect_project.py:FV:self_reads",
+      "label": "self_reads",
       "kind": "state",
       "role": "memory",
       "file": "tools/agent_inspector/inspect_project.py"
@@ -2347,15 +2347,15 @@
       "line": 70
     },
     {
-      "id": "state:tools/agent_inspector/inspect_project.py:FV:visit",
-      "label": "visit",
+      "id": "state:tools/agent_inspector/inspect_project.py:FV:_target",
+      "label": "_target",
       "kind": "state",
       "role": "unknown",
       "file": "tools/agent_inspector/inspect_project.py"
     },
     {
-      "id": "state:tools/agent_inspector/inspect_project.py:FV:_target",
-      "label": "_target",
+      "id": "state:tools/agent_inspector/inspect_project.py:FV:visit",
+      "label": "visit",
       "kind": "state",
       "role": "unknown",
       "file": "tools/agent_inspector/inspect_project.py"
@@ -2622,15 +2622,15 @@
       "line": 125
     },
     {
-      "id": "state:tools/build_code_logic_graph.py:FuncVisitor:visit",
-      "label": "visit",
+      "id": "state:tools/build_code_logic_graph.py:FuncVisitor:_target",
+      "label": "_target",
       "kind": "state",
       "role": "unknown",
       "file": "tools/build_code_logic_graph.py"
     },
     {
-      "id": "state:tools/build_code_logic_graph.py:FuncVisitor:_target",
-      "label": "_target",
+      "id": "state:tools/build_code_logic_graph.py:FuncVisitor:visit",
+      "label": "visit",
       "kind": "state",
       "role": "unknown",
       "file": "tools/build_code_logic_graph.py"
@@ -2723,14 +2723,20 @@
       "line": 303
     },
     {
-      "id": "arg:--include-reports",
-      "label": "--include-reports",
+      "id": "arg:--out-loop",
+      "label": "--out-loop",
       "kind": "config_arg",
       "role": "entrypoint"
     },
     {
-      "id": "arg:--include-docs",
-      "label": "--include-docs",
+      "id": "arg:--out-md",
+      "label": "--out-md",
+      "kind": "config_arg",
+      "role": "entrypoint"
+    },
+    {
+      "id": "arg:--include-reports",
+      "label": "--include-reports",
       "kind": "config_arg",
       "role": "entrypoint"
     },
@@ -2753,14 +2759,8 @@
       "role": "entrypoint"
     },
     {
-      "id": "arg:--out-loop",
-      "label": "--out-loop",
-      "kind": "config_arg",
-      "role": "entrypoint"
-    },
-    {
-      "id": "arg:--out-md",
-      "label": "--out-md",
+      "id": "arg:--include-docs",
+      "label": "--include-docs",
       "kind": "config_arg",
       "role": "entrypoint"
     },
@@ -3131,17 +3131,17 @@
     },
     {
       "source": "func:arch_builder/credit.py:CreditBuffer.update",
-      "target": "state:arch_builder/credit.py:CreditBuffer:decay",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/credit.py:CreditBuffer.update",
       "target": "state:arch_builder/credit.py:CreditBuffer:ages",
       "kind": "reads_state"
     },
     {
       "source": "func:arch_builder/credit.py:CreditBuffer.update",
       "target": "state:arch_builder/credit.py:CreditBuffer:values",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/credit.py:CreditBuffer.update",
+      "target": "state:arch_builder/credit.py:CreditBuffer:decay",
       "kind": "reads_state"
     },
     {
@@ -3236,16 +3236,6 @@
     },
     {
       "source": "func:arch_builder/executor.py:ActionExecutor.__init__",
-      "target": "state:arch_builder/executor.py:ActionExecutor:channel",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/executor.py:ActionExecutor.__init__",
-      "target": "state:arch_builder/executor.py:ActionExecutor:low_a",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/executor.py:ActionExecutor.__init__",
       "target": "state:arch_builder/executor.py:ActionExecutor:gate",
       "kind": "writes_state"
     },
@@ -3256,17 +3246,27 @@
     },
     {
       "source": "func:arch_builder/executor.py:ActionExecutor.__init__",
-      "target": "state:arch_builder/executor.py:ActionExecutor:dim",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/executor.py:ActionExecutor.__init__",
       "target": "state:arch_builder/executor.py:ActionExecutor:names",
       "kind": "writes_state"
     },
     {
       "source": "func:arch_builder/executor.py:ActionExecutor.__init__",
+      "target": "state:arch_builder/executor.py:ActionExecutor:low_a",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/executor.py:ActionExecutor.__init__",
       "target": "state:arch_builder/executor.py:ActionExecutor:ctx",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/executor.py:ActionExecutor.__init__",
+      "target": "state:arch_builder/executor.py:ActionExecutor:channel",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/executor.py:ActionExecutor.__init__",
+      "target": "state:arch_builder/executor.py:ActionExecutor:dim",
       "kind": "writes_state"
     },
     {
@@ -3281,16 +3281,6 @@
     },
     {
       "source": "func:arch_builder/executor.py:ActionExecutor._single",
-      "target": "state:arch_builder/executor.py:ActionExecutor:channel",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/executor.py:ActionExecutor._single",
-      "target": "state:arch_builder/executor.py:ActionExecutor:low_a",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/executor.py:ActionExecutor._single",
       "target": "state:arch_builder/executor.py:ActionExecutor:gate",
       "kind": "reads_state"
     },
@@ -3301,7 +3291,17 @@
     },
     {
       "source": "func:arch_builder/executor.py:ActionExecutor._single",
+      "target": "state:arch_builder/executor.py:ActionExecutor:low_a",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/executor.py:ActionExecutor._single",
       "target": "state:arch_builder/executor.py:ActionExecutor:ctx",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/executor.py:ActionExecutor._single",
+      "target": "state:arch_builder/executor.py:ActionExecutor:channel",
       "kind": "reads_state"
     },
     {
@@ -3366,7 +3366,7 @@
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.__init__",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:context_proj",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:before_proj",
       "kind": "writes_state"
     },
     {
@@ -3376,12 +3376,12 @@
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.__init__",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:random_k",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:source_type",
       "kind": "writes_state"
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.__init__",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:before_proj",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:semantic_k",
       "kind": "writes_state"
     },
     {
@@ -3396,7 +3396,7 @@
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.__init__",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:semantic_k",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:anchor",
       "kind": "writes_state"
     },
     {
@@ -3406,17 +3406,17 @@
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.__init__",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:anchor",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:context_proj",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.__init__",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:random_k",
       "kind": "writes_state"
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.__init__",
       "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:usage_k",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.__init__",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:source_type",
       "kind": "writes_state"
     },
     {
@@ -3431,7 +3431,7 @@
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.forward",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:context_proj",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:before_proj",
       "kind": "reads_state"
     },
     {
@@ -3441,12 +3441,12 @@
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.forward",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:random_k",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:source_type",
       "kind": "reads_state"
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.forward",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:before_proj",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:semantic_k",
       "kind": "reads_state"
     },
     {
@@ -3461,7 +3461,7 @@
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.forward",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:semantic_k",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:anchor",
       "kind": "reads_state"
     },
     {
@@ -3471,17 +3471,17 @@
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.forward",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:anchor",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:context_proj",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.forward",
+      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:random_k",
       "kind": "reads_state"
     },
     {
       "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.forward",
       "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:usage_k",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/hybrid_scanner.py:HybridScanner.forward",
-      "target": "state:arch_builder/hybrid_scanner.py:HybridScanner:source_type",
       "kind": "reads_state"
     },
     {
@@ -3561,92 +3561,7 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_pair_bias",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
       "target": "state:arch_builder/model.py:ActionMatrixLayer:scanner",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:pm",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:executor",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:simulator",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:top_k",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_op",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:slots",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_pair_bias",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_gate",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:cell_output_pair_bias",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:context_logits",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:norm",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:write_pair_bias",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:dim",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:output_gate",
       "kind": "writes_state"
     },
     {
@@ -3656,7 +3571,72 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_op",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:cell_output_pair_bias",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:norm",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:output_gate",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:dim",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_pair_bias",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:pm",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:sim_logits",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:executor",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_gate",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:context_logits",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:write_pair_bias",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
       "target": "state:arch_builder/model.py:ActionMatrixLayer:cell_output_gate",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:top_k",
       "kind": "writes_state"
     },
     {
@@ -3666,7 +3646,27 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:sim_logits",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:slots",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:simulator",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_pair_bias",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
       "kind": "writes_state"
     },
     {
@@ -3681,11 +3681,6 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer._init_gate_priors",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer._init_gate_priors",
       "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_op",
       "kind": "reads_state"
     },
@@ -3696,7 +3691,7 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer._init_gate_priors",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_gate",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
       "kind": "reads_state"
     },
     {
@@ -3706,7 +3701,12 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer._init_gate_priors",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer._init_gate_priors",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_gate",
       "kind": "reads_state"
     },
     {
@@ -3756,47 +3756,7 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_pair_bias",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:training",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:_flat_pair_bias",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
       "target": "state:arch_builder/model.py:ActionMatrixLayer:scanner",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:pm",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:executor",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:top_k",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:simulator",
       "kind": "reads_state"
     },
     {
@@ -3806,12 +3766,52 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_pair_bias",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:state_norm_mode",
       "kind": "reads_state"
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
       "target": "state:arch_builder/model.py:ActionMatrixLayer:cell_output_pair_bias",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:output_gate",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:training",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:edge_pair_bias",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:apply_state_update",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:pm",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:sim_logits",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:_flat_pair_bias",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:executor",
       "kind": "reads_state"
     },
     {
@@ -3826,27 +3826,7 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
       "target": "state:arch_builder/model.py:ActionMatrixLayer:write_pair_bias",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:apply_state_update",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:output_gate",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:state_norm_mode",
       "kind": "reads_state"
     },
     {
@@ -3856,12 +3836,32 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:top_k",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
       "target": "state:arch_builder/model.py:ActionMatrixLayer:write_gate",
       "kind": "reads_state"
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:sim_logits",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:simulator",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_pair_bias",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
       "kind": "reads_state"
     },
     {
@@ -3881,12 +3881,7 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:input_norm_mode",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:slots",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:state_norm_mode",
       "kind": "writes_state"
     },
     {
@@ -3901,17 +3896,12 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:pm",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
       "target": "state:arch_builder/model.py:ActionMatrixModel:layer_read_logits",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:num_layers",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:dim",
       "kind": "writes_state"
     },
     {
@@ -3921,12 +3911,12 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:state_norm_mode",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:input_norm_mode",
       "kind": "writes_state"
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:pm",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:slot_embed",
       "kind": "writes_state"
     },
     {
@@ -3936,7 +3926,17 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:slot_embed",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:dim",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:slots",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:num_layers",
       "kind": "writes_state"
     },
     {
@@ -3971,7 +3971,7 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixModel.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:input_norm",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:state_norm_mode",
       "kind": "reads_state"
     },
     {
@@ -3986,17 +3986,17 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixModel.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:classifier",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixModel.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:state_norm_mode",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixModel.forward",
       "target": "state:arch_builder/model.py:ActionMatrixModel:pm",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixModel.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:slot_embed",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixModel.forward",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:input_norm",
       "kind": "reads_state"
     },
     {
@@ -4006,7 +4006,7 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixModel.forward",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:slot_embed",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:classifier",
       "kind": "reads_state"
     },
     {
@@ -4066,6 +4066,16 @@
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
+      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:grid",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
+      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:names",
+      "kind": "reads_state"
+    },
+    {
+      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
       "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:register_buffer",
       "kind": "reads_state"
     },
@@ -4076,17 +4086,7 @@
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
-      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:grid",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
       "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:names",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
-      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:infos",
       "kind": "writes_state"
     },
     {
@@ -4096,7 +4096,7 @@
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
-      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:names",
+      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:grid",
       "kind": "writes_state"
     },
     {
@@ -4106,7 +4106,7 @@
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
-      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:grid",
+      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:infos",
       "kind": "writes_state"
     },
     {
@@ -4161,12 +4161,12 @@
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.semantic_topk",
-      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:emb",
+      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:num_primitives",
       "kind": "reads_state"
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.semantic_topk",
-      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:num_primitives",
+      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:emb",
       "kind": "reads_state"
     },
     {
@@ -4178,6 +4178,11 @@
       "source": "class:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5",
       "target": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.usage_topk",
       "kind": "owns"
+    },
+    {
+      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.usage_topk",
+      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:num_primitives",
+      "kind": "reads_state"
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.usage_topk",
@@ -4186,11 +4191,6 @@
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.usage_topk",
-      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:num_primitives",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.usage_topk",
       "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:usage_score",
       "kind": "reads_state"
     },
@@ -4223,15 +4223,15 @@
       "source": "class:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5",
       "target": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.metrics",
       "kind": "owns"
+    },
+    {
+      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.metrics",
+      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:usage_score",
+      "kind": "reads_state"
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.metrics",
       "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:emb",
-      "kind": "reads_state"
-    },
-    {
-      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.metrics",
-      "target": "state:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5:usage_score",
       "kind": "reads_state"
     },
     {
@@ -4316,7 +4316,7 @@
     },
     {
       "source": "func:arch_builder/simulator.py:LowRankSimulator.__init__",
-      "target": "state:arch_builder/simulator.py:LowRankSimulator:to_rank",
+      "target": "state:arch_builder/simulator.py:LowRankSimulator:prim_emb",
       "kind": "writes_state"
     },
     {
@@ -4326,7 +4326,7 @@
     },
     {
       "source": "func:arch_builder/simulator.py:LowRankSimulator.__init__",
-      "target": "state:arch_builder/simulator.py:LowRankSimulator:prim_emb",
+      "target": "state:arch_builder/simulator.py:LowRankSimulator:to_rank",
       "kind": "writes_state"
     },
     {
@@ -4346,7 +4346,7 @@
     },
     {
       "source": "func:arch_builder/simulator.py:LowRankSimulator.forward",
-      "target": "state:arch_builder/simulator.py:LowRankSimulator:from_rank",
+      "target": "state:arch_builder/simulator.py:LowRankSimulator:prim_emb",
       "kind": "reads_state"
     },
     {
@@ -4356,7 +4356,7 @@
     },
     {
       "source": "func:arch_builder/simulator.py:LowRankSimulator.forward",
-      "target": "state:arch_builder/simulator.py:LowRankSimulator:prim_emb",
+      "target": "state:arch_builder/simulator.py:LowRankSimulator:from_rank",
       "kind": "reads_state"
     },
     {
@@ -4451,12 +4451,12 @@
     },
     {
       "source": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.sample",
-      "target": "state:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask:label_signal",
+      "target": "state:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask:slots",
       "kind": "reads_state"
     },
     {
       "source": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.sample",
-      "target": "state:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask:slots",
+      "target": "state:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask:label_signal",
       "kind": "reads_state"
     },
     {
@@ -4621,87 +4621,7 @@
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-primitive-usage-diversity",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--amp",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--target-tape-fraction",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--task",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--input-norm",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--tau-min",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-non-expected-active",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-layer-action-diversity",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-collapse",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--sim-rank",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--eval-steps",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-sim",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--adapt-top-share-floor",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--target-active-fraction",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-non-expected-transform",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--batch-size",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--steps-per-epoch",
+      "target": "arg:--adapt-cell-sharpness",
       "kind": "defines_arg"
     },
     {
@@ -4711,32 +4631,7 @@
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--device",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--adapt-choice-floor",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--slots",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--eval-batch-size",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-choice",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--tau-start",
+      "target": "arg:--input-norm",
       "kind": "defines_arg"
     },
     {
@@ -4746,107 +4641,12 @@
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--target-active-cells",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-expected-active",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--final-read",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-non-expected-primitive",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lr",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
       "target": "arg:--lambda-cell-choice-diversity",
       "kind": "defines_arg"
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--tau-decay",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--out-dir",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--seed",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--min-transform-mass",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--lambda-non-expected-tape",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--grad-clip",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--weight-decay",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--layers",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--adapt-choice-boost",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--dim",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--max-steps",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--epochs",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--adapt-sharpness",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--state-norm",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--top-k",
+      "target": "arg:--adapt-top-share-floor",
       "kind": "defines_arg"
     },
     {
@@ -4856,7 +4656,207 @@
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:parser",
-      "target": "arg:--adapt-cell-sharpness",
+      "target": "arg:--eval-steps",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--tau-decay",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--slots",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--top-k",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-choice",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--amp",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--state-norm",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--weight-decay",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--target-active-fraction",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-collapse",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--dim",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-primitive-usage-diversity",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--seed",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-non-expected-primitive",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--out-dir",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--final-read",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--tau-min",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--adapt-choice-floor",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lr",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--batch-size",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--layers",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--tau-start",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-layer-action-diversity",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-non-expected-active",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--eval-batch-size",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--target-active-cells",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--sim-rank",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-sim",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--task",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--steps-per-epoch",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-expected-active",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-non-expected-transform",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--device",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--lambda-non-expected-tape",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--adapt-sharpness",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--grad-clip",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--epochs",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--adapt-choice-boost",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--target-tape-fraction",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--min-transform-mass",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:parser",
+      "target": "arg:--max-steps",
       "kind": "defines_arg"
     },
     {
@@ -5046,12 +5046,12 @@
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_Assign",
-      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:visit",
+      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:_target",
       "kind": "reads_state"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_Assign",
-      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:_target",
+      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:visit",
       "kind": "reads_state"
     },
     {
@@ -5066,12 +5066,12 @@
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_AnnAssign",
-      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:visit",
+      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:_target",
       "kind": "reads_state"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_AnnAssign",
-      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:_target",
+      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:visit",
       "kind": "reads_state"
     },
     {
@@ -5086,12 +5086,12 @@
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_AugAssign",
-      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:visit",
+      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:_target",
       "kind": "reads_state"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_AugAssign",
-      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:_target",
+      "target": "state:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor:visit",
       "kind": "reads_state"
     },
     {
@@ -5176,12 +5176,12 @@
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
-      "target": "arg:--root",
+      "target": "arg:--out-dir",
       "kind": "defines_arg"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
-      "target": "arg:--out-dir",
+      "target": "arg:--root",
       "kind": "defines_arg"
     },
     {
@@ -5321,25 +5321,25 @@
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:FV.__init__",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:calls",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:tools/agent_inspector/inspect_project.py:FV.__init__",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:self_reads",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:tools/agent_inspector/inspect_project.py:FV.__init__",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:args",
-      "kind": "writes_state"
-    },
-    {
-      "source": "func:tools/agent_inspector/inspect_project.py:FV.__init__",
       "target": "state:tools/agent_inspector/inspect_project.py:FV:self_writes",
       "kind": "writes_state"
     },
     {
+      "source": "func:tools/agent_inspector/inspect_project.py:FV.__init__",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:calls",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:tools/agent_inspector/inspect_project.py:FV.__init__",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:args",
+      "kind": "writes_state"
+    },
+    {
+      "source": "func:tools/agent_inspector/inspect_project.py:FV.__init__",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:self_reads",
+      "kind": "writes_state"
+    },
+    {
       "source": "file:tools/agent_inspector/inspect_project.py",
       "target": "func:tools/agent_inspector/inspect_project.py:FV.visit_Call",
       "kind": "defines"
@@ -5348,6 +5348,11 @@
       "source": "class:tools/agent_inspector/inspect_project.py:FV",
       "target": "func:tools/agent_inspector/inspect_project.py:FV.visit_Call",
       "kind": "owns"
+    },
+    {
+      "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_Call",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:generic_visit",
+      "kind": "reads_state"
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_Call",
@@ -5360,11 +5365,6 @@
       "kind": "reads_state"
     },
     {
-      "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_Call",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:generic_visit",
-      "kind": "reads_state"
-    },
-    {
       "source": "file:tools/agent_inspector/inspect_project.py",
       "target": "func:tools/agent_inspector/inspect_project.py:FV.visit_Attribute",
       "kind": "defines"
@@ -5373,6 +5373,11 @@
       "source": "class:tools/agent_inspector/inspect_project.py:FV",
       "target": "func:tools/agent_inspector/inspect_project.py:FV.visit_Attribute",
       "kind": "owns"
+    },
+    {
+      "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_Attribute",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:generic_visit",
+      "kind": "reads_state"
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_Attribute",
@@ -5380,11 +5385,6 @@
       "kind": "reads_state"
     },
     {
-      "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_Attribute",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:generic_visit",
-      "kind": "reads_state"
-    },
-    {
       "source": "file:tools/agent_inspector/inspect_project.py",
       "target": "func:tools/agent_inspector/inspect_project.py:FV.visit_Assign",
       "kind": "defines"
@@ -5396,12 +5396,12 @@
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_Assign",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:visit",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:_target",
       "kind": "reads_state"
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_Assign",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:_target",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:visit",
       "kind": "reads_state"
     },
     {
@@ -5416,12 +5416,12 @@
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_AnnAssign",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:visit",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:_target",
       "kind": "reads_state"
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_AnnAssign",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:_target",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:visit",
       "kind": "reads_state"
     },
     {
@@ -5436,12 +5436,12 @@
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_AugAssign",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:visit",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:_target",
       "kind": "reads_state"
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:FV.visit_AugAssign",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:_target",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:visit",
       "kind": "reads_state"
     },
     {
@@ -5716,12 +5716,12 @@
     },
     {
       "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_Assign",
-      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:visit",
+      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:_target",
       "kind": "reads_state"
     },
     {
       "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_Assign",
-      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:_target",
+      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:visit",
       "kind": "reads_state"
     },
     {
@@ -5736,12 +5736,12 @@
     },
     {
       "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_AnnAssign",
-      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:visit",
+      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:_target",
       "kind": "reads_state"
     },
     {
       "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_AnnAssign",
-      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:_target",
+      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:visit",
       "kind": "reads_state"
     },
     {
@@ -5756,12 +5756,12 @@
     },
     {
       "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_AugAssign",
-      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:visit",
+      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:_target",
       "kind": "reads_state"
     },
     {
       "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_AugAssign",
-      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:_target",
+      "target": "state:tools/build_code_logic_graph.py:FuncVisitor:visit",
       "kind": "reads_state"
     },
     {
@@ -5826,22 +5826,27 @@
     },
     {
       "source": "func:tools/build_code_logic_graph.py:main",
+      "target": "arg:--out-loop",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:main",
+      "target": "arg:--out-md",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:main",
       "target": "arg:--include-reports",
       "kind": "defines_arg"
     },
     {
       "source": "func:tools/build_code_logic_graph.py:main",
-      "target": "arg:--root",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:main",
-      "target": "arg:--include-docs",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:main",
       "target": "arg:--out-json",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:main",
+      "target": "arg:--root",
       "kind": "defines_arg"
     },
     {
@@ -5856,12 +5861,7 @@
     },
     {
       "source": "func:tools/build_code_logic_graph.py:main",
-      "target": "arg:--out-loop",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:main",
-      "target": "arg:--out-md",
+      "target": "arg:--include-docs",
       "kind": "defines_arg"
     },
     {
@@ -6001,22 +6001,7 @@
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "arg:--batch-size",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "arg:--seed",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "arg:--device",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "arg:--slots",
+      "target": "arg:--out",
       "kind": "defines_arg"
     },
     {
@@ -6026,12 +6011,27 @@
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "arg:--out",
+      "target": "arg:--dim",
       "kind": "defines_arg"
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "arg:--dim",
+      "target": "arg:--seed",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/forced_program_oracle.py:main",
+      "target": "arg:--batch-size",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/forced_program_oracle.py:main",
+      "target": "arg:--slots",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/forced_program_oracle.py:main",
+      "target": "arg:--device",
       "kind": "defines_arg"
     },
     {
@@ -6146,17 +6146,12 @@
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--lambda-primitive-usage-diversity",
+      "target": "arg:--adapt-cell-sharpness",
       "kind": "defines_arg"
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--target-tape-fraction",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--task",
+      "target": "arg:--lambda-tape-budget",
       "kind": "defines_arg"
     },
     {
@@ -6166,7 +6161,37 @@
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--lambda-non-expected-active",
+      "target": "arg:--lambda-cell-choice-diversity",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--adapt-top-share-floor",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--lambda-active-budget",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--tau",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--lambda-choice",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--top-k",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--slots",
       "kind": "defines_arg"
     },
     {
@@ -6176,7 +6201,57 @@
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--target-active-fraction",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--dim",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--lambda-primitive-usage-diversity",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--seed",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--lambda-non-expected-primitive",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--adapt-choice-floor",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--batch-size",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--layers",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
       "target": "arg:--lambda-layer-action-diversity",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--lambda-non-expected-active",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--target-active-cells",
       "kind": "defines_arg"
     },
     {
@@ -6191,57 +6266,7 @@
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--adapt-top-share-floor",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--target-active-fraction",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--lambda-non-expected-transform",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--batch-size",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--tau",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--lambda-tape-budget",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--device",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--adapt-choice-floor",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--slots",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--lambda-choice",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--target-active-cells",
+      "target": "arg:--task",
       "kind": "defines_arg"
     },
     {
@@ -6251,22 +6276,12 @@
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--lambda-non-expected-primitive",
+      "target": "arg:--lambda-non-expected-transform",
       "kind": "defines_arg"
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--lambda-cell-choice-diversity",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--seed",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--min-transform-mass",
+      "target": "arg:--device",
       "kind": "defines_arg"
     },
     {
@@ -6276,42 +6291,27 @@
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--adapt-choice-boost",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--layers",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--dim",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
       "target": "arg:--adapt-sharpness",
       "kind": "defines_arg"
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--top-k",
+      "target": "arg:--adapt-choice-boost",
       "kind": "defines_arg"
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--lambda-active-budget",
+      "target": "arg:--target-tape-fraction",
+      "kind": "defines_arg"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
+      "target": "arg:--min-transform-mass",
       "kind": "defines_arg"
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:parser",
       "target": "arg:--out",
-      "kind": "defines_arg"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:parser",
-      "target": "arg:--adapt-cell-sharpness",
       "kind": "defines_arg"
     },
     {
@@ -6327,15 +6327,15 @@
     },
     {
       "source": "func:arch_builder/credit.py:simulator_ablation_metrics",
-      "target": "func:arch_builder/train_vertical_slice.py:train",
-      "kind": "calls",
-      "call": "model.train"
-    },
-    {
-      "source": "func:arch_builder/credit.py:simulator_ablation_metrics",
       "target": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.sample",
       "kind": "calls",
       "call": "task.sample"
+    },
+    {
+      "source": "func:arch_builder/credit.py:simulator_ablation_metrics",
+      "target": "func:arch_builder/credit.py:_restore_rng",
+      "kind": "calls",
+      "call": "_restore_rng"
     },
     {
       "source": "func:arch_builder/credit.py:simulator_ablation_metrics",
@@ -6351,9 +6351,9 @@
     },
     {
       "source": "func:arch_builder/credit.py:simulator_ablation_metrics",
-      "target": "func:arch_builder/credit.py:_restore_rng",
+      "target": "func:arch_builder/train_vertical_slice.py:train",
       "kind": "calls",
-      "call": "_restore_rng"
+      "call": "model.train"
     },
     {
       "source": "func:arch_builder/credit.py:sim_disabled_delta",
@@ -6423,6 +6423,12 @@
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
+      "target": "func:arch_builder/model.py:ActionMatrixLayer._init_gate_priors",
+      "kind": "calls",
+      "call": "self._init_gate_priors"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
       "target": "func:arch_builder/executor.py:ActionExecutor.__init__",
       "kind": "calls",
       "call": "super.__init__"
@@ -6440,10 +6446,16 @@
       "call": "super.__init__"
     },
     {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.__init__",
-      "target": "func:arch_builder/model.py:ActionMatrixLayer._init_gate_priors",
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "func:arch_builder/model.py:_ln_logits",
       "kind": "calls",
-      "call": "self._init_gate_priors"
+      "call": "_ln_logits"
+    },
+    {
+      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
+      "target": "func:arch_builder/model.py:ActionMatrixLayer.apply_state_update",
+      "kind": "calls",
+      "call": "self.apply_state_update"
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
@@ -6456,18 +6468,6 @@
       "target": "func:arch_builder/model.py:ActionMatrixLayer._flat_pair_bias",
       "kind": "calls",
       "call": "self._flat_pair_bias"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "func:arch_builder/model.py:ActionMatrixLayer.apply_state_update",
-      "kind": "calls",
-      "call": "self.apply_state_update"
-    },
-    {
-      "source": "func:arch_builder/model.py:ActionMatrixLayer.forward",
-      "target": "func:arch_builder/model.py:_ln_logits",
-      "kind": "calls",
-      "call": "_ln_logits"
     },
     {
       "source": "func:arch_builder/model.py:ActionMatrixModel.__init__",
@@ -6507,6 +6507,18 @@
     },
     {
       "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
+      "target": "func:arch_builder/primitive_matrix.py:_info",
+      "kind": "calls",
+      "call": "_info"
+    },
+    {
+      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
+      "target": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5._descriptor_matrix",
+      "kind": "calls",
+      "call": "self._descriptor_matrix"
+    },
+    {
+      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
       "target": "func:arch_builder/executor.py:ActionExecutor.__init__",
       "kind": "calls",
       "call": "super.__init__"
@@ -6528,18 +6540,6 @@
       "target": "func:arch_builder/model.py:ActionMatrixModel.__init__",
       "kind": "calls",
       "call": "super.__init__"
-    },
-    {
-      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
-      "target": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5._descriptor_matrix",
-      "kind": "calls",
-      "call": "self._descriptor_matrix"
-    },
-    {
-      "source": "func:arch_builder/primitive_matrix.py:PrimitiveMatrix5x5.__init__",
-      "target": "func:arch_builder/primitive_matrix.py:_info",
-      "kind": "calls",
-      "call": "_info"
     },
     {
       "source": "func:arch_builder/simulator.py:LowRankSimulator.__init__",
@@ -6585,6 +6585,12 @@
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:summarize_trace",
+      "target": "func:arch_builder/credit.py:CreditBuffer.update",
+      "kind": "calls",
+      "call": "action_metrics.update"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:summarize_trace",
       "target": "func:arch_builder/credit.py:_primitive_distribution",
       "kind": "calls",
       "call": "_primitive_distribution"
@@ -6602,18 +6608,6 @@
       "call": "_action_metric_prefix"
     },
     {
-      "source": "func:arch_builder/train_vertical_slice.py:summarize_trace",
-      "target": "func:arch_builder/credit.py:CreditBuffer.update",
-      "kind": "calls",
-      "call": "action_metrics.update"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:evaluate",
-      "target": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.oracle_accuracy",
-      "kind": "calls",
-      "call": "task.oracle_accuracy"
-    },
-    {
       "source": "func:arch_builder/train_vertical_slice.py:evaluate",
       "target": "func:arch_builder/train_vertical_slice.py:adaptive_loss_weights",
       "kind": "calls",
@@ -6627,21 +6621,27 @@
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:evaluate",
-      "target": "func:arch_builder/train_vertical_slice.py:summarize_trace",
-      "kind": "calls",
-      "call": "summarize_trace"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:evaluate",
       "target": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.sample",
       "kind": "calls",
       "call": "task.sample"
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:evaluate",
+      "target": "func:arch_builder/train_vertical_slice.py:summarize_trace",
+      "kind": "calls",
+      "call": "summarize_trace"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:evaluate",
       "target": "func:arch_builder/credit.py:CreditBuffer.update",
       "kind": "calls",
       "call": "out.update"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:evaluate",
+      "target": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.oracle_accuracy",
+      "kind": "calls",
+      "call": "task.oracle_accuracy"
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:proof_slice_structure_losses",
@@ -6687,6 +6687,18 @@
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:compute_training_objective",
+      "target": "func:arch_builder/train_vertical_slice.py:adaptive_loss_weights",
+      "kind": "calls",
+      "call": "adaptive_loss_weights"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:compute_training_objective",
+      "target": "func:arch_builder/train_vertical_slice.py:proof_slice_structure_losses",
+      "kind": "calls",
+      "call": "proof_slice_structure_losses"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:compute_training_objective",
       "target": "func:arch_builder/train_vertical_slice.py:structure_signal_stats",
       "kind": "calls",
       "call": "structure_signal_stats"
@@ -6702,18 +6714,6 @@
       "target": "func:arch_builder/train_vertical_slice.py:sim_targets_for_expected_actions",
       "kind": "calls",
       "call": "sim_targets_for_expected_actions"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:compute_training_objective",
-      "target": "func:arch_builder/train_vertical_slice.py:proof_slice_structure_losses",
-      "kind": "calls",
-      "call": "proof_slice_structure_losses"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:compute_training_objective",
-      "target": "func:arch_builder/train_vertical_slice.py:adaptive_loss_weights",
-      "kind": "calls",
-      "call": "adaptive_loss_weights"
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:inspect_action_program",
@@ -6759,81 +6759,9 @@
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/credit.py:CreditBuffer.update",
-      "kind": "calls",
-      "call": "ev.update"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
       "target": "func:arch_builder/train_vertical_slice.py:evaluate",
       "kind": "calls",
       "call": "evaluate"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/reporting.py:write_latest_report",
-      "kind": "calls",
-      "call": "write_latest_report"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/train_vertical_slice.py:amp_dtype",
-      "kind": "calls",
-      "call": "amp_dtype"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/train_vertical_slice.py:write_program_report",
-      "kind": "calls",
-      "call": "write_program_report"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/train_vertical_slice.py:compute_training_objective",
-      "kind": "calls",
-      "call": "compute_training_objective"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/train_vertical_slice.py:inspect_action_program",
-      "kind": "calls",
-      "call": "inspect_action_program"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/reporting.py:write_json",
-      "kind": "calls",
-      "call": "write_json"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/reporting.py:append_csv",
-      "kind": "calls",
-      "call": "append_csv"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/credit.py:CreditBuffer.update",
-      "kind": "calls",
-      "call": "last_eval.update"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/reporting.py:ensure_dir",
-      "kind": "calls",
-      "call": "ensure_dir"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/train_vertical_slice.py:dependency_metrics",
-      "kind": "calls",
-      "call": "dependency_metrics"
-    },
-    {
-      "source": "func:arch_builder/train_vertical_slice.py:train",
-      "target": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.sample",
-      "kind": "calls",
-      "call": "task.sample"
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:train",
@@ -6849,9 +6777,81 @@
     },
     {
       "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/credit.py:CreditBuffer.update",
+      "kind": "calls",
+      "call": "ev.update"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/reporting.py:write_latest_report",
+      "kind": "calls",
+      "call": "write_latest_report"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.sample",
+      "kind": "calls",
+      "call": "task.sample"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/credit.py:CreditBuffer.update",
+      "kind": "calls",
+      "call": "last_eval.update"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
       "target": "func:arch_builder/credit.py:simulator_ablation_metrics",
       "kind": "calls",
       "call": "simulator_ablation_metrics"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/train_vertical_slice.py:compute_training_objective",
+      "kind": "calls",
+      "call": "compute_training_objective"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/reporting.py:ensure_dir",
+      "kind": "calls",
+      "call": "ensure_dir"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/train_vertical_slice.py:dependency_metrics",
+      "kind": "calls",
+      "call": "dependency_metrics"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/train_vertical_slice.py:write_program_report",
+      "kind": "calls",
+      "call": "write_program_report"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/reporting.py:write_json",
+      "kind": "calls",
+      "call": "write_json"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/train_vertical_slice.py:inspect_action_program",
+      "kind": "calls",
+      "call": "inspect_action_program"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/reporting.py:append_csv",
+      "kind": "calls",
+      "call": "append_csv"
+    },
+    {
+      "source": "func:arch_builder/train_vertical_slice.py:train",
+      "target": "func:arch_builder/train_vertical_slice.py:amp_dtype",
+      "kind": "calls",
+      "call": "amp_dtype"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:load_config_file",
@@ -6873,15 +6873,15 @@
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:load_config",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:deep_merge",
-      "kind": "calls",
-      "call": "deep_merge"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:load_config",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:load_config_file",
       "kind": "calls",
       "call": "load_config_file"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:load_config",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:deep_merge",
+      "kind": "calls",
+      "call": "deep_merge"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:read_text",
@@ -6906,18 +6906,6 @@
       "target": "func:tools/build_code_logic_graph.py:call_name",
       "kind": "calls",
       "call": "call_name"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_Call",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:lit",
-      "kind": "calls",
-      "call": "lit"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_Call",
-      "target": "func:tools/build_code_logic_graph.py:lit",
-      "kind": "calls",
-      "call": "lit"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_Call",
@@ -6938,6 +6926,18 @@
       "call": "call_name"
     },
     {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_Call",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:lit",
+      "kind": "calls",
+      "call": "lit"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_Call",
+      "target": "func:tools/build_code_logic_graph.py:lit",
+      "kind": "calls",
+      "call": "lit"
+    },
+    {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:FuncVisitor.visit_Attribute",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:self_attr",
       "kind": "calls",
@@ -7038,24 +7038,6 @@
       "target": "func:tools/build_code_logic_graph.py:FuncVisitor._target",
       "kind": "calls",
       "call": "self._target"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:parse_py",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:parse_py",
-      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:parse_py",
-      "target": "func:tools/build_code_logic_graph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:parse_py",
@@ -7092,6 +7074,24 @@
       "target": "func:tools/build_code_logic_graph.py:read_text",
       "kind": "calls",
       "call": "read_text"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:parse_py",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:parse_py",
+      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:parse_py",
+      "target": "func:tools/build_code_logic_graph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:project_files",
@@ -7107,24 +7107,6 @@
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
-      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
-      "target": "func:tools/build_code_logic_graph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:rel",
       "kind": "calls",
       "call": "rel"
@@ -7143,30 +7125,6 @@
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:project_files",
-      "kind": "calls",
-      "call": "project_files"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
-      "target": "func:tools/build_code_logic_graph.py:project_files",
-      "kind": "calls",
-      "call": "project_files"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:summarize",
-      "kind": "calls",
-      "call": "summarize"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:analyze_graph",
-      "kind": "calls",
-      "call": "analyze_graph"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:parse_py",
       "kind": "calls",
       "call": "parse_py"
@@ -7176,6 +7134,12 @@
       "target": "func:tools/build_code_logic_graph.py:parse_py",
       "kind": "calls",
       "call": "parse_py"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:summarize",
+      "kind": "calls",
+      "call": "summarize"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
@@ -7196,10 +7160,58 @@
       "call": "read_text"
     },
     {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
+      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
+      "target": "func:tools/build_code_logic_graph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:project_files",
+      "kind": "calls",
+      "call": "project_files"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
+      "target": "func:tools/build_code_logic_graph.py:project_files",
+      "kind": "calls",
+      "call": "project_files"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:analyze_graph",
+      "kind": "calls",
+      "call": "analyze_graph"
+    },
+    {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:write_agent_brief",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:md_table",
       "kind": "calls",
       "call": "md_table"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:write_hole_report",
+      "kind": "calls",
+      "call": "write_hole_report"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
+      "kind": "calls",
+      "call": "build_graph"
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
@@ -7215,6 +7227,12 @@
     },
     {
       "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:load_config",
+      "kind": "calls",
+      "call": "load_config"
+    },
+    {
+      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:write_agent_brief",
       "kind": "calls",
       "call": "write_agent_brief"
@@ -7224,24 +7242,6 @@
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:write_csv_edges",
       "kind": "calls",
       "call": "write_csv_edges"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:load_config",
-      "kind": "calls",
-      "call": "load_config"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:write_hole_report",
-      "kind": "calls",
-      "call": "write_hole_report"
-    },
-    {
-      "source": "func:tools/agent_codegraph/build_agent_codegraph.py:main",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:build_graph",
-      "kind": "calls",
-      "call": "build_graph"
     },
     {
       "source": "func:tools/agent_inspector/focus_report.py:load_json",
@@ -7437,24 +7437,6 @@
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:build_static",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/agent_inspector/inspect_project.py:build_static",
-      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/agent_inspector/inspect_project.py:build_static",
-      "target": "func:tools/build_code_logic_graph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/agent_inspector/inspect_project.py:build_static",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:rel",
       "kind": "calls",
       "call": "rel"
@@ -7470,12 +7452,6 @@
       "target": "func:tools/build_code_logic_graph.py:rel",
       "kind": "calls",
       "call": "rel"
-    },
-    {
-      "source": "func:tools/agent_inspector/inspect_project.py:build_static",
-      "target": "func:tools/agent_inspector/inspect_project.py:analyze_static",
-      "kind": "calls",
-      "call": "analyze_static"
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:build_static",
@@ -7496,6 +7472,36 @@
       "call": "read_text"
     },
     {
+      "source": "func:tools/agent_inspector/inspect_project.py:build_static",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/agent_inspector/inspect_project.py:build_static",
+      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/agent_inspector/inspect_project.py:build_static",
+      "target": "func:tools/build_code_logic_graph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/agent_inspector/inspect_project.py:build_static",
+      "target": "func:tools/agent_inspector/inspect_project.py:analyze_static",
+      "kind": "calls",
+      "call": "analyze_static"
+    },
+    {
+      "source": "func:tools/agent_inspector/inspect_project.py:main",
+      "target": "func:tools/agent_inspector/inspect_project.py:build_static",
+      "kind": "calls",
+      "call": "build_static"
+    },
+    {
       "source": "func:tools/agent_inspector/inspect_project.py:main",
       "target": "func:tools/agent_inspector/inspect_project.py:credit_graph",
       "kind": "calls",
@@ -7503,15 +7509,15 @@
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:main",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:write_dashboard",
+      "target": "func:tools/agent_inspector/inspect_project.py:write_md",
       "kind": "calls",
-      "call": "write_dashboard"
+      "call": "write_md"
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:main",
-      "target": "func:tools/agent_inspector/inspect_project.py:write_dashboard",
+      "target": "func:tools/build_code_logic_graph.py:write_md",
       "kind": "calls",
-      "call": "write_dashboard"
+      "call": "write_md"
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:main",
@@ -7533,21 +7539,15 @@
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:main",
-      "target": "func:tools/agent_inspector/inspect_project.py:write_md",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:write_dashboard",
       "kind": "calls",
-      "call": "write_md"
+      "call": "write_dashboard"
     },
     {
       "source": "func:tools/agent_inspector/inspect_project.py:main",
-      "target": "func:tools/build_code_logic_graph.py:write_md",
+      "target": "func:tools/agent_inspector/inspect_project.py:write_dashboard",
       "kind": "calls",
-      "call": "write_md"
-    },
-    {
-      "source": "func:tools/agent_inspector/inspect_project.py:main",
-      "target": "func:tools/agent_inspector/inspect_project.py:build_static",
-      "kind": "calls",
-      "call": "build_static"
+      "call": "write_dashboard"
     },
     {
       "source": "func:tools/build_code_logic_graph.py:read_text",
@@ -7575,18 +7575,6 @@
     },
     {
       "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_Call",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:lit",
-      "kind": "calls",
-      "call": "lit"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_Call",
-      "target": "func:tools/build_code_logic_graph.py:lit",
-      "kind": "calls",
-      "call": "lit"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_Call",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:call_name",
       "kind": "calls",
       "call": "call_name"
@@ -7604,6 +7592,18 @@
       "call": "call_name"
     },
     {
+      "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_Call",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:lit",
+      "kind": "calls",
+      "call": "lit"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_Call",
+      "target": "func:tools/build_code_logic_graph.py:lit",
+      "kind": "calls",
+      "call": "lit"
+    },
+    {
       "source": "func:tools/build_code_logic_graph.py:FuncVisitor.visit_Attribute",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:self_attr",
       "kind": "calls",
@@ -7704,24 +7704,6 @@
       "target": "func:tools/agent_inspector/inspect_project.py:FV._target",
       "kind": "calls",
       "call": "self._target"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:parse_py",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:parse_py",
-      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:parse_py",
-      "target": "func:tools/build_code_logic_graph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
     },
     {
       "source": "func:tools/build_code_logic_graph.py:parse_py",
@@ -7760,6 +7742,24 @@
       "call": "read_text"
     },
     {
+      "source": "func:tools/build_code_logic_graph.py:parse_py",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:parse_py",
+      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:parse_py",
+      "target": "func:tools/build_code_logic_graph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
       "source": "func:tools/build_code_logic_graph.py:project_files",
       "target": "func:tools/agent_codegraph/build_agent_codegraph.py:should_skip",
       "kind": "calls",
@@ -7770,24 +7770,6 @@
       "target": "func:tools/build_code_logic_graph.py:should_skip",
       "kind": "calls",
       "call": "should_skip"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:build",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:build",
-      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:build",
-      "target": "func:tools/build_code_logic_graph.py:role_of",
-      "kind": "calls",
-      "call": "role_of"
     },
     {
       "source": "func:tools/build_code_logic_graph.py:build",
@@ -7806,18 +7788,6 @@
       "target": "func:tools/build_code_logic_graph.py:rel",
       "kind": "calls",
       "call": "rel"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:build",
-      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:project_files",
-      "kind": "calls",
-      "call": "project_files"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:build",
-      "target": "func:tools/build_code_logic_graph.py:project_files",
-      "kind": "calls",
-      "call": "project_files"
     },
     {
       "source": "func:tools/build_code_logic_graph.py:build",
@@ -7850,6 +7820,36 @@
       "call": "read_text"
     },
     {
+      "source": "func:tools/build_code_logic_graph.py:build",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:build",
+      "target": "func:tools/agent_inspector/inspect_project.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:build",
+      "target": "func:tools/build_code_logic_graph.py:role_of",
+      "kind": "calls",
+      "call": "role_of"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:build",
+      "target": "func:tools/agent_codegraph/build_agent_codegraph.py:project_files",
+      "kind": "calls",
+      "call": "project_files"
+    },
+    {
+      "source": "func:tools/build_code_logic_graph.py:build",
+      "target": "func:tools/build_code_logic_graph.py:project_files",
+      "kind": "calls",
+      "call": "project_files"
+    },
+    {
       "source": "func:tools/build_code_logic_graph.py:main",
       "target": "func:tools/agent_inspector/inspect_project.py:write_md",
       "kind": "calls",
@@ -7860,12 +7860,6 @@
       "target": "func:tools/build_code_logic_graph.py:write_md",
       "kind": "calls",
       "call": "write_md"
-    },
-    {
-      "source": "func:tools/build_code_logic_graph.py:main",
-      "target": "func:tools/build_code_logic_graph.py:write_loop_report",
-      "kind": "calls",
-      "call": "write_loop_report"
     },
     {
       "source": "func:tools/build_code_logic_graph.py:main",
@@ -7880,10 +7874,16 @@
       "call": "build"
     },
     {
-      "source": "func:tools/project_probe/forced_program_oracle.py:raw_primitive_audit",
-      "target": "func:tools/project_probe/forced_program_oracle.py:expected_formula",
+      "source": "func:tools/build_code_logic_graph.py:main",
+      "target": "func:tools/build_code_logic_graph.py:write_loop_report",
       "kind": "calls",
-      "call": "expected_formula"
+      "call": "write_loop_report"
+    },
+    {
+      "source": "func:tools/project_probe/forced_program_oracle.py:raw_primitive_audit",
+      "target": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.sample",
+      "kind": "calls",
+      "call": "task.sample"
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:raw_primitive_audit",
@@ -7893,9 +7893,9 @@
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:raw_primitive_audit",
-      "target": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.sample",
+      "target": "func:tools/project_probe/forced_program_oracle.py:expected_formula",
       "kind": "calls",
-      "call": "task.sample"
+      "call": "expected_formula"
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:raw_primitive_audit",
@@ -7911,12 +7911,6 @@
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:address_audit",
-      "target": "func:tools/project_probe/forced_program_oracle.py:label_accuracy",
-      "kind": "calls",
-      "call": "label_accuracy"
-    },
-    {
-      "source": "func:tools/project_probe/forced_program_oracle.py:address_audit",
       "target": "func:arch_builder/synthetic_tasks.py:SyntheticKnownProgramTask.sample",
       "kind": "calls",
       "call": "task.sample"
@@ -7926,6 +7920,12 @@
       "target": "func:tools/project_probe/forced_program_oracle.py:execute_action",
       "kind": "calls",
       "call": "execute_action"
+    },
+    {
+      "source": "func:tools/project_probe/forced_program_oracle.py:address_audit",
+      "target": "func:tools/project_probe/forced_program_oracle.py:label_accuracy",
+      "kind": "calls",
+      "call": "label_accuracy"
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:controller_address_audit",
@@ -7935,15 +7935,9 @@
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:forced_path",
-      "target": "func:arch_builder/model.py:ActionMatrixLayer.apply_state_update",
+      "target": "func:tools/project_probe/forced_program_oracle.py:tensor_error",
       "kind": "calls",
-      "call": "layer.apply_state_update"
-    },
-    {
-      "source": "func:tools/project_probe/forced_program_oracle.py:forced_path",
-      "target": "func:tools/project_probe/forced_program_oracle.py:label_accuracy",
-      "kind": "calls",
-      "call": "label_accuracy"
+      "call": "tensor_error"
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:forced_path",
@@ -7953,15 +7947,21 @@
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:forced_path",
+      "target": "func:tools/project_probe/forced_program_oracle.py:label_accuracy",
+      "kind": "calls",
+      "call": "label_accuracy"
+    },
+    {
+      "source": "func:tools/project_probe/forced_program_oracle.py:forced_path",
       "target": "func:tools/project_probe/forced_program_oracle.py:expected_formula",
       "kind": "calls",
       "call": "expected_formula"
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:forced_path",
-      "target": "func:tools/project_probe/forced_program_oracle.py:tensor_error",
+      "target": "func:arch_builder/model.py:ActionMatrixLayer.apply_state_update",
       "kind": "calls",
-      "call": "tensor_error"
+      "call": "layer.apply_state_update"
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:forced_path",
@@ -8001,21 +8001,9 @@
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "func:tools/project_probe/forced_program_oracle.py:raw_primitive_audit",
+      "target": "func:tools/project_probe/forced_program_oracle.py:sequential_audit",
       "kind": "calls",
-      "call": "raw_primitive_audit"
-    },
-    {
-      "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "func:tools/project_probe/forced_program_oracle.py:state_update_contract",
-      "kind": "calls",
-      "call": "state_update_contract"
-    },
-    {
-      "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "func:tools/project_probe/forced_program_oracle.py:address_audit",
-      "kind": "calls",
-      "call": "address_audit"
+      "call": "sequential_audit"
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:main",
@@ -8025,9 +8013,15 @@
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:main",
-      "target": "func:tools/project_probe/forced_program_oracle.py:sequential_audit",
+      "target": "func:tools/project_probe/forced_program_oracle.py:address_audit",
       "kind": "calls",
-      "call": "sequential_audit"
+      "call": "address_audit"
+    },
+    {
+      "source": "func:tools/project_probe/forced_program_oracle.py:main",
+      "target": "func:tools/project_probe/forced_program_oracle.py:state_update_contract",
+      "kind": "calls",
+      "call": "state_update_contract"
     },
     {
       "source": "func:tools/project_probe/forced_program_oracle.py:main",
@@ -8036,13 +8030,13 @@
       "call": "write_markdown"
     },
     {
-      "source": "func:tools/project_probe/probe_learning_loop.py:params_grad_norm",
-      "target": "func:tools/project_probe/probe_learning_loop.py:_grad_norm_from_grads",
+      "source": "func:tools/project_probe/forced_program_oracle.py:main",
+      "target": "func:tools/project_probe/forced_program_oracle.py:raw_primitive_audit",
       "kind": "calls",
-      "call": "_grad_norm_from_grads"
+      "call": "raw_primitive_audit"
     },
     {
-      "source": "func:tools/project_probe/probe_learning_loop.py:loss_grad_norm",
+      "source": "func:tools/project_probe/probe_learning_loop.py:params_grad_norm",
       "target": "func:tools/project_probe/probe_learning_loop.py:_grad_norm_from_grads",
       "kind": "calls",
       "call": "_grad_norm_from_grads"
@@ -8054,46 +8048,16 @@
       "call": "loss_gradients"
     },
     {
-      "source": "func:tools/project_probe/probe_learning_loop.py:main",
-      "target": "func:tools/project_probe/probe_learning_loop.py:params_grad_norm",
+      "source": "func:tools/project_probe/probe_learning_loop.py:loss_grad_norm",
+      "target": "func:tools/project_probe/probe_learning_loop.py:_grad_norm_from_grads",
       "kind": "calls",
-      "call": "params_grad_norm"
+      "call": "_grad_norm_from_grads"
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:main",
-      "target": "func:arch_builder/credit.py:simulator_ablation_metrics",
+      "target": "func:tools/project_probe/probe_learning_loop.py:loss_grad_norm",
       "kind": "calls",
-      "call": "simulator_ablation_metrics"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:main",
-      "target": "func:tools/project_probe/probe_learning_loop.py:_params",
-      "kind": "calls",
-      "call": "_params"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:main",
-      "target": "func:arch_builder/train_vertical_slice.py:train",
-      "kind": "calls",
-      "call": "model.train"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:main",
-      "target": "func:arch_builder/train_vertical_slice.py:compute_training_objective",
-      "kind": "calls",
-      "call": "compute_training_objective"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:main",
-      "target": "func:tools/project_probe/probe_learning_loop.py:safe_float",
-      "kind": "calls",
-      "call": "safe_float"
-    },
-    {
-      "source": "func:tools/project_probe/probe_learning_loop.py:main",
-      "target": "func:arch_builder/train_vertical_slice.py:summarize_trace",
-      "kind": "calls",
-      "call": "summarize_trace"
+      "call": "loss_grad_norm"
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:main",
@@ -8103,9 +8067,33 @@
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:main",
-      "target": "func:tools/project_probe/probe_learning_loop.py:loss_grad_norm",
+      "target": "func:arch_builder/train_vertical_slice.py:summarize_trace",
       "kind": "calls",
-      "call": "loss_grad_norm"
+      "call": "summarize_trace"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:main",
+      "target": "func:arch_builder/credit.py:simulator_ablation_metrics",
+      "kind": "calls",
+      "call": "simulator_ablation_metrics"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:main",
+      "target": "func:tools/project_probe/probe_learning_loop.py:safe_float",
+      "kind": "calls",
+      "call": "safe_float"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:main",
+      "target": "func:arch_builder/train_vertical_slice.py:compute_training_objective",
+      "kind": "calls",
+      "call": "compute_training_objective"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:main",
+      "target": "func:tools/project_probe/probe_learning_loop.py:params_grad_norm",
+      "kind": "calls",
+      "call": "params_grad_norm"
     },
     {
       "source": "func:tools/project_probe/probe_learning_loop.py:main",
@@ -8118,6 +8106,18 @@
       "target": "func:tools/project_probe/probe_learning_loop.py:parser",
       "kind": "calls",
       "call": "parser"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:main",
+      "target": "func:tools/project_probe/probe_learning_loop.py:_params",
+      "kind": "calls",
+      "call": "_params"
+    },
+    {
+      "source": "func:tools/project_probe/probe_learning_loop.py:main",
+      "target": "func:arch_builder/train_vertical_slice.py:train",
+      "kind": "calls",
+      "call": "model.train"
     },
     {
       "source": "role:scanner",
@@ -8271,7 +8271,12 @@
     },
     {
       "source": "role:controller",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:state_norm_mode",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:controller",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:output_gate",
       "kind": "role_contains"
     },
     {
@@ -8286,22 +8291,7 @@
     },
     {
       "source": "role:controller",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:controller",
       "target": "state:arch_builder/model.py:ActionMatrixLayer:write_pair_bias",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:controller",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:output_gate",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:controller",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:state_norm_mode",
       "kind": "role_contains"
     },
     {
@@ -8312,6 +8302,16 @@
     {
       "source": "role:controller",
       "target": "state:arch_builder/model.py:ActionMatrixLayer:write_gate",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:controller",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:phase_gate",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:controller",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:mode_head",
       "kind": "role_contains"
     },
     {
@@ -8336,12 +8336,12 @@
     },
     {
       "source": "role:controller",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:input_norm_mode",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:state_norm_mode",
       "kind": "role_contains"
     },
     {
       "source": "role:controller",
-      "target": "state:arch_builder/model.py:ActionMatrixModel:state_norm_mode",
+      "target": "state:arch_builder/model.py:ActionMatrixModel:input_norm_mode",
       "kind": "role_contains"
     },
     {
@@ -8476,87 +8476,7 @@
     },
     {
       "source": "role:entrypoint",
-      "target": "arg:--lambda-primitive-usage-diversity",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--amp",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--target-tape-fraction",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--task",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--input-norm",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--tau-min",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lambda-non-expected-active",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lambda-layer-action-diversity",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lambda-collapse",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--sim-rank",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--eval-steps",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lambda-sim",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--adapt-top-share-floor",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--target-active-fraction",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lambda-non-expected-transform",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--batch-size",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--steps-per-epoch",
+      "target": "arg:--adapt-cell-sharpness",
       "kind": "role_contains"
     },
     {
@@ -8566,32 +8486,7 @@
     },
     {
       "source": "role:entrypoint",
-      "target": "arg:--device",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--adapt-choice-floor",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--slots",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--eval-batch-size",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lambda-choice",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--tau-start",
+      "target": "arg:--input-norm",
       "kind": "role_contains"
     },
     {
@@ -8601,107 +8496,12 @@
     },
     {
       "source": "role:entrypoint",
-      "target": "arg:--target-active-cells",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lambda-expected-active",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--final-read",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lambda-non-expected-primitive",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lr",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
       "target": "arg:--lambda-cell-choice-diversity",
       "kind": "role_contains"
     },
     {
       "source": "role:entrypoint",
-      "target": "arg:--tau-decay",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--out-dir",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--seed",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--min-transform-mass",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--lambda-non-expected-tape",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--grad-clip",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--weight-decay",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--layers",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--adapt-choice-boost",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--dim",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--max-steps",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--epochs",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--adapt-sharpness",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--state-norm",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--top-k",
+      "target": "arg:--adapt-top-share-floor",
       "kind": "role_contains"
     },
     {
@@ -8711,7 +8511,207 @@
     },
     {
       "source": "role:entrypoint",
-      "target": "arg:--adapt-cell-sharpness",
+      "target": "arg:--eval-steps",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--tau-decay",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--slots",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--top-k",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-choice",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--amp",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--state-norm",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--weight-decay",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--target-active-fraction",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-collapse",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--dim",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-primitive-usage-diversity",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--seed",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-non-expected-primitive",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--out-dir",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--final-read",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--tau-min",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--adapt-choice-floor",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lr",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--batch-size",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--layers",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--tau-start",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-layer-action-diversity",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-non-expected-active",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--eval-batch-size",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--target-active-cells",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--sim-rank",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-sim",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--task",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--steps-per-epoch",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-expected-active",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-non-expected-transform",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--device",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--lambda-non-expected-tape",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--adapt-sharpness",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--grad-clip",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--epochs",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--adapt-choice-boost",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--target-tape-fraction",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--min-transform-mass",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--max-steps",
       "kind": "role_contains"
     },
     {
@@ -8851,12 +8851,17 @@
     },
     {
       "source": "role:entrypoint",
-      "target": "arg:--include-reports",
+      "target": "arg:--out-loop",
       "kind": "role_contains"
     },
     {
       "source": "role:entrypoint",
-      "target": "arg:--include-docs",
+      "target": "arg:--out-md",
+      "kind": "role_contains"
+    },
+    {
+      "source": "role:entrypoint",
+      "target": "arg:--include-reports",
       "kind": "role_contains"
     },
     {
@@ -8876,12 +8881,7 @@
     },
     {
       "source": "role:entrypoint",
-      "target": "arg:--out-loop",
-      "kind": "role_contains"
-    },
-    {
-      "source": "role:entrypoint",
-      "target": "arg:--out-md",
+      "target": "arg:--include-docs",
       "kind": "role_contains"
     },
     {
@@ -9111,12 +9111,12 @@
     },
     {
       "source": "role:simulator",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:simulator",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:sim_logits",
       "kind": "role_contains"
     },
     {
       "source": "role:simulator",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:sim_logits",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:simulator",
       "kind": "role_contains"
     },
     {
@@ -9161,12 +9161,12 @@
     },
     {
       "source": "role:executor",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:executor",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:cell_output_pair_bias",
       "kind": "role_contains"
     },
     {
       "source": "role:executor",
-      "target": "state:arch_builder/model.py:ActionMatrixLayer:cell_output_pair_bias",
+      "target": "state:arch_builder/model.py:ActionMatrixLayer:executor",
       "kind": "role_contains"
     },
     {
@@ -9276,12 +9276,12 @@
     },
     {
       "source": "role:memory",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:self_reads",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:self_writes",
       "kind": "role_contains"
     },
     {
       "source": "role:memory",
-      "target": "state:tools/agent_inspector/inspect_project.py:FV:self_writes",
+      "target": "state:tools/agent_inspector/inspect_project.py:FV:self_reads",
       "kind": "role_contains"
     },
     {
@@ -9927,7 +9927,7 @@
         "role": "data",
         "degree": 16,
         "file": "arch_builder/synthetic_tasks.py",
-        "line": 71
+        "line": 84
       },
       {
         "id": "func:tools/build_code_logic_graph.py:build",
