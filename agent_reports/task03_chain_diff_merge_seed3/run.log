@@ -1,0 +1,4 @@
+=== TASK03 chain_diff_merge SEED=3 OUT=agent_reports/task03_chain_diff_merge_seed3 ===
+epoch 001/8 train=1.8721/49.57% val=0.7009/49.65% edge_prog=0.999 any_prog=0.521 active_cells=15.5 top_share=0.425 gateR=1.00 gateC=0.90 gateS=0.59 final=last cand=1.000 choice_mass=0.981 oracle=100.0% sim_delta=+0.0014
+epoch 002/8 train=0.8855/49.79% val=0.6979/49.69% edge_prog=1.000 any_prog=0.254 active_cells=10.0 top_share=0.286 gateR=1.00 gateC=0.61 gateS=0.58 final=last cand=1.000 choice_mass=0.997 oracle=100.0% sim_delta=-0.0008
+epoch 003/8 train=0.7880/54.84% val=0.6231/67.23% edge_prog=1.000 any_prog=0.191 active_cells=8.5 top_share=0.270 gateR=1.00 gateC=0.56 gateS=0.59 final=last cand=1.000 choice_mass=0.998 oracle=100.0% sim_delta=+0.0596

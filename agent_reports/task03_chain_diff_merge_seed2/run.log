@@ -1,0 +1,9 @@
+=== TASK03 chain_diff_merge SEED=2 OUT=agent_reports/task03_chain_diff_merge_seed2 ===
+epoch 001/8 train=2.2282/50.20% val=0.6939/52.19% edge_prog=1.000 any_prog=0.475 active_cells=15.5 top_share=0.379 gateR=1.00 gateC=0.83 gateS=0.60 final=last cand=1.000 choice_mass=0.994 oracle=100.0% sim_delta=+0.0100
+epoch 002/8 train=0.8328/62.12% val=0.5637/70.90% edge_prog=1.000 any_prog=0.206 active_cells=11.5 top_share=0.327 gateR=1.00 gateC=0.72 gateS=0.59 final=last cand=1.000 choice_mass=0.996 oracle=100.0% sim_delta=+0.0698
+epoch 003/8 train=0.5480/80.27% val=0.3008/87.70% edge_prog=1.000 any_prog=0.194 active_cells=9.5 top_share=0.325 gateR=1.00 gateC=0.72 gateS=0.62 final=last cand=1.000 choice_mass=0.998 oracle=100.0% sim_delta=+0.0992
+epoch 004/8 train=0.3853/87.54% val=0.2499/89.14% edge_prog=1.000 any_prog=0.193 active_cells=10.0 top_share=0.323 gateR=1.00 gateC=0.71 gateS=0.64 final=last cand=1.000 choice_mass=0.999 oracle=100.0% sim_delta=+0.0396
+epoch 005/8 train=0.3443/89.45% val=0.2357/90.16% edge_prog=1.000 any_prog=0.189 active_cells=10.0 top_share=0.318 gateR=1.00 gateC=0.70 gateS=0.64 final=last cand=1.000 choice_mass=0.999 oracle=100.0% sim_delta=+0.0190
+epoch 006/8 train=0.3216/90.44% val=0.2129/91.29% edge_prog=1.000 any_prog=0.189 active_cells=9.0 top_share=0.321 gateR=1.00 gateC=0.71 gateS=0.64 final=last cand=1.000 choice_mass=0.999 oracle=100.0% sim_delta=+0.0229
+epoch 007/8 train=0.3138/90.75% val=0.2118/91.25% edge_prog=1.000 any_prog=0.188 active_cells=9.0 top_share=0.323 gateR=1.00 gateC=0.71 gateS=0.64 final=last cand=1.000 choice_mass=1.000 oracle=100.0% sim_delta=+0.0119
+epoch 008/8 train=0.2967/91.44% val=0.2025/91.64% edge_prog=1.000 any_prog=0.188 active_cells=8.5 top_share=0.325 gateR=1.00 gateC=0.72 gateS=0.63 final=last cand=1.000 choice_mass=0.999 oracle=100.0% sim_delta=+0.0075
