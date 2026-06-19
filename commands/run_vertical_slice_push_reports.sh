@@ -18,7 +18,7 @@ EVAL_STEPS="${EVAL_STEPS:-10}"
 DIM="${DIM:-64}"
 SLOTS="${SLOTS:-4}"
 LAYERS="${LAYERS:-1}"
-TOP_K="${TOP_K:-4}"
+TOP_K="${TOP_K:-25}"
 SIM_RANK="${SIM_RANK:-16}"
 DEVICE="${DEVICE:-cuda}"
 AMP="${AMP:-fp16}"
@@ -59,14 +59,15 @@ set -e
 echo "$RUN_STATUS" > "$REPORT_DIR/run_status.txt"
 
 find arch_builder commands docs "$REPORT_DIR" -type d -name "__pycache__" -prune -exec rm -rf {} + || true
+find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete || true
 
-if find . -type f \( -name '*.pt' -o -name '*.pth' -o -name '*.ckpt' -o -name '*.safetensors' -o -name '*.pyc' \) | grep .; then
+if find . -type f \( -name '*.pt' -o -name '*.pth' -o -name '*.ckpt' -o -name '*.safetensors' -o -name '*.pyc' -o -name '*.pyo' \) | grep .; then
   echo "[sync] forbidden weight/cache file found; refusing commit" >&2
   exit 5
 fi
 
-git add README.md requirements.txt arch_builder commands docs "$REPORT_DIR" "$LATEST_REPORT"
-if git diff --cached --name-only | grep -E '\.(pt|pth|ckpt|safetensors|pyc)$'; then
+git add README.md requirements.txt .gitignore arch_builder commands docs "$REPORT_DIR" "$LATEST_REPORT" 2>/dev/null || true
+if git diff --cached --name-only | grep -E '\.(pt|pth|ckpt|safetensors|pyc|pyo)$'; then
   echo "[sync] forbidden file staged; refusing commit" >&2
   git reset --cached . >/dev/null || true
   exit 6

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class LowRankSimulator(nn.Module):
@@ -10,7 +9,6 @@ class LowRankSimulator(nn.Module):
 
     def __init__(self, dim: int, num_primitives: int, rank: int = 16, embed_dim: int = 32) -> None:
         super().__init__()
-        self.rank = rank
         self.prim_emb = nn.Embedding(num_primitives, embed_dim)
         self.to_rank = nn.Linear(dim + embed_dim, rank)
         self.from_rank = nn.Linear(rank, dim)
@@ -22,7 +20,6 @@ class LowRankSimulator(nn.Module):
         )
 
     def forward(self, state: torch.Tensor, candidate_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        # state: [N,D], candidate_ids: [N,K]
         n, k = candidate_ids.shape
         d = state.shape[-1]
         emb = self.prim_emb(candidate_ids)

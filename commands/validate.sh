@@ -18,7 +18,7 @@ python -m py_compile arch_builder/*.py
 echo "[validate] import smoke"
 python - <<'PY'
 from arch_builder import PrimitiveMatrix5x5, HybridScanner, LowRankSimulator, ActionExecutor, ActionMatrixModel
-m = ActionMatrixModel(dim=16, slots=4, layers=1, classes=2, top_k=4, sim_rank=8)
+m = ActionMatrixModel(dim=16, slots=4, layers=1, classes=2, top_k=8, sim_rank=8)
 print(type(m).__name__, m.pm.names[:5])
 PY
 

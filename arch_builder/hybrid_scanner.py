@@ -4,7 +4,6 @@ from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from .primitive_matrix import PrimitiveMatrix5x5
 
@@ -19,7 +18,7 @@ class HybridScanner(nn.Module):
         prim_embed_dim: int,
         local_k: int = 9,
         semantic_k: int = 4,
-        usage_k: int = 2,
+        usage_k: int = 5,
         random_k: int = 1,
     ) -> None:
         super().__init__()
@@ -42,13 +41,14 @@ class HybridScanner(nn.Module):
 
     def forward(
         self,
-        context: torch.Tensor,       # [N, context_dim]
-        memory: torch.Tensor,        # [N, D]
+        context: torch.Tensor,
+        memory: torch.Tensor,
         primitive_matrix: PrimitiveMatrix5x5,
         prev_action_emb: torch.Tensor | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, float]]:
         n = context.shape[0]
         device = context.device
+
         anchor_logits = self.anchor(context)
         anchor_ids = anchor_logits.argmax(dim=-1)
 
@@ -58,12 +58,15 @@ class HybridScanner(nn.Module):
         random = torch.randint(0, primitive_matrix.num_primitives, (n, self.random_k), device=device)
 
         candidate_ids = torch.cat([local, semantic, usage, random], dim=-1)
-        source_ids = torch.cat([
-            torch.zeros_like(local),
-            torch.ones_like(semantic),
-            torch.full_like(usage, 2),
-            torch.full_like(random, 3),
-        ], dim=-1)
+        source_ids = torch.cat(
+            [
+                torch.zeros_like(local),
+                torch.ones_like(semantic),
+                torch.full_like(usage, 2),
+                torch.full_like(random, 3),
+            ],
+            dim=-1,
+        )
 
         cand_emb = primitive_matrix.emb[candidate_ids] + self.source_type(source_ids)
         ctx = self.context_proj(context).unsqueeze(1).expand_as(cand_emb)
@@ -77,10 +80,9 @@ class HybridScanner(nn.Module):
         proposal_logits = self.score(feat).squeeze(-1)
 
         with torch.no_grad():
-            local_set = local
             sem_not_grid = []
             for i in range(n):
-                grid = set(local_set[i].tolist())
+                grid = set(local[i].tolist())
                 sem = semantic[i].tolist()
                 sem_not_grid.append(sum(1 for x in sem if x not in grid) / max(1, len(sem)))
             metrics = {
@@ -90,4 +92,5 @@ class HybridScanner(nn.Module):
                 "usage_candidate_usage": 0.0,
                 "random_candidate_usage": 0.0,
             }
+
         return candidate_ids, proposal_logits, metrics

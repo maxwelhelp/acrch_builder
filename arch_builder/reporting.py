@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, List
 
 
 def ensure_dir(path: Path) -> Path:
@@ -20,9 +20,8 @@ def append_csv(path: Path, row: Dict[str, object]) -> None:
     fields = list(row.keys())
     if exists:
         with path.open("r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            old_fields = next(reader)
-        fields = old_fields
+            old = next(csv.reader(f))
+        fields = old
     with path.open("a", encoding="utf-8", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         if not exists:
@@ -31,14 +30,14 @@ def append_csv(path: Path, row: Dict[str, object]) -> None:
 
 
 def write_latest_report(path: Path, report_dir: str, summary: Dict[str, object]) -> None:
-    lines: List[str] = []
-    lines.append("# Latest vertical slice report")
-    lines.append("")
+    lines: List[str] = ["# Latest vertical slice report", ""]
     lines.append(f"- report_dir: `{report_dir}`")
     for k in [
         "task", "epochs", "best_acc", "last_acc", "program_recovery_rate",
-        "sim_disabled_delta", "choice_without_sim_delta", "semantic_grid_mismatch",
-        "global_rescue_rate", "skip_mass", "transform_mass", "disable_mass",
+        "expected_edge_recovery", "expected_any_recovery", "expected_edge_active",
+        "sim_disabled_delta", "choice_without_sim_delta",
+        "semantic_grid_mismatch", "skip_mass", "transform_mass", "disable_mass",
+        "choice_entropy",
     ]:
         if k in summary:
             lines.append(f"- {k}: `{summary[k]}`")

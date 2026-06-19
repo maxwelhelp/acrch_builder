@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 import torch
 import torch.nn as nn
 
@@ -9,25 +7,19 @@ from .primitive_matrix import PrimitiveMatrix5x5
 
 
 class ActionExecutor(nn.Module):
-    """Full primitive execution for selected candidates.
-
-    AMP can make different primitive branches return different dtypes. The
-    executor keeps a single output buffer and casts every branch result back to
-    that buffer dtype before masked assignment. This prevents fp16/fp32 index-put
-    crashes while keeping the surrounding autocast behavior intact.
-    """
+    """Full primitive execution for selected candidates."""
 
     def __init__(self, dim: int, primitive_matrix: PrimitiveMatrix5x5) -> None:
         super().__init__()
         self.dim = dim
         self.names = primitive_matrix.names
         p = primitive_matrix.num_primitives
-        self.low_a = nn.Parameter(torch.randn(p, dim, max(4, dim // 4)) * 0.02)
-        self.low_b = nn.Parameter(torch.randn(p, max(4, dim // 4), dim) * 0.02)
+        r = max(4, dim // 4)
+        self.low_a = nn.Parameter(torch.randn(p, dim, r) * 0.02)
+        self.low_b = nn.Parameter(torch.randn(p, r, dim) * 0.02)
         self.channel = nn.Parameter(torch.eye(dim).unsqueeze(0).repeat(p, 1, 1) + 0.01 * torch.randn(p, dim, dim))
         self.ctx = nn.Sequential(nn.Linear(dim * 3, dim), nn.SiLU(), nn.Linear(dim, dim))
         self.gate = nn.Linear(dim * 2, dim)
-        self.name_to_id = primitive_matrix.name_to_id
 
     def _single(self, name: str, src: torch.Tensor, tgt: torch.Tensor, memory: torch.Tensor, pid: torch.Tensor) -> torch.Tensor:
         if name in {"identity", "route", "edge_gate", "write_gate", "output_write"}:
@@ -73,18 +65,13 @@ class ActionExecutor(nn.Module):
             return torch.zeros_like(src)
         return src
 
-    def forward(
-        self,
-        src: torch.Tensor,           # [N,D]
-        tgt: torch.Tensor,           # [N,D]
-        memory: torch.Tensor,        # [N,D]
-        candidate_ids: torch.Tensor, # [N,K]
-    ) -> torch.Tensor:
+    def forward(self, src: torch.Tensor, tgt: torch.Tensor, memory: torch.Tensor, candidate_ids: torch.Tensor) -> torch.Tensor:
         n, k = candidate_ids.shape
         flat_ids = candidate_ids.reshape(-1)
         src_k = src.unsqueeze(1).expand(n, k, src.shape[-1]).reshape(n * k, -1)
-        tgt_k = tgt.unsqueeze(1).expand_as(src.unsqueeze(1).expand(n, k, src.shape[-1])).reshape(n * k, -1)
-        mem_k = memory.unsqueeze(1).expand_as(src.unsqueeze(1).expand(n, k, src.shape[-1])).reshape(n * k, -1)
+        tgt_k = tgt.unsqueeze(1).expand(n, k, tgt.shape[-1]).reshape(n * k, -1)
+        mem_k = memory.unsqueeze(1).expand(n, k, memory.shape[-1]).reshape(n * k, -1)
+
         out = torch.zeros_like(src_k)
         for pid, name in enumerate(self.names):
             mask = flat_ids == pid

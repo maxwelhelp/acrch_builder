@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import torch
 import torch.nn as nn
@@ -58,12 +58,7 @@ def _info(name: str, row: int, col: int) -> PrimitiveInfo:
 
 
 class PrimitiveMatrix5x5(nn.Module):
-    """Topological primitive/action library with functional descriptor init.
-
-    It exposes physical grid windows, semantic top-k by learned embeddings, and
-    primitive names/indices for reports. The grid is only a prior; HybridScanner
-    will add semantic, usage and random candidates.
-    """
+    """Topological primitive/action library with functional descriptor init."""
 
     def __init__(self, embed_dim: int = 32, noise_std: float = 0.02) -> None:
         super().__init__()
@@ -75,14 +70,10 @@ class PrimitiveMatrix5x5(nn.Module):
         self.infos = infos
         self.names = [x.name for x in infos]
         self.name_to_id = {n: i for i, n in enumerate(self.names)}
-        self.rows = torch.tensor([x.row for x in infos], dtype=torch.long)
-        self.cols = torch.tensor([x.col for x in infos], dtype=torch.long)
 
         desc = self._descriptor_matrix(infos)
         proj = torch.randn(desc.shape[1], embed_dim) / max(1.0, desc.shape[1] ** 0.5)
-        init = desc @ proj
-        init = F.normalize(init, dim=-1)
-        init = init + noise_std * torch.randn_like(init)
+        init = F.normalize(desc @ proj, dim=-1) + noise_std * torch.randn(len(infos), embed_dim)
         self.emb = nn.Parameter(init)
 
         self.register_buffer("descriptor", desc, persistent=False)
@@ -109,7 +100,6 @@ class PrimitiveMatrix5x5(nn.Module):
         return torch.tensor(rows, dtype=torch.float32)
 
     def local_window(self, ids: torch.Tensor, radius: int = 1) -> torch.Tensor:
-        """Return grid-neighbor ids for each primitive id. Shape: [N, K]."""
         flat = ids.reshape(-1).detach().cpu()
         out: List[List[int]] = []
         for idx in flat.tolist():
@@ -124,14 +114,23 @@ class PrimitiveMatrix5x5(nn.Module):
         return torch.tensor(out, dtype=torch.long, device=ids.device).view(*ids.shape, -1)
 
     def semantic_topk(self, ids: torch.Tensor, k: int = 4) -> torch.Tensor:
-        """Nearest primitives by embedding cosine, excluding no one for simplicity."""
         emb = F.normalize(self.emb, dim=-1)
         sim = emb @ emb.t()
         top = sim.topk(k=min(k, self.num_primitives), dim=-1).indices
         return top[ids.reshape(-1)].view(*ids.shape, -1)
 
-    def usage_topk(self, ids: torch.Tensor, k: int = 2) -> torch.Tensor:
-        top = self.usage_score.topk(k=min(k, self.num_primitives)).indices.to(ids.device)
+    def usage_topk(self, ids: torch.Tensor, k: int = 5) -> torch.Tensor:
+        # Until real credit exists, include common primitives deterministically as a stable rescue path.
+        stable = torch.tensor(
+            [self.name_to_id[n] for n in ["diff", "merge", "product", "memory_write", "memory_read"] if n in self.name_to_id],
+            device=ids.device,
+            dtype=torch.long,
+        )
+        if stable.numel() >= k:
+            top = stable[:k]
+        else:
+            score_top = self.usage_score.topk(k=min(k, self.num_primitives)).indices.to(ids.device)
+            top = torch.cat([stable, score_top], dim=0)[:k]
         return top.view(*([1] * ids.dim()), -1).expand(*ids.shape, -1)
 
     def update_usage_ema(self, chosen_ids: torch.Tensor, momentum: float = 0.95) -> None:

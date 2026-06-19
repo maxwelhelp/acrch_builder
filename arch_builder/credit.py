@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Dict
 
 import torch
+import torch.nn.functional as F
 
 
 @dataclass
@@ -22,7 +23,7 @@ class CreditBuffer:
 
     def metrics(self) -> Dict[str, float]:
         if not self.values:
-            return {"credit_items": 0.0, "credit_staleness_mean": 0.0}
+            return {"credit_items": 0.0, "credit_staleness_mean": 0.0, "credit_age_max": 0.0}
         return {
             "credit_items": float(len(self.values)),
             "credit_staleness_mean": float(sum(self.ages.values()) / max(1, len(self.ages))),
@@ -35,6 +36,6 @@ def sim_disabled_delta(model, task, batch_size: int, device: str, tau: float) ->
     batch = task.sample(batch_size, device)
     logits, _ = model(batch.x, tau=tau, disable_sim=False)
     logits_no, _ = model(batch.x, tau=tau, disable_sim=True)
-    ce = torch.nn.functional.cross_entropy(logits, batch.y)
-    ce_no = torch.nn.functional.cross_entropy(logits_no, batch.y)
+    ce = F.cross_entropy(logits, batch.y)
+    ce_no = F.cross_entropy(logits_no, batch.y)
     return float((ce_no - ce).detach().cpu())

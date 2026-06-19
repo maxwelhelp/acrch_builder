@@ -22,21 +22,33 @@ def amp_dtype(name: str):
     return torch.float32
 
 
-def summarize_trace(trace: Dict[str, object], expected_id: int) -> Dict[str, float]:
+def summarize_trace(trace: Dict[str, object], expected_id: int, slots: int, expected_src: int, expected_tgt: int) -> Dict[str, float]:
     layer0 = trace["layers"][0]
-    chosen = layer0["chosen"]
+    chosen_flat = layer0["chosen"]
+    chosen_edges = chosen_flat.view(-1, slots, slots)
+    expected_edge_chosen = chosen_edges[:, expected_src, expected_tgt]
+
     mode = layer0["mode"]
     choice = layer0["choice"]
     scan = layer0["scan_metrics"]
-    expected = (chosen == expected_id).float().mean().item()
-    transform_mass = mode[:, 0].mean().item()
-    skip_mass = mode[:, 1].mean().item()
-    disable_mass = mode[:, 2].mean().item()
+
+    edge = layer0["edge"].view(-1, slots, slots, 1)
+    write = layer0["write"].view(-1, slots, slots, 1)
+    phase = layer0["phase"].view(-1, slots, slots, 1)
+    active = (edge * write * phase).squeeze(-1)
+
+    expected_edge_recovery = (expected_edge_chosen == expected_id).float().mean().item()
+    expected_any_recovery = (chosen_edges == expected_id).float().mean().item()
+    expected_edge_active = active[:, expected_src, expected_tgt].mean().item()
+
     return {
-        "program_recovery_rate": expected,
-        "transform_mass": transform_mass,
-        "skip_mass": skip_mass,
-        "disable_mass": disable_mass,
+        "program_recovery_rate": expected_edge_recovery,
+        "expected_edge_recovery": expected_edge_recovery,
+        "expected_any_recovery": expected_any_recovery,
+        "expected_edge_active": expected_edge_active,
+        "transform_mass": mode[:, 0].mean().item(),
+        "skip_mass": mode[:, 1].mean().item(),
+        "disable_mass": mode[:, 2].mean().item(),
         "choice_entropy": float((-(choice + 1e-8) * (choice + 1e-8).log()).sum(dim=-1).mean().cpu()),
         **{k: float(v) for k, v in scan.items()},
         **{k: float(v) for k, v in trace.get("primitive_metrics", {}).items()},
@@ -50,7 +62,7 @@ def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float) 
     correct = 0
     loss = 0.0
     last_trace = None
-    expected_name = None
+    last_batch = None
     for _ in range(steps):
         batch = task.sample(batch_size, device)
         logits, trace = model(batch.x, tau=tau)
@@ -58,9 +70,10 @@ def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float) 
         correct += (logits.argmax(dim=-1) == batch.y).sum().item()
         total += batch_size
         last_trace = trace
-        expected_name = batch.expected_primitive
-    expected_id = model.pm.name_to_id[expected_name]
-    out = summarize_trace(last_trace, expected_id)
+        last_batch = batch
+
+    expected_id = model.pm.name_to_id[last_batch.expected_primitive]
+    out = summarize_trace(last_trace, expected_id, model.slots, last_batch.expected_src, last_batch.expected_tgt)
     out.update({"val_loss": loss / total, "val_acc": correct / total})
     return out
 
@@ -81,6 +94,7 @@ def train(args) -> None:
     best = 0.0
     last_eval: Dict[str, float] = {}
     start = time.time()
+
     for epoch in range(1, args.epochs + 1):
         model.train()
         tau = max(args.tau_min, args.tau_start * (args.tau_decay ** (epoch - 1)))
@@ -88,21 +102,35 @@ def train(args) -> None:
         correct = 0
         loss_sum = 0.0
         max_steps = args.max_steps if args.max_steps > 0 else args.steps_per_epoch
+
         for _ in range(max_steps):
             batch = task.sample(args.batch_size, device)
             opt.zero_grad(set_to_none=True)
+
             with torch.amp.autocast(device_type="cuda", dtype=dtype, enabled=device.startswith("cuda") and dtype != torch.float32):
                 logits, trace = model(batch.x, tau=tau)
                 ce = F.cross_entropy(logits, batch.y)
+
                 expected_id = model.pm.name_to_id[batch.expected_primitive]
-                # Known-program sim target for vertical slice only.
                 chosen_candidates = trace["layers"][0]["candidate_ids"]
-                pred_gain = trace["layers"][0]["predicted_gain"]
-                sim_target = torch.where(chosen_candidates == expected_id, torch.ones_like(pred_gain), -0.2 * torch.ones_like(pred_gain))
+                pred_gain = trace["layers"][0]["predicted_gain_for_loss"]
+
+                sim_target = -0.2 * torch.ones_like(pred_gain)
+                edges_per_sample = model.slots * model.slots
+                edge_index = batch.expected_src * model.slots + batch.expected_tgt
+                row_ids = torch.arange(batch.x.shape[0], device=chosen_candidates.device) * edges_per_sample + edge_index
+                expected_mask = chosen_candidates[row_ids] == expected_id
+                sim_target[row_ids] = torch.where(
+                    expected_mask,
+                    torch.ones_like(sim_target[row_ids]),
+                    -0.2 * torch.ones_like(sim_target[row_ids]),
+                )
+
                 sim_loss = F.mse_loss(pred_gain.float(), sim_target.float())
-                mode = trace["layers"][0]["mode"]
+                mode = trace["layers"][0]["mode_for_loss"]
                 min_transform = F.relu(args.min_transform_mass - mode[:, 0].mean())
                 loss = ce + args.lambda_sim * sim_loss + args.lambda_collapse * min_transform
+
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
@@ -116,7 +144,7 @@ def train(args) -> None:
         ev = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau)
         sdelta = sim_disabled_delta(model, task, args.eval_batch_size, device, tau)
         ev["sim_disabled_delta"] = sdelta
-        ev["choice_without_sim_delta"] = sdelta  # same ablation in this first slice
+        ev["choice_without_sim_delta"] = sdelta
         credit.update({"sim_disabled_delta": sdelta})
         ev.update(credit.metrics())
         best = max(best, ev["val_acc"])
@@ -131,13 +159,22 @@ def train(args) -> None:
             **ev,
         }
         append_csv(out_dir / "metrics.csv", row)
-        print(f"epoch {epoch:03d}/{args.epochs} train={row['train_loss']:.4f}/{100*row['train_acc']:.2f}% val={ev['val_loss']:.4f}/{100*ev['val_acc']:.2f}% prog={ev['program_recovery_rate']:.3f} sim_delta={sdelta:+.4f}", flush=True)
+        print(
+            f"epoch {epoch:03d}/{args.epochs} "
+            f"train={row['train_loss']:.4f}/{100*row['train_acc']:.2f}% "
+            f"val={ev['val_loss']:.4f}/{100*ev['val_acc']:.2f}% "
+            f"edge_prog={ev['expected_edge_recovery']:.3f} "
+            f"any_prog={ev['expected_any_recovery']:.3f} "
+            f"sim_delta={sdelta:+.4f}",
+            flush=True,
+        )
 
     conclusion = "vertical slice completed"
     if last_eval.get("skip_mass", 0) > 0.85:
         conclusion = "WARNING: skip-all risk"
     if last_eval.get("sim_disabled_delta", 0) <= 0:
         conclusion = "WARNING: simulator may be decorative"
+
     summary = {
         "task": args.task,
         "epochs": args.epochs,
@@ -159,7 +196,7 @@ def parser():
     p.add_argument("--dim", type=int, default=64)
     p.add_argument("--slots", type=int, default=4)
     p.add_argument("--layers", type=int, default=1)
-    p.add_argument("--top-k", type=int, default=4)
+    p.add_argument("--top-k", type=int, default=25)
     p.add_argument("--sim-rank", type=int, default=16)
     p.add_argument("--epochs", type=int, default=5)
     p.add_argument("--steps-per-epoch", type=int, default=100)
