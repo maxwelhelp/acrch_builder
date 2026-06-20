@@ -1,60 +1,40 @@
 # v4.6.4 final acceptance audit
 
-Status: PASS.
+Status: **FAIL / NOT READY**.
 
-Canonical conclusion: the v4.6.4 pack is releasable. The forced program oracle
-is green after removing the direct Layer0-output-to-final bypass on the
-final-read-last path.
+The previous PASS was invalidated by a source-and-runtime audit on 2026-06-20.
+The direct Layer0-output bypass is fixed and its forced oracle is green, but that
+single invariant does not prove the complete v4.6.4 plan.
 
-Evidence summary:
+Confirmed working:
 
-| Task | Status | Result artifact |
-|---:|---|---|
-| 01 | PASS | `reports/agent_tasks/TASK_01_RESULT.md` |
-| 02 | PASS | `reports/agent_tasks/TASK_02_RESULT.md` |
-| 03 | PASS | `reports/agent_tasks/TASK_03_RESULT.md` |
-| 04 | PASS | `reports/agent_tasks/TASK_04_RESULT.md` |
-| 05 | PASS | `reports/agent_tasks/TASK_05_RESULT.md` |
-| 06 | PASS | `reports/agent_tasks/TASK_06_RESULT.md` |
-| 07 | PASS | `reports/agent_tasks/TASK_07_RESULT.md` |
-| 08 | PASS | `reports/agent_tasks/TASK_08_RESULT.md` |
-| 09 | PASS | `reports/agent_tasks/TASK_09_RESULT.md` |
-| 10 | PASS | `reports/agent_tasks/TASK_10_RESULT.md` |
-| 11 | PASS | `reports/agent_tasks/TASK_11_RESULT.md` |
-| 12 | PASS | `reports/agent_tasks/TASK_12_RESULT.md` |
-| 13 | PASS | `reports/agent_tasks/TASK_13_RESULT.md` |
-| 14 | PASS | `reports/agent_tasks/TASK_14_RESULT.md` |
+- PrimitiveMatrix 5x5 and the four scanner proposal sources exist;
+- simulator outputs participate in choice logits;
+- sequential state reaches the next layer;
+- `final_read=last` has no direct Layer0 output bypass;
+- config loading and legacy CLI compatibility exist;
+- structured audio feature extraction exists;
+- `validate`, forced-program, hybrid-scanner, and discovery-contract probes pass.
 
-Mandatory gates:
+Release blockers:
 
-- `bash commands/validate.sh` — PASS
-- `bash commands/inspect_with_probe.sh` — PASS
-- `bash commands/probe_forced_program.sh` — PASS
+1. Task04 is not budgeted hierarchical ablation credit. Training correctness is
+   assigned to every selected edge and primitive.
+2. Simulator targets still come from `expected_actions`, not held-out real gain.
+3. Runtime `replace`, memory, split/merge, and variable-output semantics do not
+   implement the canonical plan.
+4. Several acceptance proofs are stale, tautological, or accept chance-level
+   learned accuracy. Task configs currently pass on formula `oracle_acc` alone.
+5. Transformer and token-slot demonstrations use separate MLP mechanisms rather
+   than the reusable PrimitiveMatrixScanner core.
+6. Real-data results do not establish a same-split, multi-seed comparison with
+   v4.6.3.
 
-What passed factually:
+The concrete remediation sequence is Tasks 15-24 in
+`docs/agent_tasks_v4_6_4/`. Missing evidence must remain FAIL; no threshold or
+probe weakening is allowed.
 
-- synthetic recovery / collapse / dependency tasks 01–04
-- real credit and simulator-related tasks 04–06
-- HybridScanner proof 06
-- specialization and branching tasks 07–08
-- honesty curriculum task 09
-- frontend/audio task 10
-- standalone real-data acceptance task 11
-- add-on plugin task 12
-- causal token-slot replacement task 13
+Evidence: `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md`.
 
-What passed factually:
-
-- `final_read_last_has_no_layer0_output_bypass` in
-  `reports/agent_inspector/FORCED_PROGRAM_ORACLE.md`
-- reported delta:
-  `0.0`
-
-Interpretation:
-
-- fact: the oracle check now passes
-- fact: the direct bypass was removed rather than hidden
-- missing evidence: none
-
-Final verdict: PASS.
-Release status: ready.
+Final verdict: FAIL.
+Release status: not ready.

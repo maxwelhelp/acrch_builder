@@ -146,6 +146,7 @@ def main() -> int:
 
     first_layer = model.layers[0]
     choice_controller_params = _params(first_layer.context_logits)
+    choice_controller_params.append(first_layer.primitive_pair_bias)
     gate_controller_params: list[Any] = []
     for module in [
         first_layer.mode_head,
@@ -193,10 +194,27 @@ def main() -> int:
         "branch_child_loss": ["gate_controller"],
         "branch_merge_loss": ["gate_controller"],
         "branch_collector_loss": ["gate_controller"],
+        "discovery_active_floor_loss": ["gate_controller"],
+        "discovery_write_floor_loss": ["gate_controller"],
+        "discovery_choice_exploration_loss": ["choice_controller", "scanner", "simulator"],
+        "discovery_choice_coverage_loss": ["choice_controller", "scanner", "simulator"],
+        "discovery_active_tail_loss": ["gate_controller"],
+        "discovery_topology_consistency_loss": ["gate_controller"],
     }
     loss_connectivity: dict[str, Any] = {}
     applicability = {name: True for name in raw_losses}
     applicability["layer_action_diversity"] = args.layers > 1
+    discovery_enabled = getattr(args, "supervision_mode", "oracle") == "discovery"
+    for name in (
+        "discovery_active_floor_loss",
+        "discovery_write_floor_loss",
+        "discovery_choice_exploration_loss",
+        "discovery_choice_coverage_loss",
+        "discovery_active_tail_loss",
+        "discovery_topology_consistency_loss",
+    ):
+        if name in applicability:
+            applicability[name] = discovery_enabled
     for name, value in raw_losses.items():
         groups = target_groups[name]
         group_norms = {group: loss_grad_norm(value, param_groups[group]) for group in groups}
@@ -206,7 +224,10 @@ def main() -> int:
             "grad_fn": type(value.grad_fn).__name__ if value.grad_fn is not None else None,
             "applicable": applicability[name],
             "target_grad_norms": group_norms,
-            "connected_to_intended_target": any(norm > 1e-12 for norm in group_norms.values()),
+            "connected_to_intended_target": (
+                any(norm > 1e-12 for norm in group_norms.values())
+                if groups else not value.requires_grad
+            ),
         }
 
     recovery_norms = loss_connectivity["expected_choice_loss"]["target_grad_norms"]

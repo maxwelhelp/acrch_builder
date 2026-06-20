@@ -26,7 +26,9 @@ class HybridScanner(nn.Module):
         self.semantic_k = semantic_k
         self.usage_k = usage_k
         self.random_k = random_k
-        self.source_type = nn.Embedding(4, prim_embed_dim)
+        # Four production proposal sources plus an explicit debug full-scan
+        # source. The latter is used only when top_k covers the whole matrix.
+        self.source_type = nn.Embedding(5, prim_embed_dim)
         self.context_proj = nn.Linear(context_dim, prim_embed_dim)
         self.before_proj = nn.Linear(prim_embed_dim, prim_embed_dim)
         self.candidate_proj = nn.Linear(prim_embed_dim, prim_embed_dim)
@@ -45,6 +47,7 @@ class HybridScanner(nn.Module):
         memory: torch.Tensor,
         primitive_matrix: PrimitiveMatrix5x5,
         prev_action_emb: torch.Tensor | None = None,
+        ensure_all_candidates: bool = False,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float]]:
         n = context.shape[0]
         device = context.device
@@ -57,16 +60,22 @@ class HybridScanner(nn.Module):
         usage = primitive_matrix.usage_topk(anchor_ids, k=self.usage_k).reshape(n, -1)
         random = torch.randint(0, primitive_matrix.num_primitives, (n, self.random_k), device=device)
 
-        candidate_ids = torch.cat([local, semantic, usage, random], dim=-1)
-        source_ids = torch.cat(
-            [
-                torch.zeros_like(local),
-                torch.ones_like(semantic),
-                torch.full_like(usage, 2),
-                torch.full_like(random, 3),
-            ],
-            dim=-1,
-        )
+        if ensure_all_candidates:
+            candidate_ids = torch.arange(
+                primitive_matrix.num_primitives, device=device
+            ).view(1, -1).expand(n, -1)
+            source_ids = torch.full_like(candidate_ids, 4)
+        else:
+            candidate_ids = torch.cat([local, semantic, usage, random], dim=-1)
+            source_ids = torch.cat(
+                [
+                    torch.zeros_like(local),
+                    torch.ones_like(semantic),
+                    torch.full_like(usage, 2),
+                    torch.full_like(random, 3),
+                ],
+                dim=-1,
+            )
 
         cand_emb = primitive_matrix.emb[candidate_ids] + self.source_type(source_ids)
         ctx = self.context_proj(context).unsqueeze(1).expand_as(cand_emb)
@@ -92,6 +101,7 @@ class HybridScanner(nn.Module):
             metrics = {
                 "semantic_grid_mismatch": float(sum(sem_not_grid) / max(1, len(sem_not_grid))),
                 "semantic_neighbor_entropy": float(semantic_entropy.mean().cpu()),
+                "scanner_full_scan": float(ensure_all_candidates),
             }
 
         return candidate_ids, proposal_logits, source_ids, metrics

@@ -237,7 +237,7 @@ def summarize_trace(trace: Dict[str, object], batch, model: ActionMatrixModel) -
     else:
         out["layer_action_similarity"] = 1.0 if layer_action_dists else 0.0
 
-    for key in ["semantic_grid_mismatch", "semantic_neighbor_entropy", "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "scanner_source_mass_sum"]:
+    for key in ["semantic_grid_mismatch", "semantic_neighbor_entropy", "scanner_full_scan", "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "global_candidate_usage", "scanner_source_mass_sum"]:
         vals = [layer["scan_metrics"].get(key, 0.0) for layer in trace["layers"] if "scan_metrics" in layer]
         if vals:
             out[key] = float(sum(vals) / len(vals))
@@ -281,7 +281,18 @@ def summarize_trace(trace: Dict[str, object], batch, model: ActionMatrixModel) -
 
 
 @torch.no_grad()
-def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float, args=None, ablate_layer_output: Optional[int] = None, ablate_state_after: Optional[int] = None) -> Dict[str, float]:
+def evaluate(
+    model,
+    task,
+    steps: int,
+    batch_size: int,
+    device: str,
+    tau: float,
+    args=None,
+    ablate_layer_output: Optional[int] = None,
+    ablate_state_after: Optional[int] = None,
+    curriculum_mode: str = "teacher",
+) -> Dict[str, float]:
     model.eval()
     total = 0
     correct = 0
@@ -292,7 +303,13 @@ def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float, 
 
     for _ in range(steps):
         batch = task.sample(batch_size, device)
-        logits, trace = model(batch.x, tau=tau, ablate_layer_output=ablate_layer_output, ablate_state_after=ablate_state_after)
+        logits, trace = model(
+            batch.x,
+            tau=tau,
+            ablate_layer_output=ablate_layer_output,
+            ablate_state_after=ablate_state_after,
+            curriculum_mode=curriculum_mode,
+        )
         loss += F.cross_entropy(logits, batch.y).item() * batch_size
         correct += (logits.argmax(dim=-1) == batch.y).sum().item()
         oracle_acc_sum += task.oracle_accuracy(batch) * batch_size
@@ -540,7 +557,12 @@ def generic_anti_collapse_losses(trace: Dict[str, object], model: ActionMatrixMo
 
 
 
-def structure_signal_stats(trace: Dict[str, object], batch, model: ActionMatrixModel) -> Dict[str, torch.Tensor]:
+def structure_signal_stats(
+    trace: Dict[str, object],
+    batch,
+    model: ActionMatrixModel,
+    use_expected_actions: bool = True,
+) -> Dict[str, torch.Tensor]:
     """Signal-based controller for regularization.
 
     No epoch calendar. We read the current program state:
@@ -595,7 +617,7 @@ def structure_signal_stats(trace: Dict[str, object], batch, model: ActionMatrixM
         if "merge_gate" in layer0:
             merge_gates.append(layer0["merge_gate"].mean())
 
-        for act in actions_by_layer.get(layer_idx, []):
+        for act in actions_by_layer.get(layer_idx, []) if use_expected_actions else []:
             pid = model.pm.name_to_id[str(act["primitive"])]
             src = int(act["src"])
             tgt = int(act["tgt"])
@@ -629,6 +651,72 @@ def structure_signal_stats(trace: Dict[str, object], batch, model: ActionMatrixM
             if len(layer_action_dists) >= 2
             else torch.ones((), device=model.classifier.weight.device)
         ),
+    }
+
+
+def generic_discovery_losses(
+    trace: Dict[str, object],
+    model: ActionMatrixModel,
+    min_active_mass: float,
+    min_write_mass: float,
+    min_choice_entropy: float,
+    target_active_cells: float,
+) -> Dict[str, torch.Tensor]:
+    """Oracle-free pressure that keeps the differentiable program path alive.
+
+    These terms name no cell or primitive.  They only prevent the controller,
+    write path, and candidate distribution from becoming irrecoverably silent
+    before task CE has found a useful program.
+    """
+    active_floors, write_floors, entropy_floors, coverage_losses = [], [], [], []
+    active_tail_losses, topology_consistency_losses = [], []
+    for layer0 in trace["layers"]:
+        active = (
+            layer0["edge_for_loss"]
+            * layer0["write_for_loss"]
+            * layer0["phase_for_loss"]
+        ).mean()
+        write_mass = (
+            active
+            * (layer0["mode_for_loss"][:, 0:1] + layer0["mode_for_loss"][:, 1:2])
+        ).mean()
+        choice = layer0["choice_for_loss"].clamp_min(1e-8)
+        entropy = -(choice * choice.log()).sum(dim=-1).mean()
+        active_floors.append(F.relu(min_active_mass - active).pow(2))
+        write_floors.append(F.relu(min_write_mass - write_mass).pow(2))
+        entropy_floors.append(F.relu(min_choice_entropy - entropy).pow(2))
+        # Entropy alone permits individual primitives to disappear. The log
+        # barrier keeps every full-scan candidate recoverable during discovery.
+        coverage_losses.append(-choice.log().mean())
+        s = model.slots
+        active_grid = (
+            layer0["edge_for_loss"]
+            * layer0["write_for_loss"]
+            * layer0["phase_for_loss"]
+        ).view(-1, s * s)
+        keep = max(1, min(s * s, int(round(target_active_cells))))
+        if keep < s * s:
+            mean_grid = active_grid.mean(dim=0)
+            top_mask = torch.zeros_like(mean_grid)
+            top_pos = mean_grid.topk(k=keep, dim=-1).indices
+            top_mask.scatter_(0, top_pos, 1.0)
+            # Select one stable topology for the batch, not a different set of
+            # cells per sample. Otherwise no reusable matrix program can form.
+            active_tail_losses.append((active_grid * (1.0 - top_mask[None, :])).mean())
+        topology_consistency_losses.append(active_grid.var(dim=0, unbiased=False).mean())
+
+    z = torch.zeros((), device=next(model.parameters()).device)
+
+    def mean_or_zero(values):
+        return torch.stack(values).mean() if values else z
+
+    return {
+        "discovery_active_floor_loss": mean_or_zero(active_floors),
+        "discovery_write_floor_loss": mean_or_zero(write_floors),
+        "discovery_choice_exploration_loss": mean_or_zero(entropy_floors),
+        "discovery_choice_coverage_loss": mean_or_zero(coverage_losses),
+        "discovery_active_tail_loss": mean_or_zero(active_tail_losses),
+        "discovery_topology_consistency_loss": mean_or_zero(topology_consistency_losses),
     }
 
 
@@ -679,6 +767,13 @@ def adaptive_loss_weights(signals: Dict[str, torch.Tensor], args) -> Dict[str, t
         "eff_lambda_layer_action_diversity": args.lambda_layer_action_diversity * collapse_gate * dependency_gate,
     }
 
+
+
+def _bce_prob_safe(input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    """BCE on probabilities is unsafe under CUDA autocast; force fp32 locally."""
+    device_type = "cuda" if input.is_cuda else "cpu"
+    with torch.amp.autocast(device_type=device_type, enabled=False):
+        return F.binary_cross_entropy(input.float(), target.float())
 
 def branch_structure_losses(trace: Dict[str, object], batch, model: ActionMatrixModel) -> Dict[str, torch.Tensor]:
     """Light branch supervision for split/merge/collector tasks."""
@@ -738,10 +833,10 @@ def branch_structure_losses(trace: Dict[str, object], batch, model: ActionMatrix
                 )
             )
         if touched_slots:
-            alive_losses.append(F.binary_cross_entropy(alive, alive_target))
-            child_losses.append(F.binary_cross_entropy(child_gate, child_target))
-            merge_losses.append(F.binary_cross_entropy(merge_gate, merge_target))
-            collector_losses.append(F.binary_cross_entropy(collector_mass, merge_target))
+            alive_losses.append(_bce_prob_safe(alive, alive_target))
+            child_losses.append(_bce_prob_safe(child_gate, child_target))
+            merge_losses.append(_bce_prob_safe(merge_gate, merge_target))
+            collector_losses.append(_bce_prob_safe(collector_mass, merge_target))
 
     def mean_or_zero(xs):
         return torch.stack(xs).mean() if xs else z
@@ -787,9 +882,35 @@ def compute_training_objective(
     args,
 ):
     """Canonical objective used by both real training and runtime probes."""
-    expected_id = model.pm.name_to_id[batch.expected_primitive]
-    sim_loss = sim_targets_for_expected_actions(trace, batch, model)
-    struct = proof_slice_structure_losses(trace, batch, model, expected_id)
+    supervision_mode = getattr(args, "supervision_mode", "oracle")
+    if supervision_mode not in {"oracle", "discovery"}:
+        raise ValueError(f"unknown supervision mode: {supervision_mode!r}")
+
+    z = torch.zeros((), device=ce_loss.device)
+    if supervision_mode == "oracle":
+        expected_id = model.pm.name_to_id[batch.expected_primitive]
+        sim_loss = sim_targets_for_expected_actions(trace, batch, model)
+        struct = proof_slice_structure_losses(trace, batch, model, expected_id)
+        branch = branch_structure_losses(trace, batch, model)
+    else:
+        # Strict contract: expected_actions are not even read while constructing
+        # the discovery loss graph. They remain available to evaluation/reporting.
+        sim_loss = z
+        struct = {
+            "expected_choice_loss": z,
+            "non_expected_primitive_loss": z,
+            "expected_active_loss": z,
+            "non_expected_active_loss": z,
+            "non_expected_tape_loss": z,
+            "non_expected_transform_loss": z,
+        }
+        branch = {
+            "branch_split_loss": z,
+            "branch_alive_loss": z,
+            "branch_child_loss": z,
+            "branch_merge_loss": z,
+            "branch_collector_loss": z,
+        }
     generic = generic_anti_collapse_losses(
         trace,
         model,
@@ -797,8 +918,20 @@ def compute_training_objective(
         args.target_tape_fraction,
         args.target_active_cells,
     )
-    branch = branch_structure_losses(trace, batch, model)
-    signals = structure_signal_stats(trace, batch, model)
+    discovery = generic_discovery_losses(
+        trace,
+        model,
+        getattr(args, "discovery_min_active_mass", 0.08),
+        getattr(args, "discovery_min_write_mass", 0.06),
+        getattr(args, "discovery_min_choice_entropy", 1.0),
+        args.target_active_cells,
+    )
+    signals = structure_signal_stats(
+        trace,
+        batch,
+        model,
+        use_expected_actions=(supervision_mode == "oracle"),
+    )
     gates = adaptive_loss_weights(signals, args)
     mode = trace["layers"][0]["mode_for_loss"]
     min_transform = F.relu(args.min_transform_mass - mode[:, 0].mean())
@@ -809,6 +942,7 @@ def compute_training_objective(
         **struct,
         **generic,
         **branch,
+        **discovery,
         "min_transform_loss": min_transform,
     }
     weighted = {
@@ -831,6 +965,34 @@ def compute_training_objective(
         "weighted_branch_merge_loss": args.lambda_branch * branch["branch_merge_loss"],
         "weighted_branch_collector_loss": args.lambda_branch * branch["branch_collector_loss"],
         "weighted_min_transform_loss": args.lambda_collapse * min_transform,
+        "weighted_discovery_active_floor_loss": (
+            getattr(args, "lambda_discovery_alive", 0.20) * discovery["discovery_active_floor_loss"]
+            if supervision_mode == "discovery" else z
+        ),
+        "weighted_discovery_write_floor_loss": (
+            getattr(args, "lambda_discovery_alive", 0.20) * discovery["discovery_write_floor_loss"]
+            if supervision_mode == "discovery" else z
+        ),
+        "weighted_discovery_choice_exploration_loss": (
+            getattr(args, "lambda_discovery_exploration", 0.02) * discovery["discovery_choice_exploration_loss"]
+            if supervision_mode == "discovery" else z
+        ),
+        "weighted_discovery_choice_coverage_loss": (
+            getattr(args, "lambda_discovery_coverage", 0.001)
+            * torch.sigmoid((ce_loss.detach() - 0.66) / 0.02)
+            * discovery["discovery_choice_coverage_loss"]
+            if supervision_mode == "discovery" else z
+        ),
+        "weighted_discovery_active_tail_loss": (
+            getattr(args, "lambda_discovery_sparsity", 0.10)
+            * discovery["discovery_active_tail_loss"]
+            if supervision_mode == "discovery" else z
+        ),
+        "weighted_discovery_topology_consistency_loss": (
+            getattr(args, "lambda_discovery_topology_consistency", 0.05)
+            * discovery["discovery_topology_consistency_loss"]
+            if supervision_mode == "discovery" else z
+        ),
     }
     total_loss = torch.stack([value.float() for value in weighted.values()]).sum()
     return total_loss, raw_losses, signals, gates, weighted
@@ -1124,7 +1286,15 @@ def train(args) -> None:
             opt.zero_grad(set_to_none=True)
 
             with torch.amp.autocast(device_type="cuda", dtype=dtype, enabled=device.startswith("cuda") and dtype != torch.float32):
-                logits, trace = model(batch.x, tau=tau, curriculum_mode=phase)
+                choice_sampling = args.choice_sampling
+                if choice_sampling == "auto":
+                    choice_sampling = "softmax" if args.supervision_mode == "discovery" else "gumbel"
+                logits, trace = model(
+                    batch.x,
+                    tau=tau,
+                    curriculum_mode=phase,
+                    choice_sampling=choice_sampling,
+                )
                 ce = F.cross_entropy(logits, batch.y)
                 loss, raw_losses, signals, gates, weighted = compute_training_objective(
                     trace,
@@ -1156,7 +1326,16 @@ def train(args) -> None:
                 for key, value in mapping.items():
                     diagnostic_sums[key] = diagnostic_sums.get(key, 0.0) + float(value.detach().cpu())
 
-        ev = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, args=args)
+        ev = evaluate(
+            model,
+            task,
+            args.eval_steps,
+            args.eval_batch_size,
+            device,
+            tau,
+            args=args,
+            curriculum_mode=phase,
+        )
         ablations = simulator_ablation_metrics(model, task, args.eval_batch_size, device, tau)
         ev.update(ablations)
         ev["final_read_mode"] = args.final_read
@@ -1206,7 +1385,8 @@ def train(args) -> None:
             f"edge_prog={ev['expected_edge_recovery']:.3f} "
             f"any_prog={ev['expected_any_recovery']:.3f} "
             f"active_cells={ev.get('active_cells', 0):.1f} "
-            f"top_share={ev.get('primitive_top_share', 0):.3f} gateR={ev.get('adaptive_recovery_gate', 0):.2f} gateC={ev.get('adaptive_collapse_gate', 0):.2f} gateS={ev.get('adaptive_sparse_gate', 0):.2f} "
+            f"top_share={ev.get('primitive_top_share', 0):.3f} adaptR={ev.get('adaptive_recovery_gate', 0):.2f} adaptC={ev.get('adaptive_collapse_gate', 0):.2f} adaptS={ev.get('adaptive_sparse_gate', 0):.2f} "
+            f"write_mass={ev.get('cell_write_mass_mean', 0):.3f} write_gate={ev.get('target_write_gate_mean', 0):.3f} "
             f"phase={phase} honesty={honesty_score:.3f} "
             f"final={args.final_read} "
             f"cand={ev.get('expected_candidate_present', 0):.3f} "
@@ -1239,6 +1419,8 @@ def train(args) -> None:
         "pass_thresholds": config.pass_thresholds,
         "epochs": args.epochs,
         "curriculum_schedule": args.curriculum_schedule,
+        "supervision_mode": args.supervision_mode,
+        "expected_actions_used_for_training": args.supervision_mode == "oracle",
         "layers": args.layers,
         "final_read_mode": args.final_read,
         "state_norm_mode": args.state_norm,
@@ -1261,7 +1443,7 @@ def train(args) -> None:
         result["passed"] for result in summary["pass_threshold_results"].values()
     )
     write_json(out_dir / "final_report.json", summary)
-    write_json(out_dir / "credit_ablation_epoch_final.json", credit.values)
+    write_json(out_dir / "credit_ablation_epoch_final.json", credit.state_dict())
     write_latest_report(out_dir / "REPORT_TO_CHATGPT.txt", str(out_dir), summary)
     write_latest_report(latest_report, str(out_dir), summary)
 
@@ -1306,6 +1488,8 @@ def parser():
     p.add_argument("--lambda-layer-action-diversity", type=float, default=0.05)
     p.add_argument("--lambda-branch", type=float, default=0.05)
     p.add_argument("--curriculum-schedule", default="teacher", choices=["teacher", "phased"])
+    p.add_argument("--supervision-mode", default="oracle", choices=["oracle", "discovery"])
+    p.add_argument("--choice-sampling", default="auto", choices=["auto", "gumbel", "softmax"])
     p.add_argument("--honesty-floor", type=float, default=0.80)
     p.add_argument("--target-active-fraction", type=float, default=0.18)
     p.add_argument("--target-tape-fraction", type=float, default=0.015)
@@ -1318,6 +1502,14 @@ def parser():
     p.add_argument("--adapt-choice-boost", type=float, default=1.5)
     p.add_argument("--lambda-collapse", type=float, default=0.01)
     p.add_argument("--min-transform-mass", type=float, default=0.15)
+    p.add_argument("--lambda-discovery-alive", type=float, default=0.20)
+    p.add_argument("--lambda-discovery-exploration", type=float, default=0.02)
+    p.add_argument("--lambda-discovery-coverage", type=float, default=0.001)
+    p.add_argument("--lambda-discovery-sparsity", type=float, default=0.10)
+    p.add_argument("--lambda-discovery-topology-consistency", type=float, default=0.05)
+    p.add_argument("--discovery-min-active-mass", type=float, default=0.08)
+    p.add_argument("--discovery-min-write-mass", type=float, default=0.06)
+    p.add_argument("--discovery-min-choice-entropy", type=float, default=1.0)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out-dir", default="agent_reports/vertical_slice")
     p.add_argument("--latest-report", default="LATEST_RUN_REPORT.md")

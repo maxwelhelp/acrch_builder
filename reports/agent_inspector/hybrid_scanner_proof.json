@@ -17,14 +17,14 @@
   "credited_primitive": "product",
   "usage_credit_observations": 64.0,
   "source_choice_mass": {
-    "grid": 0.02690556235029362,
-    "semantic": 0.4808413727078005,
-    "usage": 0.4745783846228733,
-    "random": 0.017674766582786106
+    "grid": 0.026698012065025978,
+    "semantic": 0.4810479949301225,
+    "usage": 0.4745775171977584,
+    "random": 0.01767656444280874
   },
   "source_heldout_gain": {
-    "grid": -0.02252053990610331,
-    "semantic": 0.16438230994152048,
+    "grid": -0.022289691943127965,
+    "semantic": 0.1619400289017341,
     "usage": 0.2197265625,
     "random": -0.011932373046875
   },

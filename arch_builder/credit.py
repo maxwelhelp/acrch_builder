@@ -58,6 +58,25 @@ class ModeCreditLedger:
                 out[f"{prefix}_{key}"] = value
         return out
 
+    def state_dict(self) -> Dict[str, Dict[str, Dict[str, float]]]:
+        """Return the serializable ledger state, including the underlying credit.
+
+        ``metrics()`` intentionally exposes only health counters.  Final reports
+        also need the actual per-mode EMA values and ages, so callers must not
+        assume this composite ledger has the ``CreditBuffer.values`` attribute.
+        """
+        return {
+            mode: {
+                "values": dict(buffer.values),
+                "ages": dict(buffer.ages),
+            }
+            for mode, buffer in (
+                ("teacher", self.teacher),
+                ("audit", self.audit),
+                ("deploy", self.deploy),
+            )
+        }
+
 
 def _rng_state():
     cpu = torch.random.get_rng_state()

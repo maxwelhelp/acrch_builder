@@ -55,9 +55,9 @@ class ActionMatrixLayer(nn.Module):
 
         self.context_logits = nn.Linear(context_dim, top_k)
         self.sim_logits = nn.Linear(dim, 1)
-        self.prev_output_proj = nn.Linear(dim, context_dim, bias=False)
         self.prev_action_proj = nn.Linear(primitive_matrix.num_primitives, context_dim, bias=False)
         self.prev_active_proj = nn.Linear(1, context_dim, bias=False)
+        self.prev_write_proj = nn.Linear(1, context_dim, bias=False)
         self.listen_gate = nn.Linear(context_dim, 1)
         self.mode_head = nn.Linear(context_dim, 3)  # transform / skip / disable
         self.edge_gate = nn.Linear(context_dim, 1)
@@ -77,6 +77,11 @@ class ActionMatrixLayer(nn.Module):
         self.write_pair_bias = nn.Parameter(torch.zeros(slots, slots))
         self.phase_pair_bias = nn.Parameter(torch.zeros(slots, slots))
         self.cell_output_pair_bias = nn.Parameter(torch.zeros(slots, slots))
+        # Stable cell-to-primitive prior. Unlike context_logits this is indexed
+        # by primitive identity, not by a candidate's changing list position.
+        self.primitive_pair_bias = nn.Parameter(
+            torch.zeros(slots, slots, primitive_matrix.num_primitives)
+        )
 
         self._init_gate_priors()
 
@@ -121,6 +126,7 @@ class ActionMatrixLayer(nn.Module):
         disable_gain: bool = False,
         disable_sim_result: bool = False,
         curriculum_mode: str = "teacher",
+        choice_sampling: str = "auto",
     ):
         b, s, d = state.shape
         src = state.unsqueeze(2).expand(b, s, s, d)
@@ -138,10 +144,13 @@ class ActionMatrixLayer(nn.Module):
             mix_parts = []
             prev_action = prev_context.get("action_dist")
             prev_active = prev_context.get("active_mass")
+            prev_write = prev_context.get("write_mass")
             if prev_action is not None:
                 mix_parts.append(self.prev_action_proj(prev_action))
             if prev_active is not None:
                 mix_parts.append(self.prev_active_proj(prev_active))
+            if prev_write is not None:
+                mix_parts.append(self.prev_write_proj(prev_write))
             if mix_parts:
                 prev_context_mix = sum(mix_parts)
                 listen_gate = torch.sigmoid(self.listen_gate(prev_context_mix))
@@ -152,7 +161,21 @@ class ActionMatrixLayer(nn.Module):
         flat_tgt = tgt.reshape(b * s * s, d)
         flat_mem = mem.reshape(b * s * s, d)
 
-        cand_ids, proposal_logits, source_ids, scan_metrics = self.scanner(flat_context, flat_mem, self.pm)
+        prev_action_emb = None
+        if prev_context is not None and prev_context.get("action_dist") is not None:
+            prev_action_emb = prev_context["action_dist"] @ self.pm.emb
+            prev_action_emb = (
+                prev_action_emb[:, None, :]
+                .expand(b, s * s, -1)
+                .reshape(b * s * s, -1)
+            )
+        cand_ids, proposal_logits, source_ids, scan_metrics = self.scanner(
+            flat_context,
+            flat_mem,
+            self.pm,
+            prev_action_emb=prev_action_emb,
+            ensure_all_candidates=(self.top_k >= self.pm.num_primitives),
+        )
         k = min(self.top_k, proposal_logits.shape[-1])
         top_vals, top_pos = proposal_logits.topk(k=k, dim=-1)
         top_ids = cand_ids.gather(1, top_pos)
@@ -171,15 +194,28 @@ class ActionMatrixLayer(nn.Module):
         )
 
         context_component = self.context_logits(flat_context)[:, :k]
+        primitive_pair = self.primitive_pair_bias.to(
+            dtype=flat_context.dtype, device=flat_context.device
+        ).reshape(1, s * s, self.pm.num_primitives).expand(b, -1, -1)
+        primitive_pair = primitive_pair.reshape(b * s * s, self.pm.num_primitives)
+        primitive_pair_component = primitive_pair.gather(1, top_ids)
         choice_logits = (
             _ln_logits(context_component)
             + _ln_logits(gain_component)
             + _ln_logits(sim_component)
             + _ln_logits(top_vals)
+            + primitive_pair_component
         )
-        choice = F.gumbel_softmax(choice_logits, tau=tau, hard=False, dim=-1) if self.training else F.softmax(choice_logits, dim=-1)
+        if choice_sampling not in {"auto", "gumbel", "softmax"}:
+            raise ValueError(f"unknown choice sampling: {choice_sampling!r}")
+        use_gumbel = self.training and choice_sampling in {"auto", "gumbel"}
+        choice = (
+            F.gumbel_softmax(choice_logits, tau=tau, hard=False, dim=-1)
+            if use_gumbel
+            else F.softmax(choice_logits / max(float(tau), 1e-4), dim=-1)
+        )
 
-        source_names = ("grid", "semantic", "usage", "random")
+        source_names = ("grid", "semantic", "usage", "random", "global")
         with torch.no_grad():
             for source_id, source_name in enumerate(source_names):
                 source_mass = (choice * (top_source_ids == source_id).to(choice.dtype)).sum(dim=-1).mean()
@@ -285,8 +321,10 @@ class ActionMatrixLayer(nn.Module):
             "write_pair_bias": self.write_pair_bias.detach(),
             "phase_pair_bias": self.phase_pair_bias.detach(),
             "cell_output_pair_bias": self.cell_output_pair_bias.detach(),
+            "primitive_pair_bias": self.primitive_pair_bias.detach(),
             "scan_metrics": scan_metrics,
             "curriculum_mode": curriculum_mode,
+            "choice_sampling": "gumbel" if use_gumbel else "softmax",
         }
 
         new_memory = 0.95 * memory + 0.05 * next_state.mean(dim=1)
@@ -334,7 +372,6 @@ class ActionMatrixModel(nn.Module):
         self.input_norm = nn.LayerNorm(dim) if input_norm == "layernorm" else nn.Identity()
         self.layer_read_logits = nn.Parameter(torch.zeros(layers))
         self.classifier = nn.Linear(dim, classes)
-
     def _merge_outputs(self, outputs: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
         stack = torch.stack(outputs, dim=0)  # [L,B,D]
         if self.final_read == "last":
@@ -358,6 +395,7 @@ class ActionMatrixModel(nn.Module):
         ablate_layer_output: Optional[int] = None,
         ablate_state_after: Optional[int] = None,
         curriculum_mode: str = "teacher",
+        choice_sampling: str = "auto",
     ):
         b = x.shape[0]
         s = self.slots
@@ -371,15 +409,9 @@ class ActionMatrixModel(nn.Module):
         traces = []
         prev_context: Optional[Dict[str, torch.Tensor]] = None
         for idx, layer in enumerate(self.layers):
+            # Previous-layer actions/activity/writes are internal recurrent state,
+            # not an external oracle hint. They must remain available in deploy.
             layer_prev_context = prev_context
-            if curriculum_mode == "audit" and prev_context is not None:
-                layer_prev_context = {
-                    key: prev_context[key]
-                    for key in ("active_mass", "write_mass")
-                    if key in prev_context
-                }
-            elif curriculum_mode == "deploy":
-                layer_prev_context = None
             state, out, memory, tr = layer(
                 state,
                 memory,
@@ -390,6 +422,7 @@ class ActionMatrixModel(nn.Module):
                 disable_gain=disable_gain,
                 disable_sim_result=disable_sim_result,
                 curriculum_mode=curriculum_mode,
+                choice_sampling=choice_sampling,
             )
             if ablate_state_after is not None and idx == ablate_state_after:
                 state = torch.zeros_like(state)
@@ -400,11 +433,18 @@ class ActionMatrixModel(nn.Module):
             traces.append(tr)
 
             cand = tr["candidate_ids"]
-            choice = tr["choice"]
+            choice = tr["choice_for_loss"]
             action_dist = _primitive_distribution(cand, choice, self.pm.num_primitives)
             action_dist = action_dist.view(b, s * s, -1).mean(dim=1)
-            active = tr["active"].view(b, s * s)
-            write_mass = tr["cell_write_mass"].view(b, s * s)
+            active = (
+                tr["edge_for_loss"] * tr["write_for_loss"] * tr["phase_for_loss"]
+            ).view(b, s * s)
+            write_mass = (
+                tr["edge_for_loss"]
+                * tr["write_for_loss"]
+                * tr["phase_for_loss"]
+                * (tr["mode_for_loss"][:, 0:1] + tr["mode_for_loss"][:, 1:2])
+            ).view(b, s * s)
             prev_context = {
                 "action_dist": action_dist,
                 "active_mass": active.mean(dim=1, keepdim=True),
@@ -422,4 +462,5 @@ class ActionMatrixModel(nn.Module):
             "slot_address_used_by_controller": not disable_slot_address,
             "slot_address_used_by_executor": False,
             "curriculum_mode": curriculum_mode,
+            "choice_sampling": choice_sampling,
         }

@@ -7,17 +7,27 @@ Agents update only their row after writing the required result artifact.
 | 01 | PASS | `reports/agent_tasks/TASK_01_RESULT.md` | yes |
 | 02 | PASS | `reports/agent_tasks/TASK_02_RESULT.md` | yes |
 | 03 | PASS | `reports/agent_tasks/TASK_03_RESULT.md` | yes |
-| 04 | PASS | `reports/agent_tasks/TASK_04_RESULT.md` | yes |
+| 04 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: real ablation credit missing |
 | 05 | PASS | `reports/agent_tasks/TASK_05_RESULT.md` | yes |
-| 06 | PASS | `reports/agent_tasks/TASK_06_RESULT.md` | yes |
-| 07 | PASS | `reports/agent_tasks/TASK_07_RESULT.md` | yes |
-| 08 | PASS | `reports/agent_tasks/TASK_08_RESULT.md` | yes |
-| 09 | PASS | `reports/agent_tasks/TASK_09_RESULT.md` | yes |
-| 10 | PASS | `reports/agent_tasks/TASK_10_RESULT.md` | yes |
-| 11 | PASS | `reports/agent_tasks/TASK_11_RESULT.md` | yes |
-| 12 | PASS | `reports/agent_tasks/TASK_12_RESULT.md` | yes |
-| 13 | PASS | `reports/agent_tasks/TASK_13_RESULT.md` | yes |
-| 14 | PASS | `reports/agent_tasks/TASK_14_RESULT.md` | no |
+| 06 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: simulator real-gain closure missing |
+| 07 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: collapse and unpaired ablations |
+| 08 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: branching heads are decorative |
+| 09 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: chance-level honesty can pass |
+| 10 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: proof expects obsolete caveat |
+| 11 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: real-data evidence insufficient |
+| 12 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: plugin does not reuse core |
+| 13 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: leakage/cache checks invalid |
+| 14 | FAIL | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | no: final PASS was not reproducible |
+| 15 | IN_PROGRESS | `reports/PLAN_CONFORMANCE_AUDIT_2026-06-20.md` | yes |
+| 16 | PENDING | — | after 15 PASS |
+| 17 | PENDING | — | after 16 PASS |
+| 18 | PENDING | — | after 17 PASS |
+| 19 | PENDING | — | after 18 PASS |
+| 20 | PENDING | — | after 19 PASS |
+| 21 | PENDING | — | after 20 PASS |
+| 22 | PENDING | — | after 21 PASS |
+| 23 | PENDING | — | after 22 PASS |
+| 24 | PENDING | — | after 23 PASS |
 
 Allowed statuses: `PENDING`, `IN_PROGRESS`, `PASS`, `FAIL`, `BLOCKED`.
 

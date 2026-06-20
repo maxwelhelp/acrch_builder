@@ -1,0 +1,24 @@
+{
+  "teacher": {
+    "values": {
+      "val_acc": 0.326065616932552,
+      "oracle_acc": 0.6513215598999998,
+      "sim_disabled_delta": 0.0016355418550135967,
+      "expected_edge_choice_mass": 0.05503640082820054
+    },
+    "ages": {
+      "val_acc": 0,
+      "oracle_acc": 0,
+      "sim_disabled_delta": 0,
+      "expected_edge_choice_mass": 0
+    }
+  },
+  "audit": {
+    "values": {},
+    "ages": {}
+  },
+  "deploy": {
+    "values": {},
+    "ages": {}
+  }
+}
