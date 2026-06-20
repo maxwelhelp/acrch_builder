@@ -1,0 +1,340 @@
+# Token-slot replacement proof
+
+- status: `PASS`
+- future_leakage_ok: `True`
+- full_vs_incremental_supported: `True`
+- decode_speedup_gt_one: `True`
+- learned_beats_attention: `True`
+- learned_beats_identity: `True`
+- learned_beats_random: `True`
+- learned_beats_frozen: `True`
+
+## Variants
+
+| mode | full acc | incremental acc | attention acc | speedup | grad norm | slot norm | token norm |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| learned | 0.8438 | 0.7734 | 0.4922 | 17.63 | 2.4959 | 10.2778 | 24.5082 |
+| identity | 0.5312 | 0.4375 | 0.5156 | 14.12 | 0.0000 | 0.0000 | 0.5721 |
+| random | 0.6016 | 0.6094 | 0.5078 | 19.03 | 0.0000 | 6.7506 | 9.7529 |
+| frozen | 0.5781 | 0.5391 | 0.5156 | 19.04 | 0.0000 | 6.3275 | 9.2359 |
+| attention_only | 0.4922 | 0.4922 | 0.4922 | 17.63 | 0.0000 | 0.0000 | 0.0000 |
+
+## Checks
+- future_leakage_ok: `PASS`
+- full_vs_incremental_supported: `PASS`
+- decode_speedup_gt_one: `PASS`
+- learned_beats_attention: `PASS`
+- learned_beats_identity: `PASS`
+- learned_beats_random: `PASS`
+- learned_beats_frozen: `PASS`
+- cache_reset_ok: `PASS`
+- variable_lengths_ok: `PASS`
+- mixed_precision_ok: `PASS`
+- learned_has_grad: `PASS`
+- mechanism_nonzero: `PASS`
+- core_gates_retained: `PASS`
+
+## Slot usage
+
+## Raw report
+```json
+{
+  "status": "PASS",
+  "checks": {
+    "future_leakage_ok": true,
+    "full_vs_incremental_supported": true,
+    "decode_speedup_gt_one": true,
+    "learned_beats_attention": true,
+    "learned_beats_identity": true,
+    "learned_beats_random": true,
+    "learned_beats_frozen": true,
+    "cache_reset_ok": true,
+    "variable_lengths_ok": true,
+    "mixed_precision_ok": true,
+    "learned_has_grad": true,
+    "mechanism_nonzero": true,
+    "core_gates_retained": true
+  },
+  "core_gates": [
+    {
+      "cmd": "bash commands/validate.sh",
+      "returncode": 0,
+      "stdout": "[validate] cleanup stale pycache\n[validate] py_compile\n[validate] import smoke\nActionMatrixModel ['identity', 'gated_keep', 'diff', 'contrast', 'smooth']\n[validate] cli help\n[validate] cleanup generated pycache\n[validate] forbidden files\n[validate] OK",
+      "stderr": "",
+      "attempts": [
+        {
+          "returncode": 0,
+          "stdout": "[validate] cleanup stale pycache\n[validate] py_compile\n[validate] import smoke\nActionMatrixModel ['identity', 'gated_keep', 'diff', 'contrast', 'smooth']\n[validate] cli help\n[validate] cleanup generated pycache\n[validate] forbidden files\n[validate] OK",
+          "stderr": ""
+        }
+      ]
+    },
+    {
+      "cmd": "bash commands/inspect_with_probe.sh",
+      "returncode": 0,
+      "stdout": "[probe] wrote reports/agent_inspector/runtime_probe.json\n[probe] gradient_closed=True credit_closed=True\n[probe] recovery_loss_connected=True\n[probe] detached_enabled_losses=['branch_split_loss']\n[inspect] wrote /home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/agent_inspector\n[inspect] gradient_closed=True bad=[]\n[inspect] credit_closed=True bad=[]\n[inspect-with-probe] summary: reports/agent_inspector/SUMMARY.md",
+      "stderr": "",
+      "attempts": [
+        {
+          "returncode": 0,
+          "stdout": "[probe] wrote reports/agent_inspector/runtime_probe.json\n[probe] gradient_closed=True credit_closed=True\n[probe] recovery_loss_connected=True\n[probe] detached_enabled_losses=['branch_split_loss']\n[inspect] wrote /home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/agent_inspector\n[inspect] gradient_closed=True bad=[]\n[inspect] credit_closed=True bad=[]\n[inspect-with-probe] summary: reports/agent_inspector/SUMMARY.md",
+          "stderr": ""
+        }
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "seed": 7,
+      "mechanism_mode": "learned",
+      "task": "causal_position_replacement",
+      "seq_len": 32,
+      "vocab_size": 32,
+      "train_acc": 0.73828125,
+      "train_loss": 0.521156357601285,
+      "best_val_acc": 0.859375,
+      "full_acc": 0.84375,
+      "incremental_acc": 0.7734375,
+      "full_loss": 0.39764276146888733,
+      "incremental_loss": 0.4301304519176483,
+      "full_vs_incremental_logit_mae": 0.0,
+      "token_slot_reconstruction_error": 0.0,
+      "slot_usage_by_position": {},
+      "slot_norm": 10.277800212614238,
+      "token_update_norm": 24.508235931396484,
+      "grad_norm": 2.495948869967833,
+      "future_leakage_ok": true,
+      "cache_reset_ok": true,
+      "variable_lengths_ok": true,
+      "mixed_precision_ok": true,
+      "latency_full_ms": 370.12140768638346,
+      "latency_incremental_ms": 20.989625438232906,
+      "decode_speedup": 17.633540378105174,
+      "credit": {
+        "credit_items": 1.0,
+        "credit_staleness_mean": 0.0,
+        "credit_age_max": 0.0
+      },
+      "params": 5572.0,
+      "flops": 40960.0,
+      "activation_bytes": 8704.0,
+      "attention_baseline_acc": 0.4921875,
+      "status": "PASS",
+      "checks": {
+        "future_leakage_ok": true,
+        "full_vs_incremental_supported": true,
+        "decode_speedup_gt_one": true,
+        "learned_mechanism_has_grad": true,
+        "reconstruction_low_error": true
+      },
+      "full_vs_incremental_supported": true
+    },
+    {
+      "seed": 7,
+      "mechanism_mode": "identity",
+      "task": "causal_position_replacement",
+      "seq_len": 32,
+      "vocab_size": 32,
+      "train_acc": 0.51953125,
+      "train_loss": 0.6927729099988937,
+      "best_val_acc": 0.5703125,
+      "full_acc": 0.53125,
+      "incremental_acc": 0.4375,
+      "full_loss": 0.6917459666728973,
+      "incremental_loss": 0.6972348093986511,
+      "full_vs_incremental_logit_mae": 0.0,
+      "token_slot_reconstruction_error": 0.0,
+      "slot_usage_by_position": {},
+      "slot_norm": 0.0,
+      "token_update_norm": 0.5720778107643127,
+      "grad_norm": 0.0,
+      "future_leakage_ok": true,
+      "cache_reset_ok": true,
+      "variable_lengths_ok": true,
+      "mixed_precision_ok": true,
+      "latency_full_ms": 360.4737642490363,
+      "latency_incremental_ms": 25.52752956034965,
+      "decode_speedup": 14.120981170419961,
+      "credit": {
+        "credit_items": 1.0,
+        "credit_staleness_mean": 0.0,
+        "credit_age_max": 0.0
+      },
+      "params": 5572.0,
+      "flops": 40960.0,
+      "activation_bytes": 8704.0,
+      "attention_baseline_acc": 0.515625,
+      "status": "PASS",
+      "checks": {
+        "future_leakage_ok": true,
+        "full_vs_incremental_supported": true,
+        "decode_speedup_gt_one": true,
+        "learned_mechanism_has_grad": false,
+        "reconstruction_low_error": true
+      },
+      "full_vs_incremental_supported": true
+    },
+    {
+      "seed": 7,
+      "mechanism_mode": "random",
+      "task": "causal_position_replacement",
+      "seq_len": 32,
+      "vocab_size": 32,
+      "train_acc": 0.56640625,
+      "train_loss": 0.6830976344645023,
+      "best_val_acc": 0.5703125,
+      "full_acc": 0.6015625,
+      "incremental_acc": 0.609375,
+      "full_loss": 0.6667774319648743,
+      "incremental_loss": 0.6852732300758362,
+      "full_vs_incremental_logit_mae": 0.13426220417022705,
+      "token_slot_reconstruction_error": 0.0,
+      "slot_usage_by_position": {},
+      "slot_norm": 6.750575348734856,
+      "token_update_norm": 9.752904415130615,
+      "grad_norm": 0.0,
+      "future_leakage_ok": true,
+      "cache_reset_ok": true,
+      "variable_lengths_ok": true,
+      "mixed_precision_ok": true,
+      "latency_full_ms": 393.5106058124802,
+      "latency_incremental_ms": 20.683571437984938,
+      "decode_speedup": 19.025273608686668,
+      "credit": {
+        "credit_items": 1.0,
+        "credit_staleness_mean": 0.0,
+        "credit_age_max": 0.0
+      },
+      "params": 5572.0,
+      "flops": 40960.0,
+      "activation_bytes": 8704.0,
+      "attention_baseline_acc": 0.5078125,
+      "status": "PASS",
+      "checks": {
+        "future_leakage_ok": true,
+        "full_vs_incremental_supported": false,
+        "decode_speedup_gt_one": true,
+        "learned_mechanism_has_grad": false,
+        "reconstruction_low_error": true
+      },
+      "full_vs_incremental_supported": false
+    },
+    {
+      "seed": 7,
+      "mechanism_mode": "frozen",
+      "task": "causal_position_replacement",
+      "seq_len": 32,
+      "vocab_size": 32,
+      "train_acc": 0.556640625,
+      "train_loss": 0.677405308932066,
+      "best_val_acc": 0.5625,
+      "full_acc": 0.578125,
+      "incremental_acc": 0.5390625,
+      "full_loss": 0.6705709397792816,
+      "incremental_loss": 0.6774522960186005,
+      "full_vs_incremental_logit_mae": 0.0,
+      "token_slot_reconstruction_error": 0.0,
+      "slot_usage_by_position": {},
+      "slot_norm": 6.327507854439318,
+      "token_update_norm": 9.235876083374023,
+      "grad_norm": 0.0,
+      "future_leakage_ok": true,
+      "cache_reset_ok": true,
+      "variable_lengths_ok": true,
+      "mixed_precision_ok": true,
+      "latency_full_ms": 361.79606962468824,
+      "latency_incremental_ms": 18.999957999767503,
+      "decode_speedup": 19.041940494242958,
+      "credit": {
+        "credit_items": 1.0,
+        "credit_staleness_mean": 0.0,
+        "credit_age_max": 0.0
+      },
+      "params": 5572.0,
+      "flops": 40960.0,
+      "activation_bytes": 8704.0,
+      "attention_baseline_acc": 0.515625,
+      "status": "PASS",
+      "checks": {
+        "future_leakage_ok": true,
+        "full_vs_incremental_supported": true,
+        "decode_speedup_gt_one": true,
+        "learned_mechanism_has_grad": false,
+        "reconstruction_low_error": true
+      },
+      "full_vs_incremental_supported": true
+    },
+    {
+      "mechanism_mode": "attention_only",
+      "full_acc": 0.4921875,
+      "incremental_acc": 0.4921875,
+      "decode_speedup": 17.633540378105174,
+      "grad_norm": 0.0,
+      "slot_norm": 0.0,
+      "token_update_norm": 0.0,
+      "attention_baseline_acc": 0.4921875,
+      "params": 7618.0,
+      "flops": 32768.0,
+      "activation_bytes": 8192.0
+    }
+  ],
+  "attention_baseline_acc": 0.4921875,
+  "slot_usage_by_position": {},
+  "credit": {
+    "credit_items": 1.0,
+    "credit_staleness_mean": 0.0,
+    "credit_age_max": 0.0
+  },
+  "learned": {
+    "seed": 7,
+    "mechanism_mode": "learned",
+    "task": "causal_position_replacement",
+    "seq_len": 32,
+    "vocab_size": 32,
+    "train_acc": 0.73828125,
+    "train_loss": 0.521156357601285,
+    "best_val_acc": 0.859375,
+    "full_acc": 0.84375,
+    "incremental_acc": 0.7734375,
+    "full_loss": 0.39764276146888733,
+    "incremental_loss": 0.4301304519176483,
+    "full_vs_incremental_logit_mae": 0.0,
+    "token_slot_reconstruction_error": 0.0,
+    "slot_usage_by_position": {},
+    "slot_norm": 10.277800212614238,
+    "token_update_norm": 24.508235931396484,
+    "grad_norm": 2.495948869967833,
+    "future_leakage_ok": true,
+    "cache_reset_ok": true,
+    "variable_lengths_ok": true,
+    "mixed_precision_ok": true,
+    "latency_full_ms": 370.12140768638346,
+    "latency_incremental_ms": 20.989625438232906,
+    "decode_speedup": 17.633540378105174,
+    "credit": {
+      "credit_items": 1.0,
+      "credit_staleness_mean": 0.0,
+      "credit_age_max": 0.0
+    },
+    "params": 5572.0,
+    "flops": 40960.0,
+    "activation_bytes": 8704.0,
+    "attention_baseline_acc": 0.4921875,
+    "status": "PASS",
+    "checks": {
+      "future_leakage_ok": true,
+      "full_vs_incremental_supported": true,
+      "decode_speedup_gt_one": true,
+      "learned_mechanism_has_grad": true,
+      "reconstruction_low_error": true
+    },
+    "full_vs_incremental_supported": true
+  },
+  "baseline": {
+    "seq_len": 32,
+    "vocab_size": 32,
+    "dim": 32,
+    "slots": 2
+  }
+}
+```

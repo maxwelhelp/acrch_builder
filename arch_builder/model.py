@@ -136,11 +136,8 @@ class ActionMatrixLayer(nn.Module):
         prev_context_mix = None
         if prev_context is not None:
             mix_parts = []
-            prev_output = prev_context.get("output")
             prev_action = prev_context.get("action_dist")
             prev_active = prev_context.get("active_mass")
-            if prev_output is not None:
-                mix_parts.append(self.prev_output_proj(prev_output))
             if prev_action is not None:
                 mix_parts.append(self.prev_action_proj(prev_action))
             if prev_active is not None:
@@ -409,7 +406,6 @@ class ActionMatrixModel(nn.Module):
             active = tr["active"].view(b, s * s)
             write_mass = tr["cell_write_mass"].view(b, s * s)
             prev_context = {
-                "output": out,
                 "action_dist": action_dist,
                 "active_mass": active.mean(dim=1, keepdim=True),
                 "write_mass": write_mass.mean(dim=1, keepdim=True),

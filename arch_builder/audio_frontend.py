@@ -19,6 +19,10 @@ class AudioBatch:
     waveforms: torch.Tensor
     y: torch.Tensor
 
+    @property
+    def x(self) -> torch.Tensor:
+        return self.waveforms
+
 
 def _dct_basis(frame_size: int, bins: int, device=None, dtype=None) -> torch.Tensor:
     n = torch.arange(frame_size, device=device, dtype=dtype).unsqueeze(1)

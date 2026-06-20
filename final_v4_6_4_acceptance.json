@@ -1,0 +1,34 @@
+{
+  "suite": "v4.6.4",
+  "status": "PASS",
+  "release_ready": true,
+  "gates": {
+    "validate": true,
+    "inspect_with_probe": true,
+    "forced_program_oracle": true
+  },
+  "tasks": [
+    {"task": "01", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_01_RESULT.md"},
+    {"task": "02", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_02_RESULT.md"},
+    {"task": "03", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_03_RESULT.md"},
+    {"task": "04", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_04_RESULT.md"},
+    {"task": "05", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_05_RESULT.md"},
+    {"task": "06", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_06_RESULT.md"},
+    {"task": "07", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_07_RESULT.md"},
+    {"task": "08", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_08_RESULT.md"},
+    {"task": "09", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_09_RESULT.md"},
+    {"task": "10", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_10_RESULT.md"},
+    {"task": "11", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_11_RESULT.md"},
+    {"task": "12", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_12_RESULT.md"},
+    {"task": "13", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_13_RESULT.md"},
+    {"task": "14", "status": "PASS", "result_artifact": "reports/agent_tasks/TASK_14_RESULT.md"}
+  ],
+  "failed_checks": [],
+  "facts": [
+    "All task result artifacts from 01 through 14 are PASS.",
+    "validate.sh and inspect_with_probe.sh pass.",
+    "probe_forced_program.sh passes after removing the direct final-read bypass."
+  ],
+  "inference": [],
+  "missing_evidence": []
+}

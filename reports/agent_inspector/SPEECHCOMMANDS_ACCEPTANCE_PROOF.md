@@ -1,0 +1,482 @@
+# SpeechCommands acceptance proof
+
+- status: `PASS`
+- structured_beats_raw: `True`
+- deploy_above_random: `True`
+- honesty_retained: `True`
+- simulator_ce_ablation_positive: `True`
+- non_grid_scanner_usage_positive: `True`
+
+## Variants
+
+| variant | status | full acc | audit acc | deploy acc | honesty | train acc | train loss | params | FLOPs | memory bytes |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| raw | FAIL | 0.0781 | 0.0781 | 0.0781 | 1.0000 | 0.1094 | 2.3001 | 161188 | 160896 | 65152 |
+| conv | PASS | 0.1250 | 0.1562 | 0.1250 | 1.0000 | 0.0781 | 2.3046 | 163388 | 6467840 | 449408 |
+| structured | PASS | 0.2188 | 0.0781 | 0.2188 | 1.0000 | 0.2344 | 2.0820 | 161502 | 781019 | 180844 |
+
+## Checks
+- raw_reported: `PASS`
+- conv_reported: `PASS`
+- structured_reported: `PASS`
+- structured_beats_raw: `PASS`
+- deploy_above_random: `PASS`
+- honesty_retained: `PASS`
+- simulator_ce_ablation_positive: `PASS`
+- non_grid_scanner_usage_positive: `PASS`
+- conv_scaffold_only: `PASS`
+- all_variants_have_resource_stats: `PASS`
+
+## Real-data baseline context
+- data_root: `../Functional Matrix Grower/data/speechcommands`
+- classes: `yes, no, up, down, left, right, on, off, stop, go`
+- train_limit: `512`
+- val_limit: `256`
+- test_limit: `256`
+
+## Raw report
+```json
+{
+  "status": "PASS",
+  "checks": {
+    "raw_reported": true,
+    "conv_reported": true,
+    "structured_reported": true,
+    "structured_beats_raw": true,
+    "deploy_above_random": true,
+    "honesty_retained": true,
+    "simulator_ce_ablation_positive": true,
+    "non_grid_scanner_usage_positive": true,
+    "conv_scaffold_only": true,
+    "all_variants_have_resource_stats": true
+  },
+  "variants": [
+    {
+      "variant": "raw",
+      "status": "FAIL",
+      "full_acc": 0.078125,
+      "audit_acc": 0.078125,
+      "deploy_acc": 0.078125,
+      "honesty_score": 1.0,
+      "deploy_above_random": false,
+      "train_acc": 0.109375,
+      "train_loss": 2.300061206022898,
+      "frontend_params": 160.0,
+      "frontend_flops": 128128.0,
+      "frontend_activation_bytes": 64640.0,
+      "model_params": 161188.0,
+      "model_flops": 160896.0,
+      "model_activation_bytes": 65152.0,
+      "checks": {
+        "deploy_above_random": false,
+        "honesty_retained": true,
+        "simulator_ce_ablation_positive": true,
+        "non_grid_scanner_usage_positive": true,
+        "layer0_ablation_positive": false
+      }
+    },
+    {
+      "variant": "conv",
+      "status": "PASS",
+      "full_acc": 0.125,
+      "audit_acc": 0.15625,
+      "deploy_acc": 0.125,
+      "honesty_score": 1.0,
+      "deploy_above_random": true,
+      "train_acc": 0.078125,
+      "train_loss": 2.3046078085899353,
+      "frontend_params": 2360.0,
+      "frontend_flops": 6435072.0,
+      "frontend_activation_bytes": 448896.0,
+      "model_params": 163388.0,
+      "model_flops": 6467840.0,
+      "model_activation_bytes": 449408.0,
+      "checks": {
+        "deploy_above_random": true,
+        "honesty_retained": true,
+        "simulator_ce_ablation_positive": false,
+        "non_grid_scanner_usage_positive": false,
+        "layer0_ablation_positive": true
+      }
+    },
+    {
+      "variant": "structured",
+      "status": "PASS",
+      "full_acc": 0.21875,
+      "audit_acc": 0.078125,
+      "deploy_acc": 0.21875,
+      "honesty_score": 1.0,
+      "deploy_above_random": true,
+      "train_acc": 0.234375,
+      "train_loss": 2.082038998603821,
+      "frontend_params": 474.0,
+      "frontend_flops": 748251.0,
+      "frontend_activation_bytes": 180332.0,
+      "model_params": 161502.0,
+      "model_flops": 781019.0,
+      "model_activation_bytes": 180844.0,
+      "checks": {
+        "deploy_above_random": true,
+        "honesty_retained": true,
+        "simulator_ce_ablation_positive": true,
+        "non_grid_scanner_usage_positive": true,
+        "layer0_ablation_positive": true
+      }
+    }
+  ],
+  "baseline": {
+    "data_root": "../Functional Matrix Grower/data/speechcommands",
+    "classes": [
+      "yes",
+      "no",
+      "up",
+      "down",
+      "left",
+      "right",
+      "on",
+      "off",
+      "stop",
+      "go"
+    ],
+    "train_limit": 512,
+    "val_limit": 256,
+    "test_limit": 256
+  },
+  "raw": {
+    "variant": "raw",
+    "dataset": "speechcommands",
+    "task": "speechcommands_real_acceptance",
+    "data_root": "../Functional Matrix Grower/data/speechcommands",
+    "classes": [
+      "yes",
+      "no",
+      "up",
+      "down",
+      "left",
+      "right",
+      "on",
+      "off",
+      "stop",
+      "go"
+    ],
+    "train_limit": 512,
+    "val_limit": 256,
+    "test_limit": 256,
+    "curriculum_schedule": "phased",
+    "honesty_floor": 0.8,
+    "honesty_score": 1.0,
+    "train_acc": 0.109375,
+    "train_loss": 2.300061206022898,
+    "best_full_acc": 0.15625,
+    "full_acc": 0.078125,
+    "audit_acc": 0.078125,
+    "deploy_acc": 0.078125,
+    "test_acc": 0.0625,
+    "deploy_above_random": false,
+    "deploy_above_random_margin": -0.021875000000000006,
+    "status": "FAIL",
+    "val_metrics": {
+      "acc": 0.078125,
+      "loss": 2.311779260635376,
+      "grid_candidate_usage": 0.5863212924450636,
+      "semantic_candidate_usage": 1.2263005673885345,
+      "usage_candidate_usage": 0.15883838445734,
+      "random_candidate_usage": 0.028539706952869892,
+      "scanner_source_mass_sum": 1.999999951243808,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.02644459530711174,
+      "layer0_cell_output_gate_mean": 0.14940699934959412
+    },
+    "audit_metrics": {
+      "acc": 0.078125,
+      "loss": 2.306465744972229,
+      "grid_candidate_usage": 0.7085763290524483,
+      "semantic_candidate_usage": 1.1403934955596924,
+      "usage_candidate_usage": 0.12166237528435886,
+      "random_candidate_usage": 0.02936777751892805,
+      "scanner_source_mass_sum": 1.9999999774154276,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.026452260091900826,
+      "layer0_cell_output_gate_mean": 0.1492331549525261
+    },
+    "deploy_metrics": {
+      "acc": 0.078125,
+      "loss": 2.3023523092269897,
+      "grid_candidate_usage": 0.7307840399444103,
+      "semantic_candidate_usage": 1.1324966698884964,
+      "usage_candidate_usage": 0.10524681700917426,
+      "random_candidate_usage": 0.031472438015043736,
+      "scanner_source_mass_sum": 1.9999999648571247,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.026393509469926357,
+      "layer0_cell_output_gate_mean": 0.14953365921974182
+    },
+    "test_metrics": {
+      "acc": 0.0625,
+      "loss": 2.3151907920837402,
+      "grid_candidate_usage": 0.6673068217933178,
+      "semantic_candidate_usage": 1.1765012443065643,
+      "usage_candidate_usage": 0.11921000387519598,
+      "random_candidate_usage": 0.03698198590427637,
+      "scanner_source_mass_sum": 2.0000000558793545,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.026398862712085247,
+      "layer0_cell_output_gate_mean": 0.14947865903377533
+    },
+    "ablations": {
+      "sim_disabled_delta": 0.04064512252807617,
+      "gain_disabled_delta": 0.01904606819152832,
+      "sim_result_disabled_delta": 0.012565851211547852,
+      "slot_disabled_delta": 0.014513492584228516,
+      "layer0_output_disabled_delta": -0.0036385059356689453,
+      "grid_candidate_usage": 0.5680171251296997,
+      "semantic_candidate_usage": 0.41264283657073975,
+      "usage_candidate_usage": 0.0005069955950602889,
+      "random_candidate_usage": 0.01883307285606861,
+      "scanner_source_mass_sum": 1.0000000301515684
+    },
+    "frontend": {
+      "params": 160.0,
+      "flops": 128128.0,
+      "activation_bytes": 64640.0
+    },
+    "model": {
+      "params": 161188.0,
+      "approx_flops": 160896.0,
+      "approx_activation_bytes": 65152.0
+    },
+    "seconds": 18.687805891036987,
+    "checks": {
+      "deploy_above_random": false,
+      "honesty_retained": true,
+      "simulator_ce_ablation_positive": true,
+      "non_grid_scanner_usage_positive": true,
+      "layer0_ablation_positive": false
+    }
+  },
+  "conv": {
+    "variant": "conv",
+    "dataset": "speechcommands",
+    "task": "speechcommands_real_acceptance",
+    "data_root": "../Functional Matrix Grower/data/speechcommands",
+    "classes": [
+      "yes",
+      "no",
+      "up",
+      "down",
+      "left",
+      "right",
+      "on",
+      "off",
+      "stop",
+      "go"
+    ],
+    "train_limit": 512,
+    "val_limit": 256,
+    "test_limit": 256,
+    "curriculum_schedule": "phased",
+    "honesty_floor": 0.8,
+    "honesty_score": 1.0,
+    "train_acc": 0.078125,
+    "train_loss": 2.3046078085899353,
+    "best_full_acc": 0.125,
+    "full_acc": 0.125,
+    "audit_acc": 0.15625,
+    "deploy_acc": 0.125,
+    "test_acc": 0.0625,
+    "deploy_above_random": true,
+    "deploy_above_random_margin": 0.024999999999999994,
+    "status": "PASS",
+    "val_metrics": {
+      "acc": 0.125,
+      "loss": 2.2917548418045044,
+      "grid_candidate_usage": 1.9352521002292633,
+      "semantic_candidate_usage": 0.058069643328053644,
+      "usage_candidate_usage": 0.0024655715678818524,
+      "random_candidate_usage": 0.004212713916786015,
+      "scanner_source_mass_sum": 2.000000029041985,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.056482093408703804,
+      "layer0_cell_output_gate_mean": 0.860163003206253
+    },
+    "audit_metrics": {
+      "acc": 0.15625,
+      "loss": 2.309060573577881,
+      "grid_candidate_usage": 1.9053194224834442,
+      "semantic_candidate_usage": 0.059009848249843344,
+      "usage_candidate_usage": 0.031358183066913625,
+      "random_candidate_usage": 0.004312548029702157,
+      "scanner_source_mass_sum": 2.0000000018299033,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.056486884132027626,
+      "layer0_cell_output_gate_mean": 0.8601628839969635
+    },
+    "deploy_metrics": {
+      "acc": 0.125,
+      "loss": 2.3064974546432495,
+      "grid_candidate_usage": 1.8972017467021942,
+      "semantic_candidate_usage": 0.05903561532613821,
+      "usage_candidate_usage": 0.039897980183013715,
+      "random_candidate_usage": 0.00386465823976323,
+      "scanner_source_mass_sum": 2.0000000004511094,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.056491728872060776,
+      "layer0_cell_output_gate_mean": 0.8601870238780975
+    },
+    "test_metrics": {
+      "acc": 0.0625,
+      "loss": 2.3012136220932007,
+      "grid_candidate_usage": 1.9028433859348297,
+      "semantic_candidate_usage": 0.059366840148868505,
+      "usage_candidate_usage": 0.03463521289813798,
+      "random_candidate_usage": 0.0031545532401651144,
+      "scanner_source_mass_sum": 1.9999999922220013,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.05647316761314869,
+      "layer0_cell_output_gate_mean": 0.8601586222648621
+    },
+    "ablations": {
+      "sim_disabled_delta": -0.0006697177886962891,
+      "gain_disabled_delta": 0.015464067459106445,
+      "sim_result_disabled_delta": -0.003428220748901367,
+      "slot_disabled_delta": -9.202957153320312e-05,
+      "layer0_output_disabled_delta": 0.0014252662658691406,
+      "grid_candidate_usage": 0.9986746311187744,
+      "semantic_candidate_usage": 0.00024244147061835974,
+      "usage_candidate_usage": 0.00011645325866993517,
+      "random_candidate_usage": 0.0009664219687692821,
+      "scanner_source_mass_sum": 0.999999947816832
+    },
+    "frontend": {
+      "params": 2360.0,
+      "flops": 6435072.0,
+      "activation_bytes": 448896.0
+    },
+    "model": {
+      "params": 163388.0,
+      "approx_flops": 6467840.0,
+      "approx_activation_bytes": 449408.0
+    },
+    "seconds": 20.561655044555664,
+    "checks": {
+      "deploy_above_random": true,
+      "honesty_retained": true,
+      "simulator_ce_ablation_positive": false,
+      "non_grid_scanner_usage_positive": false,
+      "layer0_ablation_positive": true
+    }
+  },
+  "structured": {
+    "variant": "structured",
+    "dataset": "speechcommands",
+    "task": "speechcommands_real_acceptance",
+    "data_root": "../Functional Matrix Grower/data/speechcommands",
+    "classes": [
+      "yes",
+      "no",
+      "up",
+      "down",
+      "left",
+      "right",
+      "on",
+      "off",
+      "stop",
+      "go"
+    ],
+    "train_limit": 512,
+    "val_limit": 256,
+    "test_limit": 256,
+    "curriculum_schedule": "phased",
+    "honesty_floor": 0.8,
+    "honesty_score": 1.0,
+    "train_acc": 0.234375,
+    "train_loss": 2.082038998603821,
+    "best_full_acc": 0.25,
+    "full_acc": 0.21875,
+    "audit_acc": 0.078125,
+    "deploy_acc": 0.21875,
+    "test_acc": 0.171875,
+    "deploy_above_random": true,
+    "deploy_above_random_margin": 0.11875,
+    "status": "PASS",
+    "val_metrics": {
+      "acc": 0.21875,
+      "loss": 2.1523040533065796,
+      "grid_candidate_usage": 1.0028228908777237,
+      "semantic_candidate_usage": 0.8909305074630538,
+      "usage_candidate_usage": 0.04745941377041163,
+      "random_candidate_usage": 0.05878718779422343,
+      "scanner_source_mass_sum": 1.9999999999054126,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.035420517437160015,
+      "layer0_cell_output_gate_mean": 0.1298171579837799
+    },
+    "audit_metrics": {
+      "acc": 0.078125,
+      "loss": 2.2866815328598022,
+      "grid_candidate_usage": 0.7080521360039711,
+      "semantic_candidate_usage": 0.9251306244550506,
+      "usage_candidate_usage": 0.33368223792058416,
+      "random_candidate_usage": 0.03313495730981231,
+      "scanner_source_mass_sum": 1.9999999556894181,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.033094849437475204,
+      "layer0_cell_output_gate_mean": 0.12808581441640854
+    },
+    "deploy_metrics": {
+      "acc": 0.21875,
+      "loss": 2.150931715965271,
+      "grid_candidate_usage": 0.9505946561694145,
+      "semantic_candidate_usage": 0.8415499203983927,
+      "usage_candidate_usage": 0.15472228080034256,
+      "random_candidate_usage": 0.053133098408579826,
+      "scanner_source_mass_sum": 1.9999999557767296,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.03550107590854168,
+      "layer0_cell_output_gate_mean": 0.1306120529770851
+    },
+    "test_metrics": {
+      "acc": 0.171875,
+      "loss": 2.2757606506347656,
+      "grid_candidate_usage": 0.8308389037847519,
+      "semantic_candidate_usage": 0.9159235213155625,
+      "usage_candidate_usage": 0.20611879270290956,
+      "random_candidate_usage": 0.04711872665211558,
+      "scanner_source_mass_sum": 1.9999999444553396,
+      "layer0_listen_gate_mean": 0.0,
+      "layer0_active_mean": 0.029221119359135628,
+      "layer0_cell_output_gate_mean": 0.1286814659833908
+    },
+    "ablations": {
+      "sim_disabled_delta": 0.04823493957519531,
+      "gain_disabled_delta": 0.0017156600952148438,
+      "sim_result_disabled_delta": -0.0027937889099121094,
+      "slot_disabled_delta": 0.04309892654418945,
+      "layer0_output_disabled_delta": 0.05820035934448242,
+      "grid_candidate_usage": 0.4107193946838379,
+      "semantic_candidate_usage": 0.00016750596114434302,
+      "usage_candidate_usage": 0.5810845494270325,
+      "random_candidate_usage": 0.00802854634821415,
+      "scanner_source_mass_sum": 0.9999999964202289
+    },
+    "frontend": {
+      "params": 474.0,
+      "flops": 748251.0,
+      "activation_bytes": 180332.0
+    },
+    "model": {
+      "params": 161502.0,
+      "approx_flops": 781019.0,
+      "approx_activation_bytes": 180844.0
+    },
+    "seconds": 17.87801432609558,
+    "checks": {
+      "deploy_above_random": true,
+      "honesty_retained": true,
+      "simulator_ce_ablation_positive": true,
+      "non_grid_scanner_usage_positive": true,
+      "layer0_ablation_positive": true
+    }
+  }
+}
+```

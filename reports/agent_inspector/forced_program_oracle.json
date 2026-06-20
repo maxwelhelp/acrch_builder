@@ -93,10 +93,10 @@
     }
   ],
   "controller_address_audit": {
-    "controller_address_choice_delta": 0.025092102587223053,
+    "controller_address_choice_delta": 0.025533827021718025,
     "slot_address_used_by_controller": true,
     "slot_address_used_by_executor": false,
-    "final_read_last_layer0_output_bypass_delta": 0.06956419348716736
+    "final_read_last_layer0_output_bypass_delta": 0.0
   },
   "sequential_state_audit": [
     {
@@ -865,7 +865,7 @@
     "invariants_pass": true,
     "address_content_separated": true,
     "controller_address_alive": true,
-    "final_read_last_has_no_layer0_output_bypass": false,
+    "final_read_last_has_no_layer0_output_bypass": true,
     "sequential_contract_pass": true
   }
 }

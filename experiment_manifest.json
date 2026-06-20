@@ -1,0 +1,32 @@
+{
+  "suite": "v4.6.4",
+  "final_status": "PASS",
+  "result_artifacts": [
+    "reports/agent_tasks/TASK_01_RESULT.md",
+    "reports/agent_tasks/TASK_02_RESULT.md",
+    "reports/agent_tasks/TASK_03_RESULT.md",
+    "reports/agent_tasks/TASK_04_RESULT.md",
+    "reports/agent_tasks/TASK_05_RESULT.md",
+    "reports/agent_tasks/TASK_06_RESULT.md",
+    "reports/agent_tasks/TASK_07_RESULT.md",
+    "reports/agent_tasks/TASK_08_RESULT.md",
+    "reports/agent_tasks/TASK_09_RESULT.md",
+    "reports/agent_tasks/TASK_10_RESULT.md",
+    "reports/agent_tasks/TASK_11_RESULT.md",
+    "reports/agent_tasks/TASK_12_RESULT.md",
+    "reports/agent_tasks/TASK_13_RESULT.md",
+    "reports/agent_tasks/TASK_14_RESULT.md"
+  ],
+  "proof_artifacts": [
+    "reports/agent_inspector/SUMMARY.md",
+    "reports/agent_inspector/FORCED_PROGRAM_ORACLE.md",
+    "reports/agent_inspector/forced_program_oracle.json",
+    "reports/agent_inspector/TOKEN_SLOT_REPLACEMENT_PROOF.md",
+    "reports/agent_inspector/token_slot_replacement_proof.json"
+  ],
+  "gates": {
+    "validate": "PASS",
+    "inspect_with_probe": "PASS",
+    "forced_program_oracle": "PASS"
+  }
+}
