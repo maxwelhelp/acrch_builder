@@ -1,0 +1,10 @@
+name: chain_diff_product
+slots: 4
+layers: 2
+formula: mean((s0 - s1) * (s2 - s3))
+expected_actions:
+  - {layer: 0, src: 0, tgt: 1, primitive: diff}
+  - {layer: 0, src: 2, tgt: 3, primitive: diff}
+  - {layer: 1, src: 1, tgt: 3, primitive: product}
+pass_thresholds:
+  oracle_acc: {min: 1.0}

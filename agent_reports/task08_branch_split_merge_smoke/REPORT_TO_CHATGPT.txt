@@ -1,0 +1,73 @@
+# Latest vertical slice report
+
+- report_dir: `agent_reports/task08_branch_split_merge_smoke`
+- task: `branch_split_merge`
+- task_config_path: `/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/configs/tasks/branch_split_merge.yml`
+- task_config_name: `branch_split_merge`
+- task_config_digest: `d63cf11a486ccb14770cf11dfa8a5e3b163a7eee4b47a41076773ee0650e302e`
+- expected_actions: `[{'layer': 0, 'src': 0, 'tgt': 1, 'primitive': 'route'}, {'layer': 0, 'src': 0, 'tgt': 2, 'primitive': 'route'}, {'layer': 1, 'src': 1, 'tgt': 3, 'primitive': 'edge_gate'}, {'layer': 1, 'src': 2, 'tgt': 3, 'primitive': 'edge_gate'}, {'layer': 2, 'src': 1, 'tgt': 3, 'primitive': 'channel'}, {'layer': 2, 'src': 2, 'tgt': 3, 'primitive': 'channel'}]`
+- pass_thresholds: `{'oracle_acc': {'min': 1.0}}`
+- pass_threshold_results: `{'oracle_acc': {'value': 1.0, 'min': 1.0, 'passed': True}}`
+- pass_thresholds_met: `True`
+- epochs: `2`
+- state_norm_mode: `none`
+- best_acc: `0.50390625`
+- last_acc: `0.50390625`
+- program_recovery_rate: `0.3860677083333333`
+- expected_edge_recovery: `0.3860677083333333`
+- expected_any_recovery: `0.48193359375`
+- expected_edge_active: `0.33375783761342365`
+- expected_candidate_present: `0.3860677083333333`
+- expected_edge_choice_mass: `0.37316325306892395`
+- layer_output_credit: `0.37316325306892395`
+- layer_listen_score: `0.5620211660861969`
+- layer_action_similarity: `0.12080845981836319`
+- slot_alive_mean: `0.5069548785686493`
+- slot_alive_count: `2.2200520833333335`
+- split_none_mass: `0.32303351163864136`
+- split_one_mass: `0.32922104001045227`
+- split_two_mass: `0.347745418548584`
+- child_gate_mean: `0.48904111981391907`
+- merge_gate_mean: `0.4957389136155446`
+- collector_mass_mean: `0.24783561627070108`
+- gain_disabled_delta: `0.0018287301063537598`
+- sim_result_disabled_delta: `0.00260007381439209`
+- sim_disabled_delta: `0.0013152360916137695`
+- choice_without_sim_delta: `0.05579568073153496`
+- external_delete_delta: `-0.0185546875`
+- internal_skip_delta: `0.0126953125`
+- state_ablation_delta: `0.0263671875`
+- semantic_grid_mismatch: `0.4831949869791667`
+- semantic_neighbor_entropy: `3.1933063666025796`
+- primitive_embedding_rank: `25.0`
+- usage_entropy: `3.218428611755371`
+- usage_credit_observations: `147456.0`
+- grid_candidate_usage: `0.5624242424964905`
+- semantic_candidate_usage: `0.24491427838802338`
+- usage_candidate_usage: `0.10492426032821338`
+- random_candidate_usage: `0.08773719767729442`
+- scanner_source_mass_sum: `0.9999999788900217`
+- skip_mass: `0.2615959842999776`
+- transform_mass: `0.5718800028165182`
+- disable_mass: `0.1665239930152893`
+- oracle_acc: `1.0`
+- edge_pair_bias_expected: `0.004335792735219002`
+- write_pair_bias_expected: `0.005497646518051624`
+- phase_pair_bias_expected: `0.004528442397713661`
+- cell_output_pair_bias_expected: `0.0018548521911725402`
+- edge_pair_bias_std: `0.0017869549337774515`
+- write_pair_bias_std: `0.0020767126698046923`
+- choice_entropy: `0.9505411386489868`
+- edge_scale_mean: `0.9670331875483195`
+- cell_output_gate_mean: `0.5409507751464844`
+- cell_tape_weight_mean: `0.09394847353299458`
+- branch_split_loss: `0.0`
+- branch_alive_loss: `0.6998800983031591`
+- branch_child_loss: `0.6893367270628611`
+- branch_merge_loss: `0.6954353054364523`
+- branch_collector_loss: `0.28438561658064526`
+
+## Conclusion
+WARNING: primitive collapse in PROGRAM_REPORT
+
+Program details: `PROGRAM_REPORT.md` and `program_epoch_XXX.json`.

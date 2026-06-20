@@ -85,12 +85,14 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--lambda-active-budget", type=float, default=0.02)
     ap.add_argument("--lambda-tape-budget", type=float, default=0.02)
     ap.add_argument("--lambda-layer-action-diversity", type=float, default=0.05)
+    ap.add_argument("--lambda-branch", type=float, default=0.05)
     ap.add_argument("--lambda-collapse", type=float, default=0.01)
     ap.add_argument("--min-transform-mass", type=float, default=0.15)
     ap.add_argument("--target-active-fraction", type=float, default=0.18)
     ap.add_argument("--target-tape-fraction", type=float, default=0.015)
     ap.add_argument("--target-active-cells", type=float, default=3.0)
     ap.add_argument("--adapt-choice-floor", type=float, default=0.45)
+    ap.add_argument("--adapt-listen-floor", type=float, default=0.45)
     ap.add_argument("--adapt-top-share-floor", type=float, default=0.55)
     ap.add_argument("--adapt-sharpness", type=float, default=0.08)
     ap.add_argument("--adapt-cell-sharpness", type=float, default=1.5)
@@ -186,6 +188,11 @@ def main() -> int:
         "tape_budget": ["gate_controller"],
         "layer_action_diversity": ["choice_controller", "scanner", "simulator"],
         "min_transform_loss": ["gate_controller"],
+        "branch_split_loss": ["gate_controller"],
+        "branch_alive_loss": ["gate_controller"],
+        "branch_child_loss": ["gate_controller"],
+        "branch_merge_loss": ["gate_controller"],
+        "branch_collector_loss": ["gate_controller"],
     }
     loss_connectivity: dict[str, Any] = {}
     applicability = {name: True for name in raw_losses}

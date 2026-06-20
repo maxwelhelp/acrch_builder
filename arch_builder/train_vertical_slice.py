@@ -11,8 +11,9 @@ import torch.nn.functional as F
 
 from .model import ActionMatrixModel
 from .synthetic_tasks import SyntheticKnownProgramTask
-from .credit import CreditBuffer, simulator_ablation_metrics
+from .credit import CreditBuffer, ModeCreditLedger, simulator_ablation_metrics
 from .reporting import ensure_dir, write_json, append_csv, write_latest_report
+from .task_config import evaluate_pass_thresholds, legacy_task_path, load_task_config
 
 
 def amp_dtype(name: str):
@@ -40,6 +41,35 @@ def _action_metric_prefix(action: Dict[str, object]) -> str:
     return f"action_L{int(action['layer'])}_{int(action['src'])}_{int(action['tgt'])}_{primitive}"
 
 
+def curriculum_phase(epoch: int, total_epochs: int, schedule: str) -> str:
+    if schedule == "teacher":
+        return "teacher"
+    if schedule != "phased":
+        raise ValueError(f"unknown curriculum schedule: {schedule!r}")
+    teacher_end = max(1, int(total_epochs * 0.33))
+    audit_end = max(teacher_end + 1, int(total_epochs * 0.66))
+    if epoch <= teacher_end:
+        return "teacher"
+    if epoch <= audit_end:
+        return "audit"
+    return "deploy"
+
+
+def _next_layer_context(trace_layer: Dict[str, object], out: torch.Tensor, model: ActionMatrixModel) -> Dict[str, torch.Tensor]:
+    slots = model.slots
+    b = trace_layer["candidate_ids"].shape[0] // (slots * slots)
+    action_dist = _primitive_distribution(trace_layer, model.pm.num_primitives)
+    action_dist = action_dist.view(b, slots * slots, -1).mean(dim=1)
+    active = trace_layer["active"].view(b, slots * slots)
+    write_mass = trace_layer["cell_write_mass"].view(b, slots * slots)
+    return {
+        "output": out,
+        "action_dist": action_dist,
+        "active_mass": active.mean(dim=1, keepdim=True),
+        "write_mass": write_mass.mean(dim=1, keepdim=True),
+    }
+
+
 def _primitive_distribution(
     layer0: Dict[str, torch.Tensor],
     num_primitives: int,
@@ -59,8 +89,12 @@ def summarize_trace(trace: Dict[str, object], batch, model: ActionMatrixModel) -
 
     recoveries, candidate_present, choice_masses, actives, expected_any = [], [], [], [], []
     choice_entropy, transform_mass, skip_mass, disable_mass = [], [], [], []
+    listen_scores, layer_action_dists = [], []
     edge_scale_mean, cell_output_gate_mean, cell_tape_weight_mean = [], [], []
     cell_write_mass_mean, target_write_gate_mean = [], []
+    slot_alive_mean, slot_alive_count = [], []
+    split_none_mean, split_one_mean, split_two_mean = [], [], []
+    child_gate_mean, merge_gate_mean, collector_mass_mean = [], [], []
     active_cells_by_layer, expected_top_cells_by_layer, primitive_top_share_by_layer = [], [], []
     active_edges_per_target_by_layer = []
     action_metrics: Dict[str, float] = {}
@@ -75,12 +109,15 @@ def summarize_trace(trace: Dict[str, object], batch, model: ActionMatrixModel) -
         cell_dist = prim_dist_rows.view(chosen_edges.shape[0], slots * slots, -1).mean(dim=0)
         global_prim = cell_dist.mean(dim=0)
         primitive_top_share_by_layer.append(global_prim.max().item())
+        layer_action_dists.append(global_prim)
 
         mode = layer0["mode"]
         transform_mass.append(mode[:, 0].mean().item())
         skip_mass.append(mode[:, 1].mean().item())
         disable_mass.append(mode[:, 2].mean().item())
         choice_entropy.append(float((-(choice + 1e-8) * (choice + 1e-8).log()).sum(dim=-1).mean().cpu()))
+        if layer_idx > 0 and layer0.get("listen_gate") is not None:
+            listen_scores.append(float(layer0["listen_gate"].mean().cpu()))
 
         edge = layer0["edge"].view(-1, slots, slots, 1)
         write = layer0["write"].view(-1, slots, slots, 1)
@@ -103,6 +140,21 @@ def summarize_trace(trace: Dict[str, object], batch, model: ActionMatrixModel) -
             cell_write_mass_mean.append(layer0["cell_write_mass"].mean().item())
         if "target_write_gate" in layer0:
             target_write_gate_mean.append(layer0["target_write_gate"].mean().item())
+        if "slot_alive" in layer0:
+            slot_alive = layer0["slot_alive"].view(-1, slots)
+            slot_alive_mean.append(slot_alive.mean().item())
+            slot_alive_count.append((slot_alive > 0.5).float().sum(dim=1).mean().item())
+        if "split_count" in layer0:
+            split_count = layer0["split_count"].view(-1, slots, 3)
+            split_none_mean.append(split_count[..., 0].mean().item())
+            split_one_mean.append(split_count[..., 1].mean().item())
+            split_two_mean.append(split_count[..., 2].mean().item())
+        if "child_gate" in layer0:
+            child_gate_mean.append(layer0["child_gate"].mean().item())
+        if "merge_gate" in layer0:
+            merge_gate_mean.append(layer0["merge_gate"].mean().item())
+        if "collector_mass" in layer0:
+            collector_mass_mean.append(layer0["collector_mass"].mean().item())
 
         layer_actions = actions_by_layer.get(layer_idx, [])
         expected_names = {str(a["primitive"]) for a in layer_actions}
@@ -153,6 +205,7 @@ def summarize_trace(trace: Dict[str, object], batch, model: ActionMatrixModel) -
         "expected_any_recovery": float(sum(expected_any) / max(1, len(expected_any))),
         "expected_candidate_present": float(sum(candidate_present) / max(1, len(candidate_present))),
         "expected_edge_choice_mass": float(sum(choice_masses) / max(1, len(choice_masses))),
+        "layer_output_credit": float(sum(choice_masses) / max(1, len(choice_masses))),
         "expected_edge_active": float(sum(actives) / max(1, len(actives))),
         "transform_mass": float(sum(transform_mass) / max(1, len(transform_mass))),
         "skip_mass": float(sum(skip_mass) / max(1, len(skip_mass))),
@@ -173,7 +226,18 @@ def summarize_trace(trace: Dict[str, object], batch, model: ActionMatrixModel) -
         **action_metrics,
     }
 
-    for key in ["semantic_grid_mismatch", "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "scanner_source_mass_sum"]:
+    if listen_scores:
+        out["layer_listen_score"] = float(sum(listen_scores) / len(listen_scores))
+    if len(layer_action_dists) >= 2:
+        sims = [
+            F.cosine_similarity(layer_action_dists[i].float(), layer_action_dists[i + 1].float(), dim=0).item()
+            for i in range(len(layer_action_dists) - 1)
+        ]
+        out["layer_action_similarity"] = float(sum(sims) / len(sims))
+    else:
+        out["layer_action_similarity"] = 1.0 if layer_action_dists else 0.0
+
+    for key in ["semantic_grid_mismatch", "semantic_neighbor_entropy", "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "scanner_source_mass_sum"]:
         vals = [layer["scan_metrics"].get(key, 0.0) for layer in trace["layers"] if "scan_metrics" in layer]
         if vals:
             out[key] = float(sum(vals) / len(vals))
@@ -188,6 +252,20 @@ def summarize_trace(trace: Dict[str, object], batch, model: ActionMatrixModel) -
         out["cell_write_mass_mean"] = float(sum(cell_write_mass_mean) / len(cell_write_mass_mean))
     if target_write_gate_mean:
         out["target_write_gate_mean"] = float(sum(target_write_gate_mean) / len(target_write_gate_mean))
+    if slot_alive_mean:
+        out["slot_alive_mean"] = float(sum(slot_alive_mean) / len(slot_alive_mean))
+    if slot_alive_count:
+        out["slot_alive_count"] = float(sum(slot_alive_count) / len(slot_alive_count))
+    if split_none_mean:
+        out["split_none_mass"] = float(sum(split_none_mean) / len(split_none_mean))
+        out["split_one_mass"] = float(sum(split_one_mean) / len(split_one_mean))
+        out["split_two_mass"] = float(sum(split_two_mean) / len(split_two_mean))
+    if child_gate_mean:
+        out["child_gate_mean"] = float(sum(child_gate_mean) / len(child_gate_mean))
+    if merge_gate_mean:
+        out["merge_gate_mean"] = float(sum(merge_gate_mean) / len(merge_gate_mean))
+    if collector_mass_mean:
+        out["collector_mass_mean"] = float(sum(collector_mass_mean) / len(collector_mass_mean))
 
     first_layer = trace["layers"][0]
     first = _actions_by_layer(batch)[0][0]
@@ -243,6 +321,85 @@ def evaluate(model, task, steps: int, batch_size: int, device: str, tau: float, 
         lambda_layer_action_diversity=1.0,
     )
     gates = adaptive_loss_weights(signals, metric_args)
+    out.update({k: float(v.detach().cpu()) for k, v in signals.items()})
+    out.update({k: float(v.detach().cpu()) for k, v in gates.items() if k.startswith("adaptive_")})
+    out.update({"val_loss": loss / total, "val_acc": correct / total, "oracle_acc": oracle_acc_sum / total})
+    return out
+
+
+@torch.no_grad()
+def evaluate_with_deleted_layer(
+    model: ActionMatrixModel,
+    task,
+    steps: int,
+    batch_size: int,
+    device: str,
+    tau: float,
+    delete_layer: int,
+    args=None,
+) -> Dict[str, float]:
+    model.eval()
+    total = 0
+    correct = 0
+    loss = 0.0
+    oracle_acc_sum = 0.0
+    last_trace = None
+    last_batch = None
+
+    for _ in range(steps):
+        batch = task.sample(batch_size, device)
+        state = model.input_norm(batch.x)
+        memory = state.mean(dim=1)
+        slot_address = model.slot_embed.to(dtype=state.dtype, device=state.device)
+        outputs = []
+        traces = []
+        prev_context = None
+        for idx, layer in enumerate(model.layers):
+            if idx == delete_layer:
+                continue
+            state, out, memory, tr = layer(
+                state,
+                memory,
+                slot_address,
+                prev_context=prev_context,
+                tau=tau,
+            )
+            outputs.append(out)
+            traces.append(tr)
+            prev_context = _next_layer_context(tr, out, model)
+        if not outputs:
+            outputs = [state.mean(dim=1)]
+        final, _ = model._merge_outputs(outputs)
+        logits = model.classifier(final)
+        loss += F.cross_entropy(logits, batch.y).item() * batch_size
+        correct += (logits.argmax(dim=-1) == batch.y).sum().item()
+        oracle_acc_sum += task.oracle_accuracy(batch) * batch_size
+        total += batch_size
+        last_trace = {"layers": traces, "primitive_metrics": model.pm.metrics(), "final_read_mode": model.final_read, "state_norm_mode": model.state_norm_mode}
+        last_batch = batch
+
+    out = summarize_trace(last_trace, last_batch, model) if last_trace is not None else {}
+    signals = structure_signal_stats(last_trace, last_batch, model) if last_trace is not None else {}
+    metric_args = args if args is not None else argparse.Namespace(
+        adapt_choice_floor=0.45,
+        adapt_listen_floor=0.45,
+        adapt_top_share_floor=0.55,
+        adapt_sharpness=0.08,
+        adapt_cell_sharpness=1.5,
+        target_active_cells=3.0,
+        adapt_choice_boost=1.5,
+        lambda_choice=1.0,
+        lambda_non_expected_primitive=1.0,
+        lambda_primitive_usage_diversity=1.0,
+        lambda_cell_choice_diversity=1.0,
+        lambda_non_expected_active=1.0,
+        lambda_non_expected_tape=1.0,
+        lambda_non_expected_transform=1.0,
+        lambda_active_budget=1.0,
+        lambda_tape_budget=1.0,
+        lambda_layer_action_diversity=1.0,
+    )
+    gates = adaptive_loss_weights(signals, metric_args) if signals else {}
     out.update({k: float(v.detach().cpu()) for k, v in signals.items()})
     out.update({k: float(v.detach().cpu()) for k, v in gates.items() if k.startswith("adaptive_")})
     out.update({"val_loss": loss / total, "val_acc": correct / total, "oracle_acc": oracle_acc_sum / total})
@@ -405,6 +562,11 @@ def structure_signal_stats(trace: Dict[str, object], batch, model: ActionMatrixM
     active_means = []
     tape_means = []
     active_cells_soft = []
+    listen_scores = []
+    layer_action_dists = []
+    slot_alive_means = []
+    split_two_masses = []
+    merge_gates = []
 
     for layer_idx, layer0 in enumerate(trace["layers"]):
         cand = layer0["candidate_ids"]
@@ -413,6 +575,9 @@ def structure_signal_stats(trace: Dict[str, object], batch, model: ActionMatrixM
         cell_dist = prim_dist_rows.view(b, s * s, -1).mean(dim=0)
         global_prim = cell_dist.mean(dim=0)
         primitive_top_shares.append(global_prim.max())
+        layer_action_dists.append(global_prim)
+        if layer_idx > 0 and layer0.get("listen_gate") is not None:
+            listen_scores.append(layer0["listen_gate"].mean())
 
         edge = layer0["edge_for_loss"]
         write = layer0["write_for_loss"]
@@ -423,6 +588,12 @@ def structure_signal_stats(trace: Dict[str, object], batch, model: ActionMatrixM
 
         tape = layer0["cell_tape_weight_for_loss"].view(b, s, s)
         tape_means.append(tape.mean())
+        if "slot_alive" in layer0:
+            slot_alive_means.append(layer0["slot_alive"].view(b, s).mean())
+        if "split_count" in layer0:
+            split_two_masses.append(layer0["split_count"].view(b, s, 3)[..., 2].mean())
+        if "merge_gate" in layer0:
+            merge_gates.append(layer0["merge_gate"].mean())
 
         for act in actions_by_layer.get(layer_idx, []):
             pid = model.pm.name_to_id[str(act["primitive"])]
@@ -446,6 +617,18 @@ def structure_signal_stats(trace: Dict[str, object], batch, model: ActionMatrixM
         "signal_active_mean": mean_or_zero(active_means),
         "signal_tape_mean": mean_or_zero(tape_means),
         "signal_active_cells_soft": mean_or_zero(active_cells_soft),
+        "signal_layer_listen_score": mean_or_zero(listen_scores),
+        "signal_slot_alive_mean": mean_or_zero(slot_alive_means),
+        "signal_split_two_mass": mean_or_zero(split_two_masses),
+        "signal_merge_gate_mean": mean_or_zero(merge_gates),
+        "signal_layer_action_similarity": (
+            torch.stack([
+                F.cosine_similarity(layer_action_dists[i].float(), layer_action_dists[i + 1].float(), dim=0)
+                for i in range(len(layer_action_dists) - 1)
+            ]).mean()
+            if len(layer_action_dists) >= 2
+            else torch.ones((), device=model.classifier.weight.device)
+        ),
     }
 
 
@@ -461,10 +644,13 @@ def adaptive_loss_weights(signals: Dict[str, torch.Tensor], args) -> Dict[str, t
     present = signals["signal_candidate_present"].detach()
     top = signals["signal_primitive_top_share"].detach()
     active_cells = signals["signal_active_cells_soft"].detach()
+    listen = signals.get("signal_layer_listen_score", torch.tensor(0.0, device=choice.device)).detach()
 
     # Candidate must exist and expected choice must be alive before structure
     # pressure is trusted.
     recovery_gate = present * torch.sigmoid((choice - args.adapt_choice_floor) / args.adapt_sharpness)
+
+    dependency_gate = torch.sigmoid((listen - args.adapt_listen_floor) / args.adapt_sharpness)
 
     # Only fight primitive collapse if recovery exists AND one primitive dominates.
     collapse_gate = recovery_gate * torch.sigmoid((top - args.adapt_top_share_floor) / args.adapt_sharpness)
@@ -479,6 +665,7 @@ def adaptive_loss_weights(signals: Dict[str, torch.Tensor], args) -> Dict[str, t
         "adaptive_recovery_gate": recovery_gate,
         "adaptive_collapse_gate": collapse_gate,
         "adaptive_sparse_gate": sparse_gate,
+        "adaptive_dependency_gate": dependency_gate,
         "adaptive_choice_boost": choice_boost,
         "eff_lambda_choice": args.lambda_choice * choice_boost,
         "eff_lambda_non_expected_primitive": args.lambda_non_expected_primitive * collapse_gate,
@@ -489,7 +676,82 @@ def adaptive_loss_weights(signals: Dict[str, torch.Tensor], args) -> Dict[str, t
         "eff_lambda_non_expected_transform": args.lambda_non_expected_transform * sparse_gate,
         "eff_lambda_active_budget": args.lambda_active_budget * sparse_gate,
         "eff_lambda_tape_budget": args.lambda_tape_budget * sparse_gate,
-        "eff_lambda_layer_action_diversity": args.lambda_layer_action_diversity * collapse_gate,
+        "eff_lambda_layer_action_diversity": args.lambda_layer_action_diversity * collapse_gate * dependency_gate,
+    }
+
+
+def branch_structure_losses(trace: Dict[str, object], batch, model: ActionMatrixModel) -> Dict[str, torch.Tensor]:
+    """Light branch supervision for split/merge/collector tasks."""
+    device = next(model.parameters()).device
+    z = torch.zeros((), device=device)
+    b = batch.x.shape[0]
+    s = model.slots
+    actions_by_layer = _actions_by_layer(batch)
+
+    split_losses, merge_losses, alive_losses, collector_losses, child_losses = [], [], [], [], []
+
+    for layer_idx, layer0 in enumerate(trace["layers"]):
+        split = layer0.get("split_count_for_loss")
+        alive = layer0.get("slot_alive_for_loss")
+        child_gate = layer0.get("child_gate_for_loss")
+        merge_gate = layer0.get("merge_gate_for_loss")
+        collector_mass = layer0.get("collector_mass_for_loss")
+        if split is None or alive is None or child_gate is None or merge_gate is None or collector_mass is None:
+            continue
+
+        layer_actions = actions_by_layer.get(layer_idx, [])
+        split_target = torch.zeros(b, s, dtype=torch.long, device=split.device)
+        merge_target = torch.zeros(b, s, dtype=torch.float32, device=split.device)
+        child_target = torch.zeros(b, s, dtype=torch.float32, device=split.device)
+        alive_target = torch.zeros(b, s, dtype=torch.float32, device=split.device)
+        touched_slots = set()
+
+        split_sources: Dict[int, int] = {}
+        merge_targets: Dict[int, int] = {}
+        child_sources: Dict[int, int] = {}
+        for act in layer_actions:
+            src = int(act["src"])
+            tgt = int(act["tgt"])
+            prim = str(act["primitive"])
+            touched_slots.add(src)
+            touched_slots.add(tgt)
+            if prim == "split":
+                split_sources[src] = split_sources.get(src, 0) + 1
+                child_sources[src] = child_sources.get(src, 0) + 1
+            if prim == "merge":
+                merge_targets[tgt] = merge_targets.get(tgt, 0) + 1
+
+        for slot in touched_slots:
+            alive_target[:, slot] = 1.0
+        for src, count in split_sources.items():
+            split_target[:, src] = min(2, count)
+        for src, count in child_sources.items():
+            child_target[:, src] = 1.0 if count > 0 else 0.0
+        for tgt, count in merge_targets.items():
+            merge_target[:, tgt] = 1.0 if count > 0 else 0.0
+
+        if split_sources:
+            split_losses.append(
+                F.nll_loss(
+                    torch.log(split.clamp_min(1e-8)).reshape(b * s, 3),
+                    split_target.reshape(b * s),
+                )
+            )
+        if touched_slots:
+            alive_losses.append(F.binary_cross_entropy(alive, alive_target))
+            child_losses.append(F.binary_cross_entropy(child_gate, child_target))
+            merge_losses.append(F.binary_cross_entropy(merge_gate, merge_target))
+            collector_losses.append(F.binary_cross_entropy(collector_mass, merge_target))
+
+    def mean_or_zero(xs):
+        return torch.stack(xs).mean() if xs else z
+
+    return {
+        "branch_split_loss": mean_or_zero(split_losses),
+        "branch_alive_loss": mean_or_zero(alive_losses),
+        "branch_child_loss": mean_or_zero(child_losses),
+        "branch_merge_loss": mean_or_zero(merge_losses),
+        "branch_collector_loss": mean_or_zero(collector_losses),
     }
 
 def sim_targets_for_expected_actions(trace: Dict[str, object], batch, model: ActionMatrixModel) -> torch.Tensor:
@@ -535,6 +797,7 @@ def compute_training_objective(
         args.target_tape_fraction,
         args.target_active_cells,
     )
+    branch = branch_structure_losses(trace, batch, model)
     signals = structure_signal_stats(trace, batch, model)
     gates = adaptive_loss_weights(signals, args)
     mode = trace["layers"][0]["mode_for_loss"]
@@ -545,6 +808,7 @@ def compute_training_objective(
         "sim_loss": sim_loss,
         **struct,
         **generic,
+        **branch,
         "min_transform_loss": min_transform,
     }
     weighted = {
@@ -561,6 +825,11 @@ def compute_training_objective(
         "weighted_active_budget": gates["eff_lambda_active_budget"] * generic["active_budget"],
         "weighted_tape_budget": gates["eff_lambda_tape_budget"] * generic["tape_budget"],
         "weighted_layer_action_diversity": gates["eff_lambda_layer_action_diversity"] * generic["layer_action_diversity"],
+        "weighted_branch_split_loss": args.lambda_branch * branch["branch_split_loss"],
+        "weighted_branch_alive_loss": args.lambda_branch * branch["branch_alive_loss"],
+        "weighted_branch_child_loss": args.lambda_branch * branch["branch_child_loss"],
+        "weighted_branch_merge_loss": args.lambda_branch * branch["branch_merge_loss"],
+        "weighted_branch_collector_loss": args.lambda_branch * branch["branch_collector_loss"],
         "weighted_min_transform_loss": args.lambda_collapse * min_transform,
     }
     total_loss = torch.stack([value.float() for value in weighted.values()]).sum()
@@ -655,6 +924,12 @@ def inspect_action_program(model: ActionMatrixModel, task: SyntheticKnownProgram
         active_edges_per_target = sum(1 for c in cells if c["active"] > 0.05) / float(slots)
         expected_count = len(expected_cells)
         expected_ok = all(c["top_primitive"] == c["expected_primitive"] for c in cells if c["is_expected_edge"])
+        expected_active_vals = [c["active"] for c in cells if c["is_expected_edge"]]
+        non_expected_cells = [c for c in cells if not c["is_expected_edge"]]
+        non_expected_active_vals = [c["active"] for c in non_expected_cells]
+        non_expected_top_split = sum(1 for c in non_expected_cells if c["top_primitive"] == "split")
+        non_expected_top_skip = sum(1 for c in non_expected_cells if c["top_primitive"] == "skip")
+        non_expected_top_disable = sum(1 for c in non_expected_cells if c["top_primitive"] == "disable")
 
         if expected_names and expected_top_cells > expected_count + max(2, slots // 2):
             verdict = "primitive_collapse"
@@ -671,6 +946,11 @@ def inspect_action_program(model: ActionMatrixModel, task: SyntheticKnownProgram
             "expected_top_cells": expected_top_cells,
             "active_cells": active_cells,
             "active_edges_per_target": active_edges_per_target,
+            "expected_active_mean": float(sum(expected_active_vals) / max(1, len(expected_active_vals))) if expected_active_vals else 0.0,
+            "non_expected_active_mean": float(sum(non_expected_active_vals) / max(1, len(non_expected_active_vals))) if non_expected_active_vals else 0.0,
+            "non_expected_top_split": float(non_expected_top_split),
+            "non_expected_top_skip": float(non_expected_top_skip),
+            "non_expected_top_disable": float(non_expected_top_disable),
             "program_verdict": verdict,
             "top_table": top_table,
             "cells": cells,
@@ -729,6 +1009,11 @@ def write_program_report(out_dir: Path, program: Dict[str, object], epoch: int) 
         lines.append(f"- expected_top_cells: `{layer.get('expected_top_cells', 'NA')}`")
         lines.append(f"- active_cells: `{layer.get('active_cells', 'NA')}`")
         lines.append(f"- active_edges_per_target: `{layer.get('active_edges_per_target', 'NA')}`")
+        lines.append(f"- expected_active_mean: `{layer.get('expected_active_mean', 'NA')}`")
+        lines.append(f"- non_expected_active_mean: `{layer.get('non_expected_active_mean', 'NA')}`")
+        lines.append(f"- non_expected_top_split: `{layer.get('non_expected_top_split', 'NA')}`")
+        lines.append(f"- non_expected_top_skip: `{layer.get('non_expected_top_skip', 'NA')}`")
+        lines.append(f"- non_expected_top_disable: `{layer.get('non_expected_top_disable', 'NA')}`")
         lines.append(f"- expected_actions: `{layer.get('expected_actions', [])}`")
         lines.append("")
         n = len(layer["top_table"])
@@ -769,13 +1054,38 @@ def dependency_metrics(model, task, args, device: str, tau: float, normal_acc: f
     return out
 
 
+@torch.no_grad()
+def specialization_metrics(model, task, args, device: str, tau: float, normal_acc: float) -> Dict[str, float]:
+    out: Dict[str, float] = {}
+    if args.layers >= 2:
+        deleted = evaluate_with_deleted_layer(model, task, args.eval_steps, args.eval_batch_size, device, tau, delete_layer=0, args=args)
+        out["external_delete_delta"] = normal_acc - deleted["val_acc"]
+        out["external_delete_acc"] = deleted["val_acc"]
+    else:
+        out["external_delete_delta"] = 0.0
+        out["external_delete_acc"] = normal_acc
+
+    internal = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, args=args, ablate_layer_output=0)
+    out["internal_skip_delta"] = normal_acc - internal["val_acc"]
+    out["internal_skip_acc"] = internal["val_acc"]
+
+    state_ablate = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, args=args, ablate_state_after=0)
+    out["state_ablation_delta"] = normal_acc - state_ablate["val_acc"]
+    out["state_ablation_acc"] = state_ablate["val_acc"]
+    return out
+
+
 def train(args) -> None:
+    config = load_task_config(args.task_config if args.task_config else legacy_task_path(args.task))
+    args.task = config.name
+    args.slots = config.slots
+    args.layers = config.layers
     torch.manual_seed(args.seed)
     device = args.device if args.device != "cuda" or torch.cuda.is_available() else "cpu"
     out_dir = ensure_dir(Path(args.out_dir))
     latest_report = Path(args.latest_report)
 
-    task = SyntheticKnownProgramTask(task=args.task, slots=args.slots, dim=args.dim)
+    task = SyntheticKnownProgramTask(dim=args.dim, config=config)
     model = ActionMatrixModel(
         dim=args.dim,
         slots=args.slots,
@@ -790,7 +1100,8 @@ def train(args) -> None:
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=(device.startswith("cuda") and args.amp == "fp16"))
     dtype = amp_dtype(args.amp)
-    credit = CreditBuffer()
+    credit = ModeCreditLedger()
+    honesty_floor = float(args.honesty_floor)
 
     best = 0.0
     last_eval: Dict[str, float] = {}
@@ -800,6 +1111,7 @@ def train(args) -> None:
     for epoch in range(1, args.epochs + 1):
         model.train()
         tau = max(args.tau_min, args.tau_start * (args.tau_decay ** (epoch - 1)))
+        phase = curriculum_phase(epoch, args.epochs, args.curriculum_schedule)
         total = 0
         correct = 0
         loss_sum = 0.0
@@ -812,7 +1124,7 @@ def train(args) -> None:
             opt.zero_grad(set_to_none=True)
 
             with torch.amp.autocast(device_type="cuda", dtype=dtype, enabled=device.startswith("cuda") and dtype != torch.float32):
-                logits, trace = model(batch.x, tau=tau)
+                logits, trace = model(batch.x, tau=tau, curriculum_mode=phase)
                 ce = F.cross_entropy(logits, batch.y)
                 loss, raw_losses, signals, gates, weighted = compute_training_objective(
                     trace,
@@ -828,6 +1140,14 @@ def train(args) -> None:
             scaler.step(opt)
             scaler.update()
 
+            # Usage ranking is delayed until a real task outcome exists. Selection
+            # alone is not credit and eval forwards never mutate usage history.
+            with torch.no_grad():
+                sample_credit = (logits.argmax(dim=-1) == batch.y).to(logits.dtype)
+                for layer_trace in trace["layers"]:
+                    edge_credit = sample_credit.repeat_interleave(args.slots * args.slots)
+                    model.pm.update_usage_credit(layer_trace["chosen"], edge_credit)
+
             total += args.batch_size
             correct += (logits.argmax(dim=-1) == batch.y).sum().item()
             loss_sum += loss.item() * args.batch_size
@@ -840,8 +1160,21 @@ def train(args) -> None:
         ablations = simulator_ablation_metrics(model, task, args.eval_batch_size, device, tau)
         ev.update(ablations)
         ev["final_read_mode"] = args.final_read
-        credit.update({"sim_disabled_delta": ablations["sim_disabled_delta"]})
+        honesty_score = float(ev.get("val_acc", 0.0) / max(1e-8, ev.get("oracle_acc", ev.get("val_acc", 1.0))))
+        phase_credit = {
+            "val_acc": float(ev.get("val_acc", 0.0)),
+            "oracle_acc": float(ev.get("oracle_acc", 0.0)),
+            "sim_disabled_delta": float(ablations["sim_disabled_delta"]),
+            "expected_edge_choice_mass": float(ev.get("expected_edge_choice_mass", 0.0)),
+        }
+        if phase == "deploy":
+            if honesty_score >= honesty_floor:
+                credit.update("deploy", phase_credit)
+        else:
+            credit.update(phase, phase_credit)
         ev.update(credit.metrics())
+        ev["curriculum_phase"] = phase
+        ev["honesty_score"] = honesty_score
         best = max(best, ev["val_acc"])
         last_eval = ev
 
@@ -858,6 +1191,7 @@ def train(args) -> None:
         row = {
             "epoch": epoch,
             "tau": tau,
+            "curriculum_phase": phase,
             "train_loss": loss_sum / total,
             "train_acc": correct / total,
             "best_acc": best,
@@ -873,6 +1207,7 @@ def train(args) -> None:
             f"any_prog={ev['expected_any_recovery']:.3f} "
             f"active_cells={ev.get('active_cells', 0):.1f} "
             f"top_share={ev.get('primitive_top_share', 0):.3f} gateR={ev.get('adaptive_recovery_gate', 0):.2f} gateC={ev.get('adaptive_collapse_gate', 0):.2f} gateS={ev.get('adaptive_sparse_gate', 0):.2f} "
+            f"phase={phase} honesty={honesty_score:.3f} "
             f"final={args.final_read} "
             f"cand={ev.get('expected_candidate_present', 0):.3f} "
             f"choice_mass={ev.get('expected_edge_choice_mass', 0):.3f} "
@@ -883,6 +1218,8 @@ def train(args) -> None:
 
     dep = dependency_metrics(model, task, args, device, tau, last_eval.get("val_acc", 0.0))
     last_eval.update(dep)
+    spec = specialization_metrics(model, task, args, device, tau, last_eval.get("val_acc", 0.0))
+    last_eval.update(spec)
 
     program = inspect_action_program(model, task, args.eval_batch_size, device, tau)
     write_program_report(out_dir, program, args.epochs)
@@ -895,21 +1232,34 @@ def train(args) -> None:
 
     summary = {
         "task": args.task,
+        "task_config_path": str(config.path),
+        "task_config_name": config.name,
+        "task_config_digest": config.digest,
+        "expected_actions": config.expected_actions,
+        "pass_thresholds": config.pass_thresholds,
         "epochs": args.epochs,
+        "curriculum_schedule": args.curriculum_schedule,
         "layers": args.layers,
         "final_read_mode": args.final_read,
         "state_norm_mode": args.state_norm,
         "best_acc": best,
         "last_acc": last_eval.get("val_acc"),
+        "honesty_floor": honesty_floor,
         **last_eval,
         **last_train_diagnostics,
+        **credit.metrics(),
         "program_verdicts": [layer.get("program_verdict") for layer in program.get("layers", [])],
         "program_expected_top_cells": [layer.get("expected_top_cells") for layer in program.get("layers", [])],
         "program_active_cells": [layer.get("active_cells") for layer in program.get("layers", [])],
         "program_active_edges_per_target": [layer.get("active_edges_per_target") for layer in program.get("layers", [])],
+        "program_action_metrics": program.get("action_metrics", {}),
         "conclusion": conclusion,
         "seconds": time.time() - start,
     }
+    summary["pass_threshold_results"] = evaluate_pass_thresholds(config.pass_thresholds, summary)
+    summary["pass_thresholds_met"] = all(
+        result["passed"] for result in summary["pass_threshold_results"].values()
+    )
     write_json(out_dir / "final_report.json", summary)
     write_json(out_dir / "credit_ablation_epoch_final.json", credit.values)
     write_latest_report(out_dir / "REPORT_TO_CHATGPT.txt", str(out_dir), summary)
@@ -918,7 +1268,8 @@ def train(args) -> None:
 
 def parser():
     p = argparse.ArgumentParser()
-    p.add_argument("--task", default="diff", choices=["diff", "two_diff", "merge", "product", "chain_diff_merge", "chain_diff_product", "semantic_rescue"])
+    p.add_argument("--task", default="diff", help="legacy task name resolved through configs/tasks/<name>.yml")
+    p.add_argument("--task-config", help="path to a YAML task config; overrides --task/--slots/--layers")
     p.add_argument("--dim", type=int, default=64)
     p.add_argument("--slots", type=int, default=4)
     p.add_argument("--layers", type=int, default=1)
@@ -953,10 +1304,14 @@ def parser():
     p.add_argument("--lambda-active-budget", type=float, default=0.02)
     p.add_argument("--lambda-tape-budget", type=float, default=0.02)
     p.add_argument("--lambda-layer-action-diversity", type=float, default=0.05)
+    p.add_argument("--lambda-branch", type=float, default=0.05)
+    p.add_argument("--curriculum-schedule", default="teacher", choices=["teacher", "phased"])
+    p.add_argument("--honesty-floor", type=float, default=0.80)
     p.add_argument("--target-active-fraction", type=float, default=0.18)
     p.add_argument("--target-tape-fraction", type=float, default=0.015)
     p.add_argument("--target-active-cells", type=float, default=3.0)
     p.add_argument("--adapt-choice-floor", type=float, default=0.45)
+    p.add_argument("--adapt-listen-floor", type=float, default=0.45)
     p.add_argument("--adapt-top-share-floor", type=float, default=0.55)
     p.add_argument("--adapt-sharpness", type=float, default=0.08)
     p.add_argument("--adapt-cell-sharpness", type=float, default=1.5)

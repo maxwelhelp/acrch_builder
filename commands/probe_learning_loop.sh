@@ -8,6 +8,6 @@ python tools/project_probe/probe_learning_loop.py \
   --task "${PROBE_TASK:-diff}" \
   --dim "${PROBE_DIM:-32}" \
   --layers "${PROBE_LAYERS:-2}" \
-  --batch-size "${PROBE_BATCH_SIZE:-8}" \
+  --batch-size "${PROBE_BATCH_SIZE:-64}" \
   --sim-rank "${PROBE_SIM_RANK:-8}" \
   --out reports/agent_inspector/runtime_probe.json

@@ -1,0 +1,59 @@
+{
+  "status": "PASS",
+  "task": "layer_specialization_chain_diff_merge",
+  "report_dir": "agent_reports/task07_layer_specialization_smoke",
+  "program_verdicts": [
+    "primitive_collapse",
+    "primitive_collapse"
+  ],
+  "oracle_acc": 1.0,
+  "program_recovery_rate": 0.3424479166666667,
+  "layer_listen_score": 0.6303771138191223,
+  "layer_action_similarity": 0.14653953909873962,
+  "layer_dependency_delta": 0.028124999999999956,
+  "external_delete_delta": 0.020312499999999956,
+  "internal_skip_delta": 0.01171875,
+  "state_ablation_delta": -0.005468750000000022,
+  "layer0": {
+    "layer0_present": 0.373046875,
+    "layer0_choice_mass": 0.3706047087907791,
+    "layer0_recovery": 0.373046875,
+    "layer0_active": 0.29113009572029114,
+    "layer0_tape": 0.09165021404623985
+  },
+  "layer1": {
+    "layer1_present": 0.328125,
+    "layer1_choice_mass": 0.32525065541267395,
+    "layer1_recovery": 0.328125,
+    "layer1_active": 0.4745144844055176,
+    "layer1_tape": 0.09756515175104141
+  },
+  "checks": {
+    "oracle_pass": true,
+    "chain_readable": true,
+    "layer_listen_alive": true,
+    "adjacent_actions_non_identical": true,
+    "dependency_delta_positive": true,
+    "external_delete_delta_positive": true,
+    "internal_skip_delta_positive": true,
+    "layer0_credit_positive": true,
+    "layer1_credit_positive": true
+  },
+  "program_action_metrics": {
+    "action_L0_0_1_diff_present": 0.3828125,
+    "action_L0_0_1_diff_choice_mass": 0.38049498200416565,
+    "action_L0_0_1_diff_recovery": 0.3828125,
+    "action_L0_0_1_diff_active": 0.3057166337966919,
+    "action_L0_0_1_diff_tape": 0.09150981158018112,
+    "action_L0_2_3_diff_present": 0.36328125,
+    "action_L0_2_3_diff_choice_mass": 0.3607144355773926,
+    "action_L0_2_3_diff_recovery": 0.36328125,
+    "action_L0_2_3_diff_active": 0.2765435576438904,
+    "action_L0_2_3_diff_tape": 0.09179061651229858,
+    "action_L1_1_3_merge_present": 0.328125,
+    "action_L1_1_3_merge_choice_mass": 0.32525065541267395,
+    "action_L1_1_3_merge_recovery": 0.328125,
+    "action_L1_1_3_merge_active": 0.4745144844055176,
+    "action_L1_1_3_merge_tape": 0.09756515175104141
+  }
+}

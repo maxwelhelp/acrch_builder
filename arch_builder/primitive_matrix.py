@@ -78,6 +78,7 @@ class PrimitiveMatrix5x5(nn.Module):
 
         self.register_buffer("descriptor", desc, persistent=False)
         self.register_buffer("usage_score", torch.zeros(len(self.names)), persistent=False)
+        self.register_buffer("usage_observations", torch.zeros(len(self.names)), persistent=False)
 
     @property
     def num_primitives(self) -> int:
@@ -120,34 +121,61 @@ class PrimitiveMatrix5x5(nn.Module):
         return top[ids.reshape(-1)].view(*ids.shape, -1)
 
     def usage_topk(self, ids: torch.Tensor, k: int = 5) -> torch.Tensor:
-        # Until real credit exists, include common primitives deterministically as a stable rescue path.
-        stable = torch.tensor(
-            [self.name_to_id[n] for n in ["diff", "merge", "product", "memory_write", "memory_read"] if n in self.name_to_id],
-            device=ids.device,
-            dtype=torch.long,
-        )
-        if stable.numel() >= k:
-            top = stable[:k]
+        k = min(k, self.num_primitives)
+        if self.usage_observations.sum() <= 0:
+            # Cold start has no semantic/task prior: sample uniformly without replacement.
+            top = torch.randperm(self.num_primitives, device=ids.device)[:k]
         else:
-            score_top = self.usage_score.topk(k=min(k, self.num_primitives)).indices.to(ids.device)
-            top = torch.cat([stable, score_top], dim=0)[:k]
+            seen = self.usage_observations > 0
+            ranking = self.usage_score.masked_fill(~seen, float("-inf"))
+            top = ranking.topk(k=min(k, int(seen.sum().item()))).indices.to(ids.device)
+            if top.numel() < k:
+                unseen = (~seen).nonzero(as_tuple=False).flatten().to(ids.device)
+                unseen = unseen[torch.randperm(unseen.numel(), device=ids.device)]
+                top = torch.cat([top, unseen[: k - top.numel()]])
         return top.view(*([1] * ids.dim()), -1).expand(*ids.shape, -1)
 
-    def update_usage_ema(self, chosen_ids: torch.Tensor, momentum: float = 0.95) -> None:
+    def update_usage_credit(
+        self,
+        chosen_ids: torch.Tensor,
+        credit: torch.Tensor,
+        momentum: float = 0.95,
+    ) -> None:
+        """Update delayed usage ranking from observed task reward.
+
+        `credit` is aligned with chosen ids and is supplied only after the caller
+        has measured an outcome. Candidate presence or selection alone is never
+        treated as useful credit.
+        """
         with torch.no_grad():
-            hist = torch.bincount(chosen_ids.detach().flatten().cpu(), minlength=self.num_primitives).float()
-            if hist.sum() > 0:
-                hist = hist / hist.sum()
-            self.usage_score.mul_(momentum).add_(hist.to(self.usage_score.device), alpha=1 - momentum)
+            ids = chosen_ids.detach().flatten().to(self.usage_score.device)
+            values = credit.detach().flatten().to(self.usage_score.device, dtype=self.usage_score.dtype)
+            if values.numel() == 1 and ids.numel() != 1:
+                values = values.expand_as(ids)
+            if ids.numel() != values.numel():
+                raise ValueError(f"credit count {values.numel()} does not match chosen ids {ids.numel()}")
+            counts = torch.bincount(ids, minlength=self.num_primitives).to(self.usage_score.dtype)
+            sums = torch.zeros_like(self.usage_score).scatter_add_(0, ids, values)
+            observed = counts > 0
+            quality = sums / counts.clamp_min(1.0)
+            self.usage_score[observed] = (
+                momentum * self.usage_score[observed] + (1.0 - momentum) * quality[observed]
+            )
+            self.usage_observations.add_(counts)
 
     def metrics(self) -> Dict[str, float]:
         emb = F.normalize(self.emb.detach(), dim=-1)
         cov_rank = torch.linalg.matrix_rank(emb).item()
         pair = emb @ emb.t()
         off = pair[~torch.eye(pair.shape[0], dtype=torch.bool, device=pair.device)]
+        usage_prob = F.softmax(self.usage_score.masked_fill(self.usage_observations <= 0, -1e9), dim=0)
+        usage_entropy = 0.0 if self.usage_observations.sum() <= 0 else float(
+            (-(usage_prob + 1e-8) * (usage_prob + 1e-8).log()).sum().cpu()
+        )
         return {
             "primitive_embedding_rank": float(cov_rank),
             "primitive_pair_cos_mean": float(off.mean().cpu()),
             "primitive_pair_cos_max": float(off.max().cpu()),
-            "usage_entropy": float((-(self.usage_score + 1e-8) * (self.usage_score + 1e-8).log()).sum().cpu()),
+            "usage_entropy": usage_entropy,
+            "usage_credit_observations": float(self.usage_observations.sum().cpu()),
         }

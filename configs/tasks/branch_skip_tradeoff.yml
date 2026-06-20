@@ -1,0 +1,11 @@
+name: branch_skip_tradeoff
+slots: 4
+layers: 3
+formula: mean((s0 - s1) + s2)
+expected_actions:
+  - {layer: 0, src: 2, tgt: 3, primitive: skip}
+  - {layer: 0, src: 0, tgt: 2, primitive: skip}
+  - {layer: 0, src: 0, tgt: 1, primitive: route}
+  - {layer: 1, src: 1, tgt: 3, primitive: channel}
+pass_thresholds:
+  oracle_acc: {min: 1.0}

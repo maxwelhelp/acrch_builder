@@ -1,0 +1,43 @@
+# Latest vertical slice report
+
+- report_dir: `agent_reports/task02_baseline_two_diff_seed1`
+- task: `two_diff`
+- epochs: `5`
+- state_norm_mode: `none`
+- best_acc: `0.923046875`
+- last_acc: `0.923046875`
+- program_recovery_rate: `1.0`
+- expected_edge_recovery: `1.0`
+- expected_any_recovery: `0.34228515625`
+- expected_edge_active: `0.8435804843902588`
+- expected_candidate_present: `1.0`
+- expected_edge_choice_mass: `0.9997909367084503`
+- gain_disabled_delta: `0.0015652477741241455`
+- sim_result_disabled_delta: `0.0027420222759246826`
+- sim_disabled_delta: `0.011016786098480225`
+- choice_without_sim_delta: `0.031418416649103165`
+- semantic_grid_mismatch: `0.44439697265625`
+- grid_candidate_usage: `0.3734671175479889`
+- semantic_candidate_usage: `0.24931591749191284`
+- usage_candidate_usage: `0.34402111172676086`
+- random_candidate_usage: `0.03319589048624039`
+- scanner_source_mass_sum: `1.000000037252903`
+- skip_mass: `0.34427395462989807`
+- transform_mass: `0.24148064851760864`
+- disable_mass: `0.4142453968524933`
+- oracle_acc: `1.0`
+- edge_pair_bias_expected: `0.10369769483804703`
+- write_pair_bias_expected: `0.1073310524225235`
+- phase_pair_bias_expected: `0.09983280301094055`
+- cell_output_pair_bias_expected: `0.09864233434200287`
+- edge_pair_bias_std: `0.07662106305360794`
+- write_pair_bias_std: `0.0792112648487091`
+- choice_entropy: `0.7593561410903931`
+- edge_scale_mean: `1.0361167192459106`
+- cell_output_gate_mean: `0.4324699342250824`
+- cell_tape_weight_mean: `0.09630562365055084`
+
+## Conclusion
+WARNING: primitive collapse in PROGRAM_REPORT
+
+Program details: `PROGRAM_REPORT.md` and `program_epoch_XXX.json`.

@@ -1,0 +1,9 @@
+name: two_diff
+slots: 4
+layers: 1
+formula: mean(s0 - s1) + mean(s2 - s3)
+expected_actions:
+  - {layer: 0, src: 0, tgt: 1, primitive: diff}
+  - {layer: 0, src: 2, tgt: 3, primitive: diff}
+pass_thresholds:
+  oracle_acc: {min: 1.0}

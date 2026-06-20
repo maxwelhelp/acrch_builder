@@ -1,0 +1,73 @@
+# Latest vertical slice report
+
+- report_dir: `agent_reports/task08_branch_optional_branch_smoke`
+- task: `branch_optional_branch`
+- task_config_path: `/home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/configs/tasks/branch_optional_branch.yml`
+- task_config_name: `branch_optional_branch`
+- task_config_digest: `4350737722bb6fb1f7c39a99b5558225109e0d23ccd93564bc88fee8cca5d3c0`
+- expected_actions: `[{'layer': 0, 'src': 0, 'tgt': 1, 'primitive': 'route'}, {'layer': 1, 'src': 1, 'tgt': 3, 'primitive': 'edge_gate'}, {'layer': 2, 'src': 1, 'tgt': 3, 'primitive': 'channel'}]`
+- pass_thresholds: `{'oracle_acc': {'min': 1.0}}`
+- pass_threshold_results: `{'oracle_acc': {'value': 1.0, 'min': 1.0, 'passed': True}}`
+- pass_thresholds_met: `True`
+- epochs: `2`
+- state_norm_mode: `none`
+- best_acc: `0.4990234375`
+- last_acc: `0.49609375`
+- program_recovery_rate: `0.3645833333333333`
+- expected_edge_recovery: `0.3645833333333333`
+- expected_any_recovery: `0.4822591145833333`
+- expected_edge_active: `0.3285975356896718`
+- expected_candidate_present: `0.3658854166666667`
+- expected_edge_choice_mass: `0.35407965381940204`
+- layer_output_credit: `0.35407965381940204`
+- layer_listen_score: `0.5613942742347717`
+- layer_action_similarity: `0.13586046919226646`
+- slot_alive_mean: `0.5043383042017618`
+- slot_alive_count: `2.1171875`
+- split_none_mass: `0.3232479691505432`
+- split_one_mass: `0.3292089601357778`
+- split_two_mass: `0.34754308064778644`
+- child_gate_mean: `0.48929526408513385`
+- merge_gate_mean: `0.49561038613319397`
+- collector_mass_mean: `0.24773168563842773`
+- gain_disabled_delta: `-0.0015065670013427734`
+- sim_result_disabled_delta: `-0.0018258094787597656`
+- sim_disabled_delta: `-0.004817008972167969`
+- choice_without_sim_delta: `0.05630910396575928`
+- external_delete_delta: `-0.0205078125`
+- internal_skip_delta: `0.001953125`
+- state_ablation_delta: `0.0185546875`
+- semantic_grid_mismatch: `0.4825236002604167`
+- semantic_neighbor_entropy: `3.1931923230489097`
+- primitive_embedding_rank: `25.0`
+- usage_entropy: `3.2185146808624268`
+- usage_credit_observations: `147456.0`
+- grid_candidate_usage: `0.6138872901598612`
+- semantic_candidate_usage: `0.25418219218651456`
+- usage_candidate_usage: `0.043182232727607094`
+- random_candidate_usage: `0.08874828616778056`
+- scanner_source_mass_sum: `1.0000000012417634`
+- skip_mass: `0.2665690431992213`
+- transform_mass: `0.5628586411476135`
+- disable_mass: `0.170572300752004`
+- oracle_acc: `1.0`
+- edge_pair_bias_expected: `0.004714019130915403`
+- write_pair_bias_expected: `0.0053638070821762085`
+- phase_pair_bias_expected: `0.004633642733097076`
+- cell_output_pair_bias_expected: `0.001081110443919897`
+- edge_pair_bias_std: `0.001937740482389927`
+- write_pair_bias_std: `0.0020940175745636225`
+- choice_entropy: `0.9596547285715739`
+- edge_scale_mean: `0.9760569930076599`
+- cell_output_gate_mean: `0.5413535038630167`
+- cell_tape_weight_mean: `0.08948025355736415`
+- branch_split_loss: `0.0`
+- branch_alive_loss: `0.7053587088982264`
+- branch_child_loss: `0.6898262749115626`
+- branch_merge_loss: `0.6965832610925039`
+- branch_collector_loss: `0.28470367193222046`
+
+## Conclusion
+WARNING: simulator may be decorative
+
+Program details: `PROGRAM_REPORT.md` and `program_epoch_XXX.json`.

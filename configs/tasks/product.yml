@@ -1,0 +1,8 @@
+name: product
+slots: 4
+layers: 1
+formula: mean(s0 * s1)
+expected_actions:
+  - {layer: 0, src: 0, tgt: 1, primitive: product}
+pass_thresholds:
+  oracle_acc: {min: 1.0}

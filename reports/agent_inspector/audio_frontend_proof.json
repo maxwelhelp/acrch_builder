@@ -1,0 +1,164 @@
+{
+  "status": "PASS",
+  "checks": {
+    "raw_reported": true,
+    "conv_reported": true,
+    "structured_reported": true,
+    "structured_beats_raw": true,
+    "deploy_above_random": true,
+    "honesty_retained": true,
+    "conv_scaffold_only": true,
+    "core_program_credit_scanner_simulator_retained": true,
+    "forced_oracle_known_caveat_present": true,
+    "all_variants_have_resource_stats": true
+  },
+  "core_gates": [
+    {
+      "cmd": "bash commands/validate.sh",
+      "returncode": 0,
+      "stdout": "[validate] cleanup stale pycache\n[validate] py_compile\n[validate] import smoke\nActionMatrixModel ['identity', 'gated_keep', 'diff', 'contrast', 'smooth']\n[validate] cli help\n[validate] cleanup generated pycache\n[validate] forbidden files\n[validate] OK",
+      "stderr": ""
+    },
+    {
+      "cmd": "bash commands/inspect_with_probe.sh",
+      "returncode": 0,
+      "stdout": "[probe] wrote reports/agent_inspector/runtime_probe.json\n[probe] gradient_closed=True credit_closed=True\n[probe] recovery_loss_connected=True\n[probe] detached_enabled_losses=['branch_split_loss']\n[inspect] wrote /home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/agent_inspector\n[inspect] gradient_closed=True bad=[]\n[inspect] credit_closed=True bad=[]\n[inspect-with-probe] summary: reports/agent_inspector/SUMMARY.md",
+      "stderr": ""
+    },
+    {
+      "cmd": "bash commands/probe_forced_program.sh",
+      "returncode": 2,
+      "stdout": "[forced-oracle] wrote reports/agent_inspector/forced_program_oracle.json\n[forced-oracle] wrote reports/agent_inspector/FORCED_PROGRAM_ORACLE.md\n[forced-oracle] summary={'state_update_contract_pass': True, 'raw_primitive_pass': True, 'invariants_pass': True, 'address_content_separated': True, 'controller_address_alive': True, 'final_read_last_has_no_layer0_output_bypass': False, 'sequential_contract_pass': True}",
+      "stderr": ""
+    }
+  ],
+  "variants": [
+    {
+      "variant": "raw",
+      "status": "PASS",
+      "full_acc": 0.5451388888888888,
+      "audit_acc": 0.5486111111111112,
+      "deploy_acc": 0.5381944444444444,
+      "honesty_score": 0.9872611464968153,
+      "deploy_above_random": true,
+      "frontend_params": 120.0,
+      "frontend_flops": 2144.0,
+      "frontend_activation_bytes": 1504.0,
+      "model_params": 51847.0,
+      "model_flops": 14432.0,
+      "model_activation_bytes": 1888.0
+    },
+    {
+      "variant": "conv",
+      "status": "PASS",
+      "full_acc": 0.6215277777777778,
+      "audit_acc": 0.6197916666666666,
+      "deploy_acc": 0.5885416666666666,
+      "honesty_score": 0.946927374301676,
+      "deploy_above_random": true,
+      "frontend_params": 2160.0,
+      "frontend_flops": 105216.0,
+      "frontend_activation_bytes": 7936.0,
+      "model_params": 53887.0,
+      "model_flops": 117504.0,
+      "model_activation_bytes": 8320.0
+    },
+    {
+      "variant": "structured",
+      "status": "PASS",
+      "full_acc": 0.9791666666666666,
+      "audit_acc": 0.9774305555555556,
+      "deploy_acc": 0.9861111111111112,
+      "honesty_score": 1.0070921985815604,
+      "deploy_above_random": true,
+      "frontend_params": 362.0,
+      "frontend_flops": 9675.0,
+      "frontend_activation_bytes": 3084.0,
+      "model_params": 52089.0,
+      "model_flops": 21963.0,
+      "model_activation_bytes": 3468.0
+    }
+  ],
+  "best_variant": "structured",
+  "raw": {
+    "variant": "raw",
+    "task": "synthetic_audio_order",
+    "curriculum_schedule": "phased",
+    "honesty_floor": 0.8,
+    "honesty_score": 0.9872611464968153,
+    "train_acc": 0.4861111111111111,
+    "train_loss": 0.6956327855587006,
+    "best_full_acc": 0.5434027777777778,
+    "full_acc": 0.5451388888888888,
+    "audit_acc": 0.5486111111111112,
+    "deploy_acc": 0.5381944444444444,
+    "deploy_above_random": true,
+    "deploy_above_random_margin": 0.03819444444444442,
+    "status": "PASS",
+    "frontend": {
+      "params": 120.0,
+      "flops": 2144.0,
+      "activation_bytes": 1504.0
+    },
+    "model": {
+      "params": 51847.0,
+      "approx_flops": 14432.0,
+      "approx_activation_bytes": 1888.0
+    },
+    "seconds": 10.561997413635254
+  },
+  "conv": {
+    "variant": "conv",
+    "task": "synthetic_audio_order",
+    "curriculum_schedule": "phased",
+    "honesty_floor": 0.8,
+    "honesty_score": 0.946927374301676,
+    "train_acc": 0.5115740740740741,
+    "train_loss": 0.691971609989802,
+    "best_full_acc": 0.6631944444444444,
+    "full_acc": 0.6215277777777778,
+    "audit_acc": 0.6197916666666666,
+    "deploy_acc": 0.5885416666666666,
+    "deploy_above_random": true,
+    "deploy_above_random_margin": 0.08854166666666663,
+    "status": "PASS",
+    "frontend": {
+      "params": 2160.0,
+      "flops": 105216.0,
+      "activation_bytes": 7936.0
+    },
+    "model": {
+      "params": 53887.0,
+      "approx_flops": 117504.0,
+      "approx_activation_bytes": 8320.0
+    },
+    "seconds": 10.65661883354187
+  },
+  "structured": {
+    "variant": "structured",
+    "task": "synthetic_audio_order",
+    "curriculum_schedule": "phased",
+    "honesty_floor": 0.8,
+    "honesty_score": 1.0070921985815604,
+    "train_acc": 0.9803240740740741,
+    "train_loss": 0.19976702746417788,
+    "best_full_acc": 0.9913194444444444,
+    "full_acc": 0.9791666666666666,
+    "audit_acc": 0.9774305555555556,
+    "deploy_acc": 0.9861111111111112,
+    "deploy_above_random": true,
+    "deploy_above_random_margin": 0.48611111111111116,
+    "status": "PASS",
+    "frontend": {
+      "params": 362.0,
+      "flops": 9675.0,
+      "activation_bytes": 3084.0
+    },
+    "model": {
+      "params": 52089.0,
+      "approx_flops": 21963.0,
+      "approx_activation_bytes": 3468.0
+    },
+    "seconds": 10.674008131027222
+  }
+}

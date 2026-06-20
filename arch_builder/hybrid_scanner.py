@@ -85,8 +85,13 @@ class HybridScanner(nn.Module):
                 grid = set(local[i].tolist())
                 sem = semantic[i].tolist()
                 sem_not_grid.append(sum(1 for x in sem if x not in grid) / max(1, len(sem)))
+            emb = torch.nn.functional.normalize(primitive_matrix.emb, dim=-1)
+            similarity = emb[anchor_ids] @ emb.t()
+            semantic_prob = torch.softmax(similarity, dim=-1)
+            semantic_entropy = (-(semantic_prob + 1e-8) * (semantic_prob + 1e-8).log()).sum(dim=-1)
             metrics = {
                 "semantic_grid_mismatch": float(sum(sem_not_grid) / max(1, len(sem_not_grid))),
+                "semantic_neighbor_entropy": float(semantic_entropy.mean().cpu()),
             }
 
         return candidate_ids, proposal_logits, source_ids, metrics

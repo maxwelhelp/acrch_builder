@@ -33,12 +33,23 @@ def write_latest_report(path: Path, report_dir: str, summary: Dict[str, object])
     lines: List[str] = ["# Latest vertical slice report", ""]
     lines.append(f"- report_dir: `{report_dir}`")
     for k in [
-        "task", "epochs", "state_norm_mode", "best_acc", "last_acc", "program_recovery_rate",
+        "task", "task_config_path", "task_config_name", "task_config_digest", "expected_actions", "pass_thresholds", "pass_threshold_results", "pass_thresholds_met",
+        "epochs", "curriculum_schedule", "curriculum_phase", "honesty_floor", "honesty_score",
+        "state_norm_mode", "best_acc", "last_acc", "program_recovery_rate",
         "expected_edge_recovery", "expected_any_recovery", "expected_edge_active", "expected_candidate_present", "expected_edge_choice_mass",
+        "layer_output_credit", "layer_listen_score", "layer_action_similarity",
+        "slot_alive_mean", "slot_alive_count", "split_none_mass", "split_one_mass", "split_two_mass",
+        "child_gate_mean", "merge_gate_mean", "collector_mass_mean",
         "gain_disabled_delta", "sim_result_disabled_delta", "sim_disabled_delta", "choice_without_sim_delta",
-        "semantic_grid_mismatch", "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "scanner_source_mass_sum",
+        "external_delete_delta", "internal_skip_delta", "state_ablation_delta",
+        "semantic_grid_mismatch", "semantic_neighbor_entropy", "primitive_embedding_rank", "usage_entropy", "usage_credit_observations",
+        "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "scanner_source_mass_sum",
         "skip_mass", "transform_mass", "disable_mass",
         "oracle_acc", "edge_pair_bias_expected", "write_pair_bias_expected", "phase_pair_bias_expected", "cell_output_pair_bias_expected", "edge_pair_bias_std", "write_pair_bias_std", "choice_entropy", "edge_scale_mean", "cell_output_gate_mean", "cell_tape_weight_mean",
+        "branch_split_loss", "branch_alive_loss", "branch_child_loss", "branch_merge_loss", "branch_collector_loss",
+        "credit_teacher_credit_items", "credit_teacher_credit_staleness_mean", "credit_teacher_credit_age_max",
+        "credit_audit_credit_items", "credit_audit_credit_staleness_mean", "credit_audit_credit_age_max",
+        "credit_deploy_credit_items", "credit_deploy_credit_staleness_mean", "credit_deploy_credit_age_max",
     ]:
         if k in summary:
             lines.append(f"- {k}: `{summary[k]}`")

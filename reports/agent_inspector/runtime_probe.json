@@ -2,75 +2,87 @@
   "schema": "runtime_probe_contract.v3",
   "project": "acrch_builder",
   "producer": "tools/project_probe/probe_learning_loop.py",
-  "timestamp": 1781909150.2080712,
+  "timestamp": 1781924862.5437565,
   "run_type": "one_batch_backward_probe",
   "note": "Uses the same canonical objective as training; reports aggregate and per-loss autograd connectivity separately.",
   "config": {
     "task": "diff",
-    "device": "cuda",
+    "device": "cpu",
     "dim": 32,
     "slots": 4,
     "layers": 2,
     "top_k": 25,
     "sim_rank": 8,
-    "batch_size": 8,
+    "batch_size": 64,
     "tau": 1.0,
     "input_norm": "none"
   },
   "metrics": {
-    "loss": 9.03807544708252,
-    "train_acc": 0.375,
-    "gain_disabled_delta": -0.0031250715255737305,
-    "sim_result_disabled_delta": -0.006227254867553711,
-    "sim_disabled_delta": -0.008959949016571045,
-    "choice_without_sim_delta": 0.03444105014204979,
-    "ce_loss": 0.7542140483856201,
-    "sim_loss": 0.14550462365150452,
-    "expected_choice_loss": 3.3086817264556885,
-    "non_expected_primitive_loss": 0.19061166048049927,
-    "expected_active_loss": 1.5253894329071045,
-    "non_expected_active_loss": 0.24604131281375885,
-    "non_expected_tape_loss": 0.0752803385257721,
-    "non_expected_transform_loss": 0.5465383529663086,
+    "loss": 11.073957443237305,
+    "train_acc": 0.578125,
+    "gain_disabled_delta": -0.0022858381271362305,
+    "sim_result_disabled_delta": 0.000141143798828125,
+    "sim_disabled_delta": -0.0022065043449401855,
+    "choice_without_sim_delta": 0.035800132900476456,
+    "ce_loss": 0.6618170142173767,
+    "sim_loss": 0.049268610775470734,
+    "expected_choice_loss": 4.08967399597168,
+    "non_expected_primitive_loss": 0.020519334822893143,
+    "expected_active_loss": 1.3042510747909546,
+    "non_expected_active_loss": 0.2228097915649414,
+    "non_expected_tape_loss": 0.06761983036994934,
+    "non_expected_transform_loss": 0.5587620139122009,
     "primitive_usage_diversity": 0.0,
-    "cell_choice_diversity": 0.010960831306874752,
-    "active_budget": 0.007639226503670216,
-    "tape_budget": 0.0036056602839380503,
+    "cell_choice_diversity": 0.05385918170213699,
+    "active_budget": 0.004378998652100563,
+    "tape_budget": 0.0028279838152229786,
     "layer_action_diversity": 0.0,
+    "branch_split_loss": 0.0,
+    "branch_alive_loss": 0.7252758741378784,
+    "branch_child_loss": 0.7248936891555786,
+    "branch_merge_loss": 0.7584907412528992,
+    "branch_collector_loss": 0.3301829397678375,
     "min_transform_loss": 0.0,
-    "signal_expected_choice_mass": 0.11993330717086792,
-    "signal_candidate_present": 1.0,
-    "signal_primitive_top_share": 0.2155209481716156,
-    "signal_active_mean": 0.24490505456924438,
-    "signal_tape_mean": 0.07502328604459763,
-    "signal_active_cells_soft": 3.9184811115264893,
-    "adaptive_recovery_gate": 0.015893349424004555,
-    "adaptive_collapse_gate": 0.00023924781999085099,
-    "adaptive_sparse_gate": 0.010306360200047493,
-    "adaptive_choice_boost": 2.4761600494384766,
-    "eff_lambda_choice": 2.4761600494384766,
-    "eff_lambda_non_expected_primitive": 5.9811954997712746e-05,
-    "eff_lambda_primitive_usage_diversity": 1.196239099954255e-05,
-    "eff_lambda_cell_choice_diversity": 1.196239099954255e-05,
-    "eff_lambda_non_expected_active": 0.00020612719526980072,
-    "eff_lambda_non_expected_tape": 0.0005153180100023746,
-    "eff_lambda_non_expected_transform": 0.00020612719526980072,
-    "eff_lambda_active_budget": 0.00020612719526980072,
-    "eff_lambda_tape_budget": 0.00020612719526980072,
-    "eff_lambda_layer_action_diversity": 1.196239099954255e-05,
-    "program_recovery_rate": 0.125,
-    "expected_edge_recovery": 0.125,
-    "expected_any_recovery": 0.203125,
-    "expected_candidate_present": 1.0,
-    "expected_edge_choice_mass": 0.11993330717086792,
-    "expected_edge_active": 0.2189171016216278,
-    "transform_mass": 0.5470783710479736,
-    "skip_mass": 0.2692659795284271,
-    "disable_mass": 0.18365570902824402,
-    "choice_entropy": 1.4590083360671997,
+    "signal_expected_choice_mass": 0.022738127037882805,
+    "signal_candidate_present": 0.3125,
+    "signal_primitive_top_share": 0.2655871510505676,
+    "signal_active_mean": 0.22410160303115845,
+    "signal_tape_mean": 0.06724898517131805,
+    "signal_active_cells_soft": 3.585625648498535,
+    "signal_layer_listen_score": 0.5489060878753662,
+    "signal_slot_alive_mean": 0.5274415016174316,
+    "signal_split_two_mass": 0.3550708293914795,
+    "signal_merge_gate_mean": 0.5177938938140869,
+    "signal_layer_action_similarity": 0.35207900404930115,
+    "adaptive_recovery_gate": 0.001490408438257873,
+    "adaptive_collapse_gate": 4.140777309658006e-05,
+    "adaptive_sparse_gate": 0.0008888543816283345,
+    "adaptive_dependency_gate": 0.7749238610267639,
+    "adaptive_choice_boost": 2.4977643489837646,
+    "eff_lambda_choice": 2.4977643489837646,
+    "eff_lambda_non_expected_primitive": 1.0351943274145015e-05,
+    "eff_lambda_primitive_usage_diversity": 2.070388745778473e-06,
+    "eff_lambda_cell_choice_diversity": 2.070388745778473e-06,
+    "eff_lambda_non_expected_active": 1.7777087123249657e-05,
+    "eff_lambda_non_expected_tape": 4.444272053660825e-05,
+    "eff_lambda_non_expected_transform": 1.7777087123249657e-05,
+    "eff_lambda_active_budget": 1.7777087123249657e-05,
+    "eff_lambda_tape_budget": 1.7777087123249657e-05,
+    "eff_lambda_layer_action_diversity": 1.6043936739151832e-06,
+    "program_recovery_rate": 0.03125,
+    "expected_edge_recovery": 0.03125,
+    "expected_any_recovery": 0.0224609375,
+    "expected_candidate_present": 0.3125,
+    "expected_edge_choice_mass": 0.022738127037882805,
+    "layer_output_credit": 0.022738127037882805,
+    "expected_edge_active": 0.28624820709228516,
+    "transform_mass": 0.5545425415039062,
+    "skip_mass": 0.2845621407032013,
+    "disable_mass": 0.16089530289173126,
+    "choice_entropy": 1.3696783781051636,
     "active_cells": 16.0,
-    "expected_top_cells": 6.0,
-    "primitive_top_share": 0.2155209556221962,
+    "expected_top_cells": 0.0,
+    "primitive_top_share": 0.26558713614940643,
     "active_edges_per_target": 4.0,
     "final_read_last": 1.0,
     "final_read_mean": 0.0,
@@ -82,23 +94,35 @@
     "primitive_embedding_rank": 25.0,
     "primitive_pair_cos_mean": 0.32978546619415283,
     "primitive_pair_cos_max": 0.9889096617698669,
-    "usage_entropy": 0.4784822165966034,
-    "action_L0_0_1_diff_present": 1.0,
-    "action_L0_0_1_diff_choice_mass": 0.11993330717086792,
-    "action_L0_0_1_diff_recovery": 0.125,
-    "action_L0_0_1_diff_active": 0.2189171016216278,
-    "action_L0_0_1_diff_tape": 0.06900455057621002,
-    "semantic_grid_mismatch": 0.3857421875,
-    "grid_candidate_usage": 0.22245435416698456,
-    "semantic_candidate_usage": 0.2441367357969284,
-    "usage_candidate_usage": 0.42305320501327515,
-    "random_candidate_usage": 0.11035570129752159,
-    "scanner_source_mass_sum": 0.9999999962747097,
-    "edge_scale_mean": 0.991568386554718,
-    "cell_output_gate_mean": 0.5586023330688477,
-    "cell_tape_weight_mean": 0.07502328604459763,
-    "cell_write_mass_mean": 0.20062002539634705,
-    "target_write_gate_mean": 0.582230269908905,
+    "usage_entropy": 0.0,
+    "usage_credit_observations": 0.0,
+    "action_L0_0_1_diff_present": 0.3125,
+    "action_L0_0_1_diff_choice_mass": 0.022738127037882805,
+    "action_L0_0_1_diff_recovery": 0.03125,
+    "action_L0_0_1_diff_active": 0.28624820709228516,
+    "action_L0_0_1_diff_tape": 0.0660245418548584,
+    "layer_listen_score": 0.5489060878753662,
+    "layer_action_similarity": 0.35207900404930115,
+    "semantic_grid_mismatch": 0.393798828125,
+    "semantic_neighbor_entropy": 3.1771647930145264,
+    "grid_candidate_usage": 0.40414780378341675,
+    "semantic_candidate_usage": 0.11336737498641014,
+    "usage_candidate_usage": 0.38402052223682404,
+    "random_candidate_usage": 0.09846428036689758,
+    "scanner_source_mass_sum": 0.9999999813735485,
+    "edge_scale_mean": 0.9633636176586151,
+    "cell_output_gate_mean": 0.5448898673057556,
+    "cell_tape_weight_mean": 0.0672489870339632,
+    "cell_write_mass_mean": 0.18885093927383423,
+    "target_write_gate_mean": 0.5575818419456482,
+    "slot_alive_mean": 0.5274414718151093,
+    "slot_alive_count": 2.671875,
+    "split_none_mass": 0.3300987333059311,
+    "split_one_mass": 0.31483040750026703,
+    "split_two_mass": 0.3550708442926407,
+    "child_gate_mean": 0.49752427637577057,
+    "merge_gate_mean": 0.5177938640117645,
+    "collector_mass_mean": 0.26940228044986725,
     "edge_pair_bias_expected": 0.0,
     "edge_pair_bias_std": 0.0,
     "write_pair_bias_expected": 0.0,
@@ -107,111 +131,116 @@
     "phase_pair_bias_std": 0.0,
     "cell_output_pair_bias_expected": 0.0,
     "cell_output_pair_bias_std": 0.0,
-    "loss_accounting_error": 1.334045833800701e-07
+    "loss_accounting_error": 6.201127504823489e-07
   },
   "weighted_loss_contributions": {
-    "weighted_ce_loss": 0.7542140483856201,
-    "weighted_sim_loss": 0.014550462365150452,
-    "weighted_expected_choice_loss": 8.192825317382812,
-    "weighted_expected_active_loss": 0.0762694701552391,
-    "weighted_non_expected_primitive_loss": 1.1400856237742119e-05,
-    "weighted_non_expected_active_loss": 5.0715807446977124e-05,
-    "weighted_non_expected_tape_loss": 3.879331416101195e-05,
-    "weighted_non_expected_transform_loss": 0.00011265641660429537,
+    "weighted_ce_loss": 0.6618170142173767,
+    "weighted_sim_loss": 0.004926861263811588,
+    "weighted_expected_choice_loss": 10.215042114257812,
+    "weighted_expected_active_loss": 0.06521255522966385,
+    "weighted_non_expected_primitive_loss": 2.1241498870949727e-07,
+    "weighted_non_expected_active_loss": 3.960908998124069e-06,
+    "weighted_non_expected_tape_loss": 3.0052092370169703e-06,
+    "weighted_non_expected_transform_loss": 9.933160981745459e-06,
     "weighted_primitive_usage_diversity": 0.0,
-    "weighted_cell_choice_diversity": 1.3111774421759037e-07,
-    "weighted_active_budget": 1.5746522876725066e-06,
-    "weighted_tape_budget": 7.432246320604463e-07,
+    "weighted_cell_choice_diversity": 1.1150944345672542e-07,
+    "weighted_active_budget": 7.784583999637107e-08,
+    "weighted_tape_budget": 5.027331440032867e-08,
     "weighted_layer_action_diversity": 0.0,
+    "weighted_branch_split_loss": 0.0,
+    "weighted_branch_alive_loss": 0.03626379370689392,
+    "weighted_branch_child_loss": 0.03624468669295311,
+    "weighted_branch_merge_loss": 0.03792453929781914,
+    "weighted_branch_collector_loss": 0.016509147360920906,
     "weighted_min_transform_loss": 0.0
   },
   "loss_connectivity": {
     "ce_loss": {
-      "value": 0.7542140483856201,
+      "value": 0.6618170142173767,
       "requires_grad": true,
       "grad_fn": "NllLossBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "choice_controller": 0.05884862749501821,
-        "gate_controller": 0.17221085014330978,
-        "scanner": 0.04348081417719334,
-        "simulator": 0.060821465036172286,
-        "executor": 0.019425587852419567,
-        "classifier": 0.48993003776062155
+        "choice_controller": 0.017035112871331342,
+        "gate_controller": 0.09872555925544511,
+        "scanner": 0.01947733517156258,
+        "simulator": 0.03312686965796784,
+        "executor": 0.02081674444208643,
+        "classifier": 0.23314424023727132
       },
       "connected_to_intended_target": true
     },
     "sim_loss": {
-      "value": 0.14550462365150452,
+      "value": 0.049268610775470734,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "simulator": 0.40144985809240963
+        "simulator": 0.3964781457040147
       },
       "connected_to_intended_target": true
     },
     "expected_choice_loss": {
-      "value": 3.3086817264556885,
+      "value": 4.08967399597168,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "choice_controller": 11.136004402305526,
-        "scanner": 11.06201486855291,
-        "simulator": 30.420345299923383
+        "choice_controller": 6.096748061993978,
+        "scanner": 8.340269100465493,
+        "simulator": 37.27387422227353
       },
       "connected_to_intended_target": true
     },
     "non_expected_primitive_loss": {
-      "value": 0.19061166048049927,
+      "value": 0.020519334822893143,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "choice_controller": 0.47309217492381783,
-        "scanner": 0.9789131078304091,
-        "simulator": 3.3050557837803987
+        "choice_controller": 0.0464847841549442,
+        "scanner": 0.16970405385788095,
+        "simulator": 0.49039019845938703
       },
       "connected_to_intended_target": true
     },
     "expected_active_loss": {
-      "value": 1.5253894329071045,
+      "value": 1.3042510747909546,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "gate_controller": 4.761424932500316
+        "gate_controller": 2.7807314661597746
       },
       "connected_to_intended_target": true
     },
     "non_expected_active_loss": {
-      "value": 0.24604131281375885,
+      "value": 0.2228097915649414,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "gate_controller": 0.2577312808491464
+        "gate_controller": 0.2325107537171648
       },
       "connected_to_intended_target": true
     },
     "non_expected_tape_loss": {
-      "value": 0.0752803385257721,
+      "value": 0.06761983036994934,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "gate_controller": 0.11549900156152165
+        "gate_controller": 0.11091841230793183
       },
       "connected_to_intended_target": true
     },
     "non_expected_transform_loss": {
-      "value": 0.5465383529663086,
+      "value": 0.5587620139122009,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "gate_controller": 0.45246352996584216
+        "gate_controller": 0.42152387509507383
       },
       "connected_to_intended_target": true
     },
@@ -228,34 +257,34 @@
       "connected_to_intended_target": false
     },
     "cell_choice_diversity": {
-      "value": 0.010960831306874752,
+      "value": 0.05385918170213699,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "choice_controller": 0.021186203557206674,
-        "scanner": 0.04484954389347954,
-        "simulator": 0.08474400228745255
+        "choice_controller": 0.03505768944533093,
+        "scanner": 0.04568611713566491,
+        "simulator": 0.10814385737698504
       },
       "connected_to_intended_target": true
     },
     "active_budget": {
-      "value": 0.007639226503670216,
+      "value": 0.004378998652100563,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "gate_controller": 0.07007441006616898
+        "gate_controller": 0.05826333116683212
       },
       "connected_to_intended_target": true
     },
     "tape_budget": {
-      "value": 0.0036056602839380503,
+      "value": 0.0028279838152229786,
       "requires_grad": true,
       "grad_fn": "MeanBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "gate_controller": 0.01398009601464308
+        "gate_controller": 0.01344485634200713
       },
       "connected_to_intended_target": true
     },
@@ -271,6 +300,56 @@
       },
       "connected_to_intended_target": false
     },
+    "branch_split_loss": {
+      "value": 0.0,
+      "requires_grad": false,
+      "grad_fn": null,
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.0
+      },
+      "connected_to_intended_target": false
+    },
+    "branch_alive_loss": {
+      "value": 0.7252758741378784,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.06375321342627878
+      },
+      "connected_to_intended_target": true
+    },
+    "branch_child_loss": {
+      "value": 0.7248936891555786,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.16181746241149472
+      },
+      "connected_to_intended_target": true
+    },
+    "branch_merge_loss": {
+      "value": 0.7584907412528992,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.14532305353625205
+      },
+      "connected_to_intended_target": true
+    },
+    "branch_collector_loss": {
+      "value": 0.3301829397678375,
+      "requires_grad": true,
+      "grad_fn": "MeanBackward0",
+      "applicable": true,
+      "target_grad_norms": {
+        "gate_controller": 0.20923817187813676
+      },
+      "connected_to_intended_target": true
+    },
     "min_transform_loss": {
       "value": 0.0,
       "requires_grad": true,
@@ -283,29 +362,29 @@
     }
   },
   "grad_norms": {
-    "controller": 27.564610279755694,
-    "scanner": 27.397119659622774,
-    "simulator": 75.30383549872694,
-    "executor": 0.019431185529901505,
+    "controller": 15.227921169373076,
+    "scanner": 20.824377789615248,
+    "simulator": 93.08630365700523,
+    "executor": 0.02086962575184367,
     "memory": null,
-    "classifier": 0.48993003776062155,
-    "primitive_matrix": 2.6544783115386963,
-    "model_core": 84.79054205361804
+    "classifier": 0.23314424023727132,
+    "primitive_matrix": 2.843123197555542,
+    "model_core": 96.63917189703301
   },
   "credit_path": {
     "expected_edge_present": true,
     "candidate_present": true,
-    "choice_mass": 0.11993330717086792,
-    "edge_active": 0.2189171016216278,
-    "recovery": 0.125,
+    "choice_mass": 0.022738127037882805,
+    "edge_active": 0.28624820709228516,
+    "recovery": 0.03125,
     "recovery_loss_connected": true,
-    "simulator_influence": 0.03444105014204979
+    "simulator_influence": 0.035800132900476456
   },
   "ablations": {
-    "gain_disabled_delta": -0.0031250715255737305,
-    "sim_result_disabled_delta": -0.006227254867553711,
-    "sim_disabled_delta": -0.008959949016571045,
-    "choice_without_sim_delta": 0.03444105014204979
+    "gain_disabled_delta": -0.0022858381271362305,
+    "sim_result_disabled_delta": 0.000141143798828125,
+    "sim_disabled_delta": -0.0022065043449401855,
+    "choice_without_sim_delta": 0.035800132900476456
   },
   "health": {
     "probe_api_ok": true,
@@ -313,6 +392,8 @@
     "credit_closed": true,
     "recovery_loss_connected": true,
     "recovery_ok": true,
-    "detached_enabled_losses": []
+    "detached_enabled_losses": [
+      "branch_split_loss"
+    ]
   }
 }

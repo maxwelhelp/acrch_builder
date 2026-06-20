@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 import torch
+
+from .task_config import TaskConfig, legacy_task_path, load_task_config
 
 
 @dataclass
@@ -22,64 +25,23 @@ class SyntheticKnownProgramTask:
     These tasks are microscopes, not final real-task training.
     """
 
-    def __init__(self, task: str = "diff", slots: int = 4, dim: int = 64, classes: int = 2) -> None:
-        self.task = task
-        self.slots = slots
+    def __init__(self, task: str = "diff", slots: int | None = None, dim: int = 64,
+                 classes: int = 2, config: TaskConfig | str | Path | None = None) -> None:
+        if isinstance(config, TaskConfig):
+            self.config = config
+        else:
+            self.config = load_task_config(config if config is not None else legacy_task_path(task))
+        if slots is not None and slots != self.config.slots:
+            raise ValueError(f"slots={slots} conflicts with task config slots={self.config.slots}")
+        self.task = self.config.name
+        self.slots = self.config.slots
         self.dim = dim
         self.classes = classes
 
     def label_signal(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[Dict[str, object]]]:
-        if self.task == "diff":
-            signal = (x[:, 0] - x[:, 1]).mean(dim=-1)
-            actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"}]
-            return signal, actions
-
-        if self.task == "two_diff":
-            signal = (x[:, 0] - x[:, 1]).mean(dim=-1) + (x[:, 2] - x[:, 3]).mean(dim=-1)
-            actions = [
-                {"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"},
-                {"layer": 0, "src": 2, "tgt": 3, "primitive": "diff"},
-            ]
-            return signal, actions
-
-        if self.task == "merge":
-            signal = (x[:, 0] + x[:, 1]).mean(dim=-1)
-            actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "merge"}]
-            return signal, actions
-
-        if self.task == "product":
-            signal = (x[:, 0] * x[:, 1]).mean(dim=-1)
-            actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "product"}]
-            return signal, actions
-
-        if self.task == "chain_diff_merge":
-            # Layer0 computes two diffs into slots 1 and 3.
-            # Layer1 merges these layer0 outputs: sign(mean((x0-x1) + (x2-x3))).
-            d01 = x[:, 0] - x[:, 1]
-            d23 = x[:, 2] - x[:, 3]
-            signal = (d01 + d23).mean(dim=-1)
-            actions = [
-                {"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"},
-                {"layer": 0, "src": 2, "tgt": 3, "primitive": "diff"},
-                {"layer": 1, "src": 1, "tgt": 3, "primitive": "merge"},
-            ]
-            return signal, actions
-
-        if self.task == "chain_diff_product":
-            signal = ((x[:, 0] - x[:, 1]) * (x[:, 2] - x[:, 3])).mean(dim=-1)
-            actions = [
-                {"layer": 0, "src": 0, "tgt": 1, "primitive": "diff"},
-                {"layer": 0, "src": 2, "tgt": 3, "primitive": "diff"},
-                {"layer": 1, "src": 1, "tgt": 3, "primitive": "product"},
-            ]
-            return signal, actions
-
-        if self.task == "semantic_rescue":
-            signal = (x[:, 0] * x[:, 1]).mean(dim=-1) - (x[:, 2] - x[:, 3]).mean(dim=-1)
-            actions = [{"layer": 0, "src": 0, "tgt": 1, "primitive": "product"}]
-            return signal, actions
-
-        raise ValueError(f"unknown task: {self.task}")
+        if x.ndim != 3 or x.shape[1] != self.slots:
+            raise ValueError(f"expected x shaped [batch, {self.slots}, dim], got {tuple(x.shape)}")
+        return self.config.evaluate(x), [dict(action) for action in self.config.expected_actions]
 
     def sample(self, batch_size: int, device: str | torch.device) -> Batch:
         x = torch.randn(batch_size, self.slots, self.dim, device=device)

@@ -31,6 +31,34 @@ class CreditBuffer:
         }
 
 
+@dataclass
+class ModeCreditLedger:
+    teacher: CreditBuffer = field(default_factory=CreditBuffer)
+    audit: CreditBuffer = field(default_factory=CreditBuffer)
+    deploy: CreditBuffer = field(default_factory=CreditBuffer)
+
+    def update(self, mode: str, values: Dict[str, float]) -> None:
+        if mode == "teacher":
+            self.teacher.update(values)
+        elif mode == "audit":
+            self.audit.update(values)
+        elif mode == "deploy":
+            self.deploy.update(values)
+        else:
+            raise ValueError(f"unknown credit mode: {mode!r}")
+
+    def metrics(self) -> Dict[str, float]:
+        out: Dict[str, float] = {}
+        for prefix, buffer in (
+            ("credit_teacher", self.teacher),
+            ("credit_audit", self.audit),
+            ("credit_deploy", self.deploy),
+        ):
+            for key, value in buffer.metrics().items():
+                out[f"{prefix}_{key}"] = value
+        return out
+
+
 def _rng_state():
     cpu = torch.random.get_rng_state()
     cuda = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
