@@ -248,9 +248,15 @@ class AudioMatrixClassifier(nn.Module):
         input_norm: str = "none",
         state_norm: str = "none",
         final_read: str = "last",
+        enable_single_signed_projection: bool = False,
+        single_proj_dim: int = 32,
+        enable_pair_jl_bilinear: bool = False,
+        pair_jl_dim: int = 16,
+        pair_candidate_budget: int = 64,
     ) -> None:
         super().__init__()
         self.frontend = frontend
+        self.choice_sampling = "auto"
         self.backbone = ActionMatrixModel(
             dim=dim,
             slots=slots,
@@ -261,6 +267,11 @@ class AudioMatrixClassifier(nn.Module):
             input_norm=input_norm,
             state_norm=state_norm,
             final_read=final_read,
+            enable_single_signed_projection=enable_single_signed_projection,
+            single_proj_dim=single_proj_dim,
+            enable_pair_jl_bilinear=enable_pair_jl_bilinear,
+            pair_jl_dim=pair_jl_dim,
+            pair_candidate_budget=pair_candidate_budget,
         )
         # Generic multiclass readout: no layer roles or task-specific operators.
         self.backbone.classifier = nn.Sequential(
@@ -273,7 +284,12 @@ class AudioMatrixClassifier(nn.Module):
 
     def forward(self, waveforms: torch.Tensor, tau: float = 1.0, curriculum_mode: str = "teacher"):
         features = self.frontend(waveforms)
-        logits, trace = self.backbone(features, tau=tau, curriculum_mode=curriculum_mode)
+        logits, trace = self.backbone(
+            features,
+            tau=tau,
+            curriculum_mode=curriculum_mode,
+            choice_sampling=self.choice_sampling,
+        )
         trace = dict(trace)
         trace["frontend_variant"] = self.frontend.frontend_name
         trace["frontend_shape"] = tuple(features.shape)

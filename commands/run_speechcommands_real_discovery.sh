@@ -5,12 +5,21 @@ DATA_ROOT="${DATA_ROOT:-/home/maxwelhelp/test/sience/experiments/math_search/str
 STAMP="$(date +%Y%m%d_%H%M%S)"
 OUT="${OUT:-agent_reports/speechcommands_real_discovery_seed${SEED:-1}_${STAMP}}"
 
+SCANNER_ARGS=()
+if [[ "${ENABLE_SINGLE_SIGNED_PROJECTION:-0}" == "1" ]]; then
+  SCANNER_ARGS+=(--enable-single-signed-projection)
+fi
+if [[ "${ENABLE_PAIR_JL_BILINEAR:-0}" == "1" ]]; then
+  SCANNER_ARGS+=(--enable-pair-jl-bilinear)
+fi
+
 python -m arch_builder.train_audio_frontend \
   --dataset speechcommands \
   --variant structured \
   --data-root "$DATA_ROOT" \
   --classes "${CLASSES:-yes,no,up,down,left,right,on,off,stop,go}" \
   --discovery \
+  --controller-baseline "${CONTROLLER_BASELINE:-learned}" \
   --device "${DEVICE:-cuda}" \
   --amp "${AMP:-fp16}" \
   --seed "${SEED:-1}" \
@@ -33,12 +42,17 @@ python -m arch_builder.train_audio_frontend \
   --credit-budget "${CREDIT_BUDGET:-8}" \
   --credit-interval "${CREDIT_INTERVAL:-8}" \
   --credit-batch-size "${CREDIT_BATCH_SIZE:-16}" \
+  --credit-alternative-budget "${CREDIT_ALTERNATIVE_BUDGET:-2}" \
+  --single-proj-dim "${SINGLE_PROJ_DIM:-32}" \
+  --pair-jl-dim "${PAIR_JL_DIM:-16}" \
+  --pair-candidate-budget "${PAIR_CANDIDATE_BUDGET:-64}" \
   --target-active-cells "${TARGET_ACTIVE_CELLS:-6}" \
   --train-limit "${TRAIN_LIMIT:-0}" \
   --val-limit "${VAL_LIMIT:-0}" \
   --test-limit "${TEST_LIMIT:-2000}" \
   --log-every "${LOG_EVERY:-20}" \
   --out-dir "$OUT" \
-  --latest-report "$OUT/LATEST_RUN_REPORT.md"
+  --latest-report "$OUT/LATEST_RUN_REPORT.md" \
+  "${SCANNER_ARGS[@]}"
 
 echo "report: $OUT/final_report.json"

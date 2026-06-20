@@ -17,28 +17,28 @@
 
 ## Risk nodes
 
-- `entrypoint` role=`entrypoint` degree=`213` file=`` line=``
+- `entrypoint` role=`entrypoint` degree=`222` file=`` line=``
 - `parser` role=`entrypoint` degree=`74` file=`arch_builder/train_vertical_slice.py` line=`1451`
-- `controller` role=`controller` degree=`65` file=`` line=``
-- `parser` role=`entrypoint` degree=`57` file=`arch_builder/train_audio_frontend.py` line=`34`
+- `controller` role=`controller` degree=`66` file=`` line=``
+- `parser` role=`entrypoint` degree=`59` file=`arch_builder/train_audio_frontend.py` line=`34`
 - `train` role=`model_core` degree=`52` file=`arch_builder/train_vertical_slice.py` line=`1240`
-- `model_core` role=`model_core` degree=`52` file=`` line=``
+- `model_core` role=`model_core` degree=`51` file=`` line=``
 - `data` role=`data` degree=`47` file=`` line=``
-- `memory` role=`memory` degree=`46` file=`` line=``
+- `memory` role=`memory` degree=`47` file=`` line=``
 - `tools/agent_codegraph/build_agent_codegraph.py` role=`scanner` degree=`43` file=`` line=``
 - `arch_builder/audio_frontend.py` role=`data` degree=`41` file=`` line=``
 - `arch_builder/token_slot_replacement.py` role=`controller` degree=`41` file=`` line=``
 - `ActionMatrixLayer.__init__` role=`controller` degree=`40` file=`arch_builder/model.py` line=`32`
-- `primitive_matrix` role=`primitive_matrix` degree=`39` file=`` line=``
+- `primitive_matrix` role=`primitive_matrix` degree=`40` file=`` line=``
 - `arch_builder/train_vertical_slice.py` role=`data` degree=`38` file=`` line=``
 - `parser` role=`entrypoint` degree=`38` file=`tools/project_probe/probe_learning_loop.py` line=`60`
 - `SyntheticAudioOrderTask.sample` role=`data` degree=`37` file=`arch_builder/audio_frontend.py` line=`68`
 - `ActionMatrixLayer.forward` role=`controller` degree=`37` file=`arch_builder/model.py` line=`118`
 - `SpeechCommandsAcceptanceTask.sample` role=`data` degree=`36` file=`arch_builder/speechcommands_data.py` line=`247`
+- `__future__` role=`external` degree=`35` file=`` line=``
 - `SyntheticKnownProgramTask.sample` role=`data` degree=`35` file=`arch_builder/synthetic_tasks.py` line=`46`
 - `arch_builder/train_audio_frontend.py` role=`reporting` degree=`35` file=`` line=``
 - `tools/build_code_logic_graph.py` role=`scanner` degree=`35` file=`` line=``
-- `__future__` role=`external` degree=`34` file=`` line=``
 - `CausalPositionTask.sample` role=`data` degree=`34` file=`arch_builder/token_slot_replacement.py` line=`31`
 - `main` role=`entrypoint` degree=`34` file=`tools/project_probe/transformer_plugin_proof.py` line=`141`
 - `scanner` role=`scanner` degree=`34` file=`` line=``

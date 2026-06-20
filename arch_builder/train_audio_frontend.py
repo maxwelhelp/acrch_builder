@@ -18,6 +18,19 @@ from .speechcommands_data import SpeechCommandsAcceptanceTask, normalize_classes
 from .credit import BoundedCounterfactualCredit, generic_discovery_health_loss
 
 
+PROJECTION_METRIC_KEYS = (
+    "single_signed_projection_usage",
+    "single_signed_projection_candidate_count",
+    "single_signed_projection_top_score",
+    "single_signed_projection_signed_score_mean",
+    "pair_jl16_usage",
+    "pair_jl16_candidate_count",
+    "pair_jl16_top_score",
+    "pair_jl16_seconds",
+    "pair_jl16_pairs_tested",
+)
+
+
 def curriculum_phase(epoch: int, total_epochs: int, schedule: str) -> str:
     """Audio-only scaffold schedule; real discovery bypasses it entirely."""
     if schedule == "teacher":
@@ -73,12 +86,19 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--credit-budget", type=int, default=8)
     ap.add_argument("--credit-interval", type=int, default=8)
     ap.add_argument("--credit-batch-size", type=int, default=16)
+    ap.add_argument("--credit-alternative-budget", type=int, default=2)
     ap.add_argument("--lambda-credit-policy", type=float, default=0.20)
     ap.add_argument("--lambda-credit-simulator", type=float, default=0.10)
     ap.add_argument("--lambda-discovery-health", type=float, default=1.0)
     ap.add_argument("--target-active-cells", type=int, default=3)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--log-every", type=int, default=20)
+    ap.add_argument("--controller-baseline", default="learned", choices=["learned", "frozen", "random"])
+    ap.add_argument("--enable-single-signed-projection", action="store_true")
+    ap.add_argument("--single-proj-dim", type=int, default=32)
+    ap.add_argument("--enable-pair-jl-bilinear", action="store_true")
+    ap.add_argument("--pair-jl-dim", type=int, default=16)
+    ap.add_argument("--pair-candidate-budget", type=int, default=64)
     return ap
 
 
@@ -166,6 +186,7 @@ def evaluate(
                 "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "global_candidate_usage",
                 "grid_candidate_coverage", "semantic_candidate_coverage", "usage_candidate_coverage", "random_candidate_coverage", "global_candidate_coverage",
                 "scanner_source_mass_sum",
+                *PROJECTION_METRIC_KEYS,
             ):
                 if key in scan:
                     trace_sum[key] += float(scan[key])
@@ -245,6 +266,7 @@ def collect_ablations(model: AudioMatrixClassifier, task, batch_size: int, devic
             "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "global_candidate_usage",
             "grid_candidate_coverage", "semantic_candidate_coverage", "usage_candidate_coverage", "random_candidate_coverage", "global_candidate_coverage",
             "scanner_source_mass_sum",
+            *PROJECTION_METRIC_KEYS,
         ):
             if key in scan:
                 out[key] = float(scan[key])
@@ -275,11 +297,14 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
         slots=model.backbone.slots,
         primitives=model.backbone.pm.num_primitives,
         budget=args.credit_budget,
+        alternative_budget=args.credit_alternative_budget,
     )
     best = 0.0
     train_acc = train_loss = 0.0
     last_diag: Dict[str, float] = {}
     global_step = 0
+    learned_controller = args.controller_baseline == "learned"
+    sampling = "uniform" if args.controller_baseline == "random" else "softmax"
     for epoch in range(1, args.epochs + 1):
         epoch_start = time.perf_counter()
         model.train()
@@ -290,7 +315,8 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
             global_step += 1
             raw_batch, train_iter = _next_batch(train_iter, train_loader)
             batch = _move_batch(raw_batch, device)
-            credit.advance(model.backbone.pm)
+            if learned_controller:
+                credit.advance(model.backbone.pm)
             opt.zero_grad(set_to_none=True)
             with torch.amp.autocast(device_type="cuda", dtype=dtype, enabled=device.startswith("cuda") and dtype != torch.float32):
                 features = model.frontend(_batch_x(batch))
@@ -298,17 +324,22 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                     features,
                     tau=tau,
                     curriculum_mode="deploy",
-                    choice_sampling="softmax",
+                    choice_sampling=sampling,
                     collect_scan_metrics=False,
                 )
                 ce = F.cross_entropy(logits, _batch_y(batch))
-                policy_loss, simulator_loss, align_metrics = credit.alignment_losses(trace)
-                health_loss, health_metrics = generic_discovery_health_loss(
-                    trace,
-                    slots=model.backbone.slots,
-                    num_primitives=model.backbone.pm.num_primitives,
-                    target_active_cells=args.target_active_cells,
-                )
+                if learned_controller:
+                    policy_loss, simulator_loss, align_metrics = credit.alignment_losses(trace)
+                    health_loss, health_metrics = generic_discovery_health_loss(
+                        trace,
+                        slots=model.backbone.slots,
+                        num_primitives=model.backbone.pm.num_primitives,
+                        target_active_cells=args.target_active_cells,
+                    )
+                else:
+                    policy_loss = simulator_loss = health_loss = torch.zeros((), device=ce.device)
+                    align_metrics = {"credit_alignment_items": 0.0, "sim_pred_real_corr": 0.0}
+                    health_metrics = {"active_cells": 0.0, "primitive_top_share": 0.0, "choice_entropy": 0.0}
                 loss = (
                     ce
                     + args.lambda_credit_policy * policy_loss
@@ -321,7 +352,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
             scaler.step(opt)
             scaler.update()
 
-            if global_step % max(1, args.credit_interval) == 0:
+            if learned_controller and global_step % max(1, args.credit_interval) == 0:
                 credit_raw, train_iter = _next_batch(train_iter, train_loader)
                 credit_batch = _move_batch(credit_raw, device)
                 credit_x = _batch_x(credit_batch)[: args.credit_batch_size]
@@ -338,6 +369,14 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
             total += n
             correct += (logits.argmax(dim=-1) == _batch_y(batch)).sum().item()
             loss_sum += float(loss.detach().cpu()) * n
+            projection_diag = {key: 0.0 for key in PROJECTION_METRIC_KEYS}
+            projection_layers = [
+                layer.get("scan_metrics", {}) for layer in trace.get("layers", [])
+            ]
+            for key in PROJECTION_METRIC_KEYS:
+                values = [float(scan[key]) for scan in projection_layers if key in scan]
+                if values:
+                    projection_diag[key] = sum(values) / len(values)
             last_diag = {
                 "ce_loss": float(ce.detach().cpu()),
                 "credit_policy_loss": float(policy_loss.detach().cpu()),
@@ -346,6 +385,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 **align_metrics,
                 **health_metrics,
                 **credit.metrics(),
+                **projection_diag,
             }
             if args.log_every > 0 and global_step % args.log_every == 0:
                 print(
@@ -486,10 +526,11 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         "task": "speechcommands_real_acceptance",
         "data_root": args.data_root,
         "classes": task.classes,
+        "seed": args.seed,
         "train_limit": args.train_limit,
         "val_limit": args.val_limit,
         "test_limit": args.test_limit,
-        "curriculum_schedule": args.curriculum_schedule,
+        "curriculum_schedule": "none" if args.discovery else args.curriculum_schedule,
         "honesty_floor": float(args.honesty_floor),
         "honesty_score": float(honesty_score),
         "train_acc": float(train_acc),
@@ -504,11 +545,20 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         "supervision_mode": "real_counterfactual_discovery" if args.discovery else "ce_only",
         "expected_actions_used_for_training": False,
         "layer_role_priors_used": False,
+        "controller_baseline": args.controller_baseline,
+        "scanner_config": {
+            "enable_single_signed_projection": bool(args.enable_single_signed_projection),
+            "single_proj_dim": int(args.single_proj_dim),
+            "enable_pair_jl_bilinear": bool(args.enable_pair_jl_bilinear),
+            "pair_jl_dim": int(args.pair_jl_dim),
+            "pair_candidate_budget": int(args.pair_candidate_budget),
+        },
         "val_metrics": full,
         "audit_metrics": audit,
         "deploy_metrics": deploy,
         "test_metrics": test or {},
         "ablations": ablations,
+        "global_scan_usage": float(ablations.get("global_candidate_usage", 0.0)),
         "discovery_metrics": discovery_metrics or {},
         "frontend": {
             "params": float(sum(p.numel() for p in model.frontend.parameters())),
@@ -522,13 +572,26 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         },
         "seconds": time.time() - start,
     }
+    report["comparison_metrics"] = {
+        "acc": float(deploy["acc"]),
+        "samples_per_second": float((discovery_metrics or {}).get("train_samples_per_second", 0.0)),
+        "credit_closed": float((discovery_metrics or {}).get("credit_closed", 0.0)),
+        "sim_disabled_delta": float(ablations.get("sim_disabled_delta", 0.0)),
+        "choice_without_sim_delta": float(ablations.get("choice_without_sim_delta", 0.0)),
+        "single_signed_projection_usage": float((discovery_metrics or {}).get("single_signed_projection_usage", 0.0)),
+        "pair_jl16_usage": float((discovery_metrics or {}).get("pair_jl16_usage", 0.0)),
+        "primitive_top_share": float((discovery_metrics or {}).get("primitive_top_share", 0.0)),
+        "active_cells": float((discovery_metrics or {}).get("active_cells", 0.0)),
+    }
     report["checks"] = {
         "deploy_above_random": deploy["acc"] >= chance + (0.02 if args.discovery else 0.0),
         "honesty_retained": report["honesty_score"] >= args.honesty_floor,
         "simulator_ce_ablation_positive": ablations["sim_disabled_delta"] > 0,
         "simulator_changes_choice": ablations.get("choice_without_sim_delta", 0.0) > 1e-5,
         "non_grid_scanner_usage_positive": (
-            ablations.get("semantic_candidate_usage", 0.0) + ablations.get("usage_candidate_usage", 0.0) + ablations.get("random_candidate_usage", 0.0) + ablations.get("global_candidate_usage", 0.0)
+            ablations.get("semantic_candidate_usage", 0.0)
+            + ablations.get("usage_candidate_usage", 0.0)
+            + ablations.get("random_candidate_usage", 0.0)
         ) > 0.05,
         "layer0_ablation_positive": (
             ablations["layer0_state_disabled_delta"] > 0
@@ -536,17 +599,23 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
             else ablations["layer0_output_disabled_delta"] > 0
         ),
     }
-    if args.discovery:
+    if args.discovery and args.controller_baseline == "learned":
         report["checks"].pop("honesty_retained", None)
         report["checks"].update({
             "credit_closed": bool((discovery_metrics or {}).get("credit_closed", 0.0)),
-            "bounded_credit_budget": (discovery_metrics or {}).get("credit_budget_used", args.credit_budget + 1) <= args.credit_budget,
+            "bounded_credit_budget": (
+                (discovery_metrics or {}).get("credit_budget_used", args.credit_budget + args.credit_alternative_budget + 1)
+                <= args.credit_budget + args.credit_alternative_budget
+            ),
             "joint_credit_measured": (discovery_metrics or {}).get("credit_total_joint_measurements", 0.0) > 0,
             "random_credit_budget_nonzero": (discovery_metrics or {}).get("credit_random_targets", 0.0) > 0,
+            "unchosen_candidate_credit_measured": (discovery_metrics or {}).get("credit_unchosen_measurements", 0.0) > 0,
             "no_primitive_collapse": (discovery_metrics or {}).get("primitive_top_share", 1.0) < 0.65,
             "active_path_alive": (discovery_metrics or {}).get("active_cells", 0.0) > 0,
         })
-    report["status"] = "PASS" if all(report["checks"].values()) else "FAIL"
+    local_ok = all(report["checks"].values())
+    report["status"] = "SMOKE_PASS" if args.discovery and local_ok else ("SMOKE_FAIL" if args.discovery else ("PASS" if local_ok else "FAIL"))
+    report["acceptance_status"] = "NOT_RUN" if args.discovery else report["status"]
     return report
 
 
@@ -567,7 +636,24 @@ def train_variant(args) -> Dict[str, object]:
         input_norm=args.input_norm,
         state_norm=args.state_norm,
         final_read=args.final_read,
+        enable_single_signed_projection=args.enable_single_signed_projection,
+        single_proj_dim=args.single_proj_dim,
+        enable_pair_jl_bilinear=args.enable_pair_jl_bilinear,
+        pair_jl_dim=args.pair_jl_dim,
+        pair_candidate_budget=args.pair_candidate_budget,
     ).to(device)
+    model.choice_sampling = "uniform" if args.controller_baseline == "random" else "auto"
+    if args.controller_baseline in {"frozen", "random"}:
+        model.backbone.slot_embed.requires_grad_(False)
+        for parameter in model.backbone.pm.parameters():
+            parameter.requires_grad_(False)
+        for layer in model.backbone.layers:
+            for parameter in layer.parameters():
+                parameter.requires_grad_(False)
+            # Keep the operation implementations trainable; only architecture
+            # selection/controller state is frozen.
+            for parameter in layer.executor.parameters():
+                parameter.requires_grad_(True)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=(device.startswith("cuda") and args.amp == "fp16"))
     dtype = amp_dtype(args.amp)
@@ -637,7 +723,7 @@ def main() -> int:
     latest = Path(args.latest_report)
     latest.write_text(_write_markdown(report), encoding="utf-8")
     print(json.dumps(report, indent=2, ensure_ascii=False))
-    if report["status"] != "PASS":
+    if report["status"] not in {"PASS", "SMOKE_PASS"}:
         raise SystemExit(1)
     return 0
 

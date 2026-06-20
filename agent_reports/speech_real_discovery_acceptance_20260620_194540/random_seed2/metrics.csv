@@ -1,0 +1,4 @@
+epoch,train_acc,train_loss,val_acc,val_loss,samples_per_second,ce_loss,credit_policy_loss,credit_simulator_loss,discovery_health_loss,credit_alignment_items,sim_pred_real_corr,active_cells,primitive_top_share,choice_entropy,credit_closed,credit_pending,credit_active,credit_total_measurements,credit_total_joint_measurements,credit_items,credit_age_mean,credit_gain_ema_abs_mean,train_samples_per_second
+1,0.265,1.9788915920257568,0.32890625,1.8028242945671082,353.7994496975908,2.0121726989746094,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,353.7994496975908
+2,0.3515625,1.7534917950630189,0.37421875,1.7351683497428894,370.21798126811746,1.6279983520507812,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,370.21798126811746
+3,0.380703125,1.661962531208992,0.378125,1.688658845424652,359.6414880659569,1.7401351928710938,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,359.6414880659569

@@ -1,0 +1,265 @@
+discovery step=20 ce=2.2466 acc=0.141 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=40 ce=2.0446 acc=0.177 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=60 ce=1.7361 acc=0.192 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=80 ce=2.0234 acc=0.213 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=100 ce=1.8797 acc=0.232 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=120 ce=1.9658 acc=0.245 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=140 ce=1.8425 acc=0.256 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=160 ce=1.7332 acc=0.264 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=180 ce=1.7669 acc=0.272 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=200 ce=1.8540 acc=0.277 active=0.0 top=0.000 credit=0 gain=+0.00000
+real-discovery epoch=1/3 train=0.277 val=0.325 speed=327.7/s credit_closed=False
+discovery step=220 ce=1.8514 acc=0.370 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=240 ce=1.6773 acc=0.371 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=260 ce=1.7040 acc=0.364 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=280 ce=1.5811 acc=0.362 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=300 ce=1.7729 acc=0.362 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=320 ce=1.8084 acc=0.362 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=340 ce=1.8367 acc=0.366 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=360 ce=1.6585 acc=0.367 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=380 ce=1.7186 acc=0.365 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=400 ce=1.6345 acc=0.364 active=0.0 top=0.000 credit=0 gain=+0.00000
+real-discovery epoch=2/3 train=0.364 val=0.362 speed=358.6/s credit_closed=False
+discovery step=420 ce=1.8733 acc=0.377 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=440 ce=1.4834 acc=0.388 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=460 ce=1.8059 acc=0.380 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=480 ce=1.8676 acc=0.378 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=500 ce=1.6359 acc=0.382 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=520 ce=1.8250 acc=0.385 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=540 ce=1.6311 acc=0.385 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=560 ce=1.4594 acc=0.386 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=580 ce=1.3672 acc=0.389 active=0.0 top=0.000 credit=0 gain=+0.00000
+discovery step=600 ce=1.4804 acc=0.391 active=0.0 top=0.000 credit=0 gain=+0.00000
+real-discovery epoch=3/3 train=0.391 val=0.405 speed=364.4/s credit_closed=False
+{
+  "variant": "structured",
+  "dataset": "speechcommands",
+  "task": "speechcommands_real_acceptance",
+  "data_root": "/home/maxwelhelp/test/sience/experiments/math_search/structured_matrix_program_export_lab/data/speechcommands/SpeechCommands",
+  "classes": [
+    "yes",
+    "no",
+    "up",
+    "down",
+    "left",
+    "right",
+    "on",
+    "off",
+    "stop",
+    "go"
+  ],
+  "seed": 1,
+  "train_limit": 0,
+  "val_limit": 0,
+  "test_limit": 2000,
+  "curriculum_schedule": "none",
+  "honesty_floor": 0.8,
+  "honesty_score": 1.0,
+  "train_acc": 0.39078125,
+  "train_loss": 1.639242067337036,
+  "best_full_acc": 0.4046875,
+  "full_acc": 0.39375,
+  "audit_acc": 0.39375,
+  "deploy_acc": 0.39375,
+  "test_acc": 0.421875,
+  "deploy_above_random": true,
+  "deploy_above_random_margin": 0.29374999999999996,
+  "supervision_mode": "real_counterfactual_discovery",
+  "expected_actions_used_for_training": false,
+  "layer_role_priors_used": false,
+  "controller_baseline": "random",
+  "val_metrics": {
+    "acc": 0.39375,
+    "loss": 1.6153138041496278,
+    "grid_candidate_usage": 0.4528900146484375,
+    "semantic_candidate_usage": 0.24269053141276042,
+    "usage_candidate_usage": 0.17941945393880207,
+    "random_candidate_usage": 0.125,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 1.0,
+    "layer0_listen_gate_mean": 0.0,
+    "layer0_active_mean": 0.25030083358287813,
+    "layer0_cell_output_gate_mean": 0.5397382378578186,
+    "layer0_cell_write_mass_mean": 0.21030073016881942,
+    "layer0_active_cells": 64.0,
+    "layer0_choice_entropy": 2.079441547393799,
+    "layer1_listen_gate_mean": 0.5471271812915802,
+    "layer1_active_mean": 0.24009272158145906,
+    "layer1_cell_output_gate_mean": 0.5264658629894257,
+    "layer1_cell_write_mass_mean": 0.18984428346157073,
+    "layer1_active_cells": 64.0,
+    "layer1_choice_entropy": 2.079441547393799,
+    "layer2_listen_gate_mean": 0.5703517258167267,
+    "layer2_active_mean": 0.24194800108671188,
+    "layer2_cell_output_gate_mean": 0.5563270151615143,
+    "layer2_cell_write_mass_mean": 0.20983513295650483,
+    "layer2_active_cells": 64.0,
+    "layer2_choice_entropy": 2.079441547393799
+  },
+  "audit_metrics": {
+    "acc": 0.39375,
+    "loss": 1.6153138041496278,
+    "grid_candidate_usage": 0.4528900146484375,
+    "semantic_candidate_usage": 0.24269053141276042,
+    "usage_candidate_usage": 0.17941945393880207,
+    "random_candidate_usage": 0.125,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 1.0,
+    "layer0_listen_gate_mean": 0.0,
+    "layer0_active_mean": 0.25030083358287813,
+    "layer0_cell_output_gate_mean": 0.5397382378578186,
+    "layer0_cell_write_mass_mean": 0.21030073016881942,
+    "layer0_active_cells": 64.0,
+    "layer0_choice_entropy": 2.079441547393799,
+    "layer1_listen_gate_mean": 0.5471271812915802,
+    "layer1_active_mean": 0.24009272158145906,
+    "layer1_cell_output_gate_mean": 0.5264658629894257,
+    "layer1_cell_write_mass_mean": 0.18984428346157073,
+    "layer1_active_cells": 64.0,
+    "layer1_choice_entropy": 2.079441547393799,
+    "layer2_listen_gate_mean": 0.5703517258167267,
+    "layer2_active_mean": 0.24194800108671188,
+    "layer2_cell_output_gate_mean": 0.5563270151615143,
+    "layer2_cell_write_mass_mean": 0.20983513295650483,
+    "layer2_active_cells": 64.0,
+    "layer2_choice_entropy": 2.079441547393799
+  },
+  "deploy_metrics": {
+    "acc": 0.39375,
+    "loss": 1.6153138041496278,
+    "grid_candidate_usage": 0.4528900146484375,
+    "semantic_candidate_usage": 0.24269053141276042,
+    "usage_candidate_usage": 0.17941945393880207,
+    "random_candidate_usage": 0.125,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 1.0,
+    "layer0_listen_gate_mean": 0.0,
+    "layer0_active_mean": 0.25030083358287813,
+    "layer0_cell_output_gate_mean": 0.5397382378578186,
+    "layer0_cell_write_mass_mean": 0.21030073016881942,
+    "layer0_active_cells": 64.0,
+    "layer0_choice_entropy": 2.079441547393799,
+    "layer1_listen_gate_mean": 0.5471271812915802,
+    "layer1_active_mean": 0.24009272158145906,
+    "layer1_cell_output_gate_mean": 0.5264658629894257,
+    "layer1_cell_write_mass_mean": 0.18984428346157073,
+    "layer1_active_cells": 64.0,
+    "layer1_choice_entropy": 2.079441547393799,
+    "layer2_listen_gate_mean": 0.5703517258167267,
+    "layer2_active_mean": 0.24194800108671188,
+    "layer2_cell_output_gate_mean": 0.5563270151615143,
+    "layer2_cell_write_mass_mean": 0.20983513295650483,
+    "layer2_active_cells": 64.0,
+    "layer2_choice_entropy": 2.079441547393799
+  },
+  "test_metrics": {
+    "acc": 0.421875,
+    "loss": 1.5741751432418822,
+    "grid_candidate_usage": 0.45002848307291665,
+    "semantic_candidate_usage": 0.24232177734375,
+    "usage_candidate_usage": 0.18264973958333333,
+    "random_candidate_usage": 0.125,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 1.0,
+    "layer0_listen_gate_mean": 0.0,
+    "layer0_active_mean": 0.2504417449235916,
+    "layer0_cell_output_gate_mean": 0.5403671741485596,
+    "layer0_cell_write_mass_mean": 0.21060435622930526,
+    "layer0_active_cells": 64.0,
+    "layer0_choice_entropy": 2.079441547393799,
+    "layer1_listen_gate_mean": 0.546964454650879,
+    "layer1_active_mean": 0.23912765979766845,
+    "layer1_cell_output_gate_mean": 0.5269431412220001,
+    "layer1_cell_write_mass_mean": 0.1889207199215889,
+    "layer1_active_cells": 64.0,
+    "layer1_choice_entropy": 2.079441547393799,
+    "layer2_listen_gate_mean": 0.5692387282848358,
+    "layer2_active_mean": 0.24168178141117097,
+    "layer2_cell_output_gate_mean": 0.5543867886066437,
+    "layer2_cell_write_mass_mean": 0.2094447910785675,
+    "layer2_active_cells": 64.0,
+    "layer2_choice_entropy": 2.079441547393799
+  },
+  "ablations": {
+    "sim_disabled_delta": -0.15374243259429932,
+    "gain_disabled_delta": -0.07195055484771729,
+    "sim_result_disabled_delta": -0.09682440757751465,
+    "slot_disabled_delta": 0.07969987392425537,
+    "layer0_output_disabled_delta": 0.0,
+    "layer0_state_disabled_delta": 0.481442928314209,
+    "choice_without_sim_delta": 0.032962847501039505,
+    "grid_candidate_usage": 0.42533546686172485,
+    "semantic_candidate_usage": 0.004520951770246029,
+    "usage_candidate_usage": 0.37640082836151123,
+    "random_candidate_usage": 0.19374272227287292,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 0.999999969266355
+  },
+  "global_scan_usage": 0.0,
+  "discovery_metrics": {
+    "ce_loss": 1.4804401397705078,
+    "credit_policy_loss": 0.0,
+    "credit_simulator_loss": 0.0,
+    "discovery_health_loss": 0.0,
+    "credit_alignment_items": 0.0,
+    "sim_pred_real_corr": 0.0,
+    "active_cells": 0.0,
+    "primitive_top_share": 0.0,
+    "choice_entropy": 0.0,
+    "credit_closed": 0.0,
+    "credit_pending": 0.0,
+    "credit_active": 0.0,
+    "credit_total_measurements": 0.0,
+    "credit_total_joint_measurements": 0.0,
+    "credit_items": 0.0,
+    "credit_age_mean": 0.0,
+    "credit_gain_ema_abs_mean": 0.0,
+    "train_samples_per_second": 364.39465172196316
+  },
+  "frontend": {
+    "params": 922.0,
+    "flops": 1163835.0,
+    "activation_bytes": 181868.0
+  },
+  "model": {
+    "params": 707411.0,
+    "approx_flops": 1360443.0,
+    "approx_activation_bytes": 183916.0
+  },
+  "seconds": 123.47352433204651,
+  "checks": {
+    "deploy_above_random": true,
+    "honesty_retained": true,
+    "simulator_ce_ablation_positive": false,
+    "simulator_changes_choice": true,
+    "non_grid_scanner_usage_positive": true,
+    "layer0_ablation_positive": true
+  },
+  "status": "SMOKE_FAIL",
+  "acceptance_status": "NOT_RUN"
+}

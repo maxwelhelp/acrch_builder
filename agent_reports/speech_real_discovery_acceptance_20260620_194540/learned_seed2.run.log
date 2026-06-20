@@ -1,0 +1,284 @@
+discovery step=20 ce=2.1781 acc=0.128 active=49.0 top=0.341 credit=20 gain=-0.00167
+discovery step=40 ce=2.1363 acc=0.169 active=25.3 top=0.580 credit=50 gain=+0.00067
+discovery step=60 ce=1.9105 acc=0.201 active=27.3 top=0.603 credit=70 gain=+0.00088
+discovery step=80 ce=1.8959 acc=0.228 active=29.3 top=0.702 credit=100 gain=-0.00010
+discovery step=100 ce=1.8357 acc=0.252 active=36.3 top=0.614 credit=120 gain=-0.01250
+discovery step=120 ce=1.8603 acc=0.265 active=40.7 top=0.667 credit=150 gain=+0.00595
+discovery step=140 ce=1.8475 acc=0.274 active=52.0 top=0.530 credit=170 gain=-0.01029
+discovery step=160 ce=1.7860 acc=0.281 active=49.3 top=0.602 credit=200 gain=+0.00236
+discovery step=180 ce=1.6935 acc=0.291 active=47.7 top=0.662 credit=220 gain=+0.00263
+discovery step=200 ce=1.6857 acc=0.297 active=38.3 top=0.573 credit=250 gain=-0.00076
+real-discovery epoch=1/3 train=0.297 val=0.396 speed=170.1/s credit_closed=True
+discovery step=220 ce=1.4568 acc=0.382 active=28.3 top=0.639 credit=270 gain=-0.00082
+discovery step=240 ce=1.5752 acc=0.381 active=33.3 top=0.671 credit=300 gain=+0.00517
+discovery step=260 ce=1.4313 acc=0.385 active=25.0 top=0.588 credit=320 gain=+0.00145
+discovery step=280 ce=1.6030 acc=0.388 active=29.7 top=0.698 credit=350 gain=-0.01219
+discovery step=300 ce=1.9212 acc=0.392 active=29.0 top=0.601 credit=370 gain=-0.00341
+discovery step=320 ce=1.6765 acc=0.398 active=24.3 top=0.518 credit=400 gain=-0.00454
+discovery step=340 ce=1.4725 acc=0.405 active=23.0 top=0.574 credit=420 gain=+0.00335
+discovery step=360 ce=1.5050 acc=0.408 active=22.0 top=0.491 credit=450 gain=+0.01924
+discovery step=380 ce=1.4487 acc=0.413 active=21.0 top=0.569 credit=470 gain=-0.00559
+discovery step=400 ce=1.2469 acc=0.420 active=25.3 top=0.508 credit=500 gain=+0.00358
+real-discovery epoch=2/3 train=0.420 val=0.502 speed=172.4/s credit_closed=True
+discovery step=420 ce=1.3217 acc=0.477 active=25.0 top=0.536 credit=520 gain=-0.00223
+discovery step=440 ce=1.3172 acc=0.500 active=27.7 top=0.461 credit=550 gain=-0.01130
+discovery step=460 ce=1.4384 acc=0.508 active=31.7 top=0.505 credit=570 gain=+0.00191
+discovery step=480 ce=1.1330 acc=0.518 active=28.0 top=0.516 credit=600 gain=-0.00140
+discovery step=500 ce=1.2651 acc=0.518 active=26.7 top=0.661 credit=620 gain=+0.00281
+discovery step=520 ce=1.3982 acc=0.522 active=32.7 top=0.525 credit=650 gain=+0.00461
+discovery step=540 ce=1.3821 acc=0.526 active=33.3 top=0.525 credit=670 gain=+0.01445
+discovery step=560 ce=1.1607 acc=0.531 active=28.7 top=0.550 credit=700 gain=+0.00399
+discovery step=580 ce=1.3266 acc=0.536 active=31.3 top=0.602 credit=720 gain=-0.00275
+discovery step=600 ce=1.3185 acc=0.540 active=27.0 top=0.636 credit=750 gain=-0.00407
+real-discovery epoch=3/3 train=0.540 val=0.591 speed=169.8/s credit_closed=True
+{
+  "variant": "structured",
+  "dataset": "speechcommands",
+  "task": "speechcommands_real_acceptance",
+  "data_root": "/home/maxwelhelp/test/sience/experiments/math_search/structured_matrix_program_export_lab/data/speechcommands/SpeechCommands",
+  "classes": [
+    "yes",
+    "no",
+    "up",
+    "down",
+    "left",
+    "right",
+    "on",
+    "off",
+    "stop",
+    "go"
+  ],
+  "seed": 2,
+  "train_limit": 0,
+  "val_limit": 0,
+  "test_limit": 2000,
+  "curriculum_schedule": "none",
+  "honesty_floor": 0.8,
+  "honesty_score": 1.0,
+  "train_acc": 0.540390625,
+  "train_loss": 1.3914423248171806,
+  "best_full_acc": 0.59140625,
+  "full_acc": 0.59140625,
+  "audit_acc": 0.59140625,
+  "deploy_acc": 0.59140625,
+  "test_acc": 0.60859375,
+  "deploy_above_random": true,
+  "deploy_above_random_margin": 0.49140625000000004,
+  "supervision_mode": "real_counterfactual_discovery",
+  "expected_actions_used_for_training": false,
+  "layer_role_priors_used": false,
+  "controller_baseline": "learned",
+  "val_metrics": {
+    "acc": 0.59140625,
+    "loss": 1.1812415838241577,
+    "grid_candidate_usage": 0.0313460577162914,
+    "semantic_candidate_usage": 0.3537176231543223,
+    "usage_candidate_usage": 0.6044727361140152,
+    "random_candidate_usage": 0.010463580186478794,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 0.9999999971711077,
+    "layer0_listen_gate_mean": 0.0,
+    "layer0_active_mean": 0.15009848326444625,
+    "layer0_cell_output_gate_mean": 0.5722042262554169,
+    "layer0_cell_write_mass_mean": 0.11933624967932702,
+    "layer0_active_cells": 40.1,
+    "layer0_choice_entropy": 0.6169990360736847,
+    "layer1_listen_gate_mean": 0.8767373323440552,
+    "layer1_active_mean": 0.051585270836949346,
+    "layer1_cell_output_gate_mean": 0.521090441942215,
+    "layer1_cell_write_mass_mean": 0.03476466909050942,
+    "layer1_active_cells": 20.4,
+    "layer1_choice_entropy": 0.3274594724178314,
+    "layer2_listen_gate_mean": 0.6679220378398896,
+    "layer2_active_mean": 0.036658632755279544,
+    "layer2_cell_output_gate_mean": 0.34960257112979887,
+    "layer2_cell_write_mass_mean": 0.029538077674806117,
+    "layer2_active_cells": 17.1,
+    "layer2_choice_entropy": 0.9122951209545136
+  },
+  "audit_metrics": {
+    "acc": 0.59140625,
+    "loss": 1.1812415838241577,
+    "grid_candidate_usage": 0.0313460577162914,
+    "semantic_candidate_usage": 0.3537176231543223,
+    "usage_candidate_usage": 0.6044727361140152,
+    "random_candidate_usage": 0.010463580186478794,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 0.9999999971711077,
+    "layer0_listen_gate_mean": 0.0,
+    "layer0_active_mean": 0.15009848326444625,
+    "layer0_cell_output_gate_mean": 0.5722042262554169,
+    "layer0_cell_write_mass_mean": 0.11933624967932702,
+    "layer0_active_cells": 40.1,
+    "layer0_choice_entropy": 0.6169990360736847,
+    "layer1_listen_gate_mean": 0.8767373323440552,
+    "layer1_active_mean": 0.051585270836949346,
+    "layer1_cell_output_gate_mean": 0.521090441942215,
+    "layer1_cell_write_mass_mean": 0.03476466909050942,
+    "layer1_active_cells": 20.4,
+    "layer1_choice_entropy": 0.3274594724178314,
+    "layer2_listen_gate_mean": 0.6679220378398896,
+    "layer2_active_mean": 0.036658632755279544,
+    "layer2_cell_output_gate_mean": 0.34960257112979887,
+    "layer2_cell_write_mass_mean": 0.029538077674806117,
+    "layer2_active_cells": 17.1,
+    "layer2_choice_entropy": 0.9122951209545136
+  },
+  "deploy_metrics": {
+    "acc": 0.59140625,
+    "loss": 1.1812415838241577,
+    "grid_candidate_usage": 0.0313460577162914,
+    "semantic_candidate_usage": 0.3537176231543223,
+    "usage_candidate_usage": 0.6044727361140152,
+    "random_candidate_usage": 0.010463580186478794,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 0.9999999971711077,
+    "layer0_listen_gate_mean": 0.0,
+    "layer0_active_mean": 0.15009848326444625,
+    "layer0_cell_output_gate_mean": 0.5722042262554169,
+    "layer0_cell_write_mass_mean": 0.11933624967932702,
+    "layer0_active_cells": 40.1,
+    "layer0_choice_entropy": 0.6169990360736847,
+    "layer1_listen_gate_mean": 0.8767373323440552,
+    "layer1_active_mean": 0.051585270836949346,
+    "layer1_cell_output_gate_mean": 0.521090441942215,
+    "layer1_cell_write_mass_mean": 0.03476466909050942,
+    "layer1_active_cells": 20.4,
+    "layer1_choice_entropy": 0.3274594724178314,
+    "layer2_listen_gate_mean": 0.6679220378398896,
+    "layer2_active_mean": 0.036658632755279544,
+    "layer2_cell_output_gate_mean": 0.34960257112979887,
+    "layer2_cell_write_mass_mean": 0.029538077674806117,
+    "layer2_active_cells": 17.1,
+    "layer2_choice_entropy": 0.9122951209545136
+  },
+  "test_metrics": {
+    "acc": 0.60859375,
+    "loss": 1.1480780839920044,
+    "grid_candidate_usage": 0.031061875742549698,
+    "semantic_candidate_usage": 0.3540027032567499,
+    "usage_candidate_usage": 0.604658690157036,
+    "random_candidate_usage": 0.010276740269425015,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 1.0000000094257606,
+    "layer0_listen_gate_mean": 0.0,
+    "layer0_active_mean": 0.1489200249314308,
+    "layer0_cell_output_gate_mean": 0.5731679260730743,
+    "layer0_cell_write_mass_mean": 0.11911078914999962,
+    "layer0_active_cells": 41.2,
+    "layer0_choice_entropy": 0.6123024046421051,
+    "layer1_listen_gate_mean": 0.8776108801364899,
+    "layer1_active_mean": 0.05127881057560444,
+    "layer1_cell_output_gate_mean": 0.5199801564216614,
+    "layer1_cell_write_mass_mean": 0.035408373922109604,
+    "layer1_active_cells": 20.6,
+    "layer1_choice_entropy": 0.32750083804130553,
+    "layer2_listen_gate_mean": 0.6683526873588562,
+    "layer2_active_mean": 0.03720546625554562,
+    "layer2_cell_output_gate_mean": 0.3494808077812195,
+    "layer2_cell_write_mass_mean": 0.03007648028433323,
+    "layer2_active_cells": 17.7,
+    "layer2_choice_entropy": 0.9129788219928742
+  },
+  "ablations": {
+    "sim_disabled_delta": 0.14660954475402832,
+    "gain_disabled_delta": -0.07437145709991455,
+    "sim_result_disabled_delta": -0.0032346248626708984,
+    "slot_disabled_delta": 0.29026007652282715,
+    "layer0_output_disabled_delta": 0.0,
+    "layer0_state_disabled_delta": 1.363732933998108,
+    "choice_without_sim_delta": 0.03444889187812805,
+    "grid_candidate_usage": 0.016755111515522003,
+    "semantic_candidate_usage": 0.0017597529804334044,
+    "usage_candidate_usage": 0.9659082889556885,
+    "random_candidate_usage": 0.015576853416860104,
+    "global_candidate_usage": 0.0,
+    "grid_candidate_coverage": 1.0,
+    "semantic_candidate_coverage": 1.0,
+    "usage_candidate_coverage": 1.0,
+    "random_candidate_coverage": 1.0,
+    "global_candidate_coverage": 0.0,
+    "scanner_source_mass_sum": 1.000000006868504
+  },
+  "global_scan_usage": 0.0,
+  "discovery_metrics": {
+    "ce_loss": 1.318537712097168,
+    "credit_policy_loss": 0.4725928008556366,
+    "credit_simulator_loss": 0.018620887771248817,
+    "discovery_health_loss": 0.007996185682713985,
+    "credit_alignment_items": 24.0,
+    "sim_pred_real_corr": -0.36958807706832886,
+    "active_cells": 27.0,
+    "primitive_top_share": 0.636171817779541,
+    "choice_entropy": 1.1523361206054688,
+    "credit_measurements": 10.0,
+    "credit_joint_measurements": 2.0,
+    "credit_gain_mean": -0.0040705325081944466,
+    "credit_gain_abs_mean": 0.006333124823868275,
+    "credit_positive_fraction": 0.20000000298023224,
+    "credit_budget_used": 10.0,
+    "credit_budget_limit": 10.0,
+    "credit_gain_scale": 0.011398720321023913,
+    "credit_joint_synergy_mean": 0.016590535640716553,
+    "credit_random_targets": 2.0,
+    "credit_unchosen_measurements": 2.0,
+    "credit_unchosen_gain_mean": -0.0034331679344177246,
+    "credit_closed": 1.0,
+    "credit_pending": 10.0,
+    "credit_active": 10.0,
+    "credit_total_measurements": 750.0,
+    "credit_total_joint_measurements": 150.0,
+    "credit_items": 202.0,
+    "credit_age_mean": 305.3762512207031,
+    "credit_gain_ema_abs_mean": 0.0013985325349494815,
+    "train_samples_per_second": 169.83953728434656
+  },
+  "frontend": {
+    "params": 922.0,
+    "flops": 1163835.0,
+    "activation_bytes": 181868.0
+  },
+  "model": {
+    "params": 707411.0,
+    "approx_flops": 1360443.0,
+    "approx_activation_bytes": 183916.0
+  },
+  "seconds": 238.616197347641,
+  "checks": {
+    "deploy_above_random": true,
+    "simulator_ce_ablation_positive": true,
+    "simulator_changes_choice": true,
+    "non_grid_scanner_usage_positive": true,
+    "layer0_ablation_positive": true,
+    "credit_closed": true,
+    "bounded_credit_budget": true,
+    "joint_credit_measured": true,
+    "random_credit_budget_nonzero": true,
+    "unchosen_candidate_credit_measured": true,
+    "no_primitive_collapse": true,
+    "active_path_alive": true
+  },
+  "status": "SMOKE_PASS",
+  "acceptance_status": "NOT_RUN"
+}
+report: agent_reports/speech_real_discovery_acceptance_20260620_194540/learned_seed2/final_report.json

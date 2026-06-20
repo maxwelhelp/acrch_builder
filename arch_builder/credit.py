@@ -83,6 +83,7 @@ class CounterfactualTarget:
     layer: int
     cell: int
     primitive: int
+    force: bool = False
 
 
 @dataclass
@@ -110,6 +111,7 @@ class BoundedCounterfactualCredit:
         budget: int = 8,
         random_fraction: float = 0.25,
         pair_fraction: float = 0.25,
+        alternative_budget: int = 2,
         ema_decay: float = 0.9,
     ) -> None:
         self.layers = layers
@@ -118,6 +120,7 @@ class BoundedCounterfactualCredit:
         self.budget = max(2, int(budget))
         self.random_fraction = float(random_fraction)
         self.pair_fraction = float(pair_fraction)
+        self.alternative_budget = max(0, int(alternative_budget))
         self.ema_decay = float(ema_decay)
         shape = (layers, slots * slots, primitives)
         self.ema = torch.zeros(shape)
@@ -131,9 +134,11 @@ class BoundedCounterfactualCredit:
         self.last_metrics: Dict[str, float] = {}
         self.gain_scale = 1e-3
         self.last_random_targets = 0
+        self.last_alternative_targets: List[CounterfactualTarget] = []
 
     def _targets_from_trace(self, trace: Dict[str, object]) -> List[CounterfactualTarget]:
         scored: List[Tuple[float, CounterfactualTarget]] = []
+        alternatives: Dict[CounterfactualTarget, List[CounterfactualTarget]] = {}
         e = self.slots * self.slots
         for layer_idx, layer in enumerate(trace["layers"]):
             chosen = layer["chosen"].view(-1, e)
@@ -141,14 +146,26 @@ class BoundedCounterfactualCredit:
             choice = layer["choice"].view(-1, e, layer["choice"].shape[-1]).float()
             entropy = (-(choice.clamp_min(1e-8) * choice.clamp_min(1e-8).log()).sum(dim=-1)).mean(dim=0)
             modes = F.one_hot(chosen, num_classes=self.primitives).sum(dim=0).argmax(dim=-1)
+            cand = layer["candidate_ids"].view(-1, e, layer["candidate_ids"].shape[-1])
+            primitive_mass = torch.zeros(
+                cand.shape[0], e, self.primitives, device=cand.device, dtype=choice.dtype
+            )
+            primitive_mass.scatter_add_(2, cand, choice)
+            ranked = primitive_mass.mean(dim=0).argsort(dim=-1, descending=True)
             score = active + 0.05 * entropy
             for cell in range(e):
+                target = CounterfactualTarget(layer_idx, cell, int(modes[cell].cpu()))
                 scored.append(
                     (
                         float(score[cell].cpu()),
-                        CounterfactualTarget(layer_idx, cell, int(modes[cell].cpu())),
+                        target,
                     )
                 )
+                alternatives[target] = [
+                    CounterfactualTarget(layer_idx, cell, int(pid), force=True)
+                    for pid in ranked[cell].tolist()
+                    if int(pid) != target.primitive
+                ][:2]
         scored.sort(key=lambda item: item[0], reverse=True)
         pair_count = min(self.budget // 2, int(round(self.budget * self.pair_fraction)))
         single_count = self.budget - pair_count
@@ -162,7 +179,19 @@ class BoundedCounterfactualCredit:
             self.last_random_targets = len(order)
         else:
             self.last_random_targets = 0
-        return selected[:single_count]
+        selected = selected[:single_count]
+        alt_selected: List[CounterfactualTarget] = []
+        depth = 0
+        while len(alt_selected) < self.alternative_budget and depth < 2:
+            for target in selected:
+                choices = alternatives.get(target, [])
+                if depth < len(choices):
+                    alt_selected.append(choices[depth])
+                    if len(alt_selected) >= self.alternative_budget:
+                        break
+            depth += 1
+        self.last_alternative_targets = alt_selected
+        return selected
 
     def advance(self, primitive_matrix=None) -> int:
         """Apply previous measurements and age the ledger exactly once."""
@@ -255,13 +284,22 @@ class BoundedCounterfactualCredit:
     ) -> Dict[str, float]:
         was_training = backbone.training
         backbone.eval()
-        full_logits, full_trace = backbone(
-            features,
-            tau=tau,
-            curriculum_mode="deploy",
-            choice_sampling="softmax",
-            collect_scan_metrics=False,
-        )
+        param_dtype = next(backbone.parameters()).dtype
+        if not features.is_cuda and features.dtype != param_dtype:
+            features = features.to(param_dtype)
+        amp_enabled = features.is_cuda and features.dtype in {torch.float16, torch.bfloat16}
+        with torch.amp.autocast(
+            device_type=features.device.type,
+            dtype=features.dtype if amp_enabled else torch.float16,
+            enabled=amp_enabled,
+        ):
+            full_logits, full_trace = backbone(
+                features,
+                tau=tau,
+                curriculum_mode="deploy",
+                choice_sampling="softmax",
+                collect_scan_metrics=False,
+            )
         full_loss = F.cross_entropy(full_logits.float(), labels, reduction="none")
         singles = self._targets_from_trace(full_trace)
         pair_count = min(self.budget - len(singles), max(0, int(round(self.budget * self.pair_fraction))))
@@ -273,6 +311,7 @@ class BoundedCounterfactualCredit:
                 if a != b:
                     interventions.append((a, b))
         interventions = interventions[: self.budget]
+        interventions.extend((target,) for target in self.last_alternative_targets)
         if not interventions:
             backbone.train(was_training)
             return {"credit_measurements": 0.0}
@@ -289,23 +328,38 @@ class BoundedCounterfactualCredit:
             )
             for _ in range(self.layers)
         ]
+        layer_override = [torch.full_like(x, -1) for x in layer_ablate]
         for variant, targets in enumerate(interventions):
             for target in targets:
-                layer_ablate[target.layer][variant, :, target.cell] = target.primitive
+                destination = layer_override if target.force else layer_ablate
+                destination[target.layer][variant, :, target.cell] = target.primitive
         layer_ablate = [x.reshape(variants * batch, self.slots, self.slots) for x in layer_ablate]
-        ablated_logits, _ = backbone(
-            repeated,
-            tau=tau,
-            curriculum_mode="deploy",
-            choice_sampling="softmax",
-            primitive_ablation_ids=layer_ablate,
-            collect_scan_metrics=False,
-        )
+        layer_override = [x.reshape(variants * batch, self.slots, self.slots) for x in layer_override]
+        with torch.amp.autocast(
+            device_type=features.device.type,
+            dtype=features.dtype if amp_enabled else torch.float16,
+            enabled=amp_enabled,
+        ):
+            ablated_logits, _ = backbone(
+                repeated,
+                tau=tau,
+                curriculum_mode="deploy",
+                choice_sampling="softmax",
+                primitive_ablation_ids=layer_ablate,
+                primitive_override_ids=layer_override,
+                collect_scan_metrics=False,
+            )
         repeated_labels = labels.unsqueeze(0).expand(variants, batch).reshape(-1)
         ablated_loss = F.cross_entropy(
             ablated_logits.float(), repeated_labels, reduction="none"
         ).view(variants, batch)
-        gains = ablated_loss.mean(dim=1) - full_loss.mean()
+        counterfactual_losses = ablated_loss.mean(dim=1)
+        gains = torch.stack([
+            full_loss.mean() - counterfactual_loss
+            if targets and all(target.force for target in targets)
+            else counterfactual_loss - full_loss.mean()
+            for targets, counterfactual_loss in zip(interventions, counterfactual_losses)
+        ])
         single_gain = {
             targets[0]: float(gain.cpu())
             for targets, gain in zip(interventions, gains)
@@ -328,6 +382,11 @@ class BoundedCounterfactualCredit:
         self.total_measurements += len(records)
         self.total_joint_measurements += sum(len(record.targets) > 1 for record in records)
         positive = (gains > 0).float().mean()
+        alternative_gains = [
+            float(gain.cpu())
+            for targets, gain in zip(interventions, gains)
+            if targets and all(target.force for target in targets)
+        ]
         self.last_metrics = {
             "credit_measurements": float(len(records)),
             "credit_joint_measurements": float(sum(len(record.targets) > 1 for record in records)),
@@ -335,10 +394,12 @@ class BoundedCounterfactualCredit:
             "credit_gain_abs_mean": float(gains.abs().mean().cpu()),
             "credit_positive_fraction": float(positive.cpu()),
             "credit_budget_used": float(len(records)),
-            "credit_budget_limit": float(self.budget),
+            "credit_budget_limit": float(self.budget + self.alternative_budget),
             "credit_gain_scale": float(self.gain_scale),
             "credit_joint_synergy_mean": float(sum(joint_synergies) / max(1, len(joint_synergies))),
             "credit_random_targets": float(self.last_random_targets),
+            "credit_unchosen_measurements": float(len(self.last_alternative_targets)),
+            "credit_unchosen_gain_mean": float(sum(alternative_gains) / max(1, len(alternative_gains))),
         }
         backbone.train(was_training)
         return dict(self.last_metrics)

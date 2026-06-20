@@ -37,6 +37,11 @@ class ActionMatrixLayer(nn.Module):
         top_k: int = 25,
         sim_rank: int = 16,
         state_norm: str = "none",
+        enable_single_signed_projection: bool = False,
+        single_proj_dim: int = 32,
+        enable_pair_jl_bilinear: bool = False,
+        pair_jl_dim: int = 16,
+        pair_candidate_budget: int = 64,
     ) -> None:
         super().__init__()
         if state_norm not in {"none", "layernorm"}:
@@ -46,10 +51,19 @@ class ActionMatrixLayer(nn.Module):
         self.top_k = top_k
         self.pm = primitive_matrix
         self.state_norm_mode = state_norm
+        self.enable_single_signed_projection = enable_single_signed_projection
+        self.enable_pair_jl_bilinear = enable_pair_jl_bilinear
+        self.pair_candidate_budget = pair_candidate_budget
 
         context_dim = dim * 5
         emb_dim = primitive_matrix.emb.shape[-1]
-        self.scanner = HybridScanner(dim=dim, context_dim=context_dim, prim_embed_dim=emb_dim)
+        self.scanner = HybridScanner(
+            dim=dim,
+            context_dim=context_dim,
+            prim_embed_dim=emb_dim,
+            single_proj_dim=single_proj_dim,
+            pair_jl_dim=pair_jl_dim,
+        )
         self.simulator = LowRankSimulator(dim=dim, num_primitives=primitive_matrix.num_primitives, rank=sim_rank, embed_dim=emb_dim)
         self.executor = ActionExecutor(dim=dim, primitive_matrix=primitive_matrix)
 
@@ -115,6 +129,40 @@ class ActionMatrixLayer(nn.Module):
         next_state = (1.0 - target_write_gate) * state + target_write_gate * write_value
         return self.norm(next_state), write_value, target_write_gate
 
+    def _projection_candidate_column(
+        self,
+        indices: torch.Tensor,
+        signed_scores: torch.Tensor,
+        batch: int,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Collapse bounded global proposals to one signed proposal per cell."""
+        cells = self.slots * self.slots
+        primitives = self.pm.num_primitives
+        total = cells * primitives
+        if indices.numel() == 0:
+            ids = torch.zeros(batch * cells, 1, dtype=torch.long, device=indices.device)
+            neg = torch.full((batch * cells, 1), float("-inf"), device=indices.device)
+            return ids, neg, neg
+        matches = F.one_hot(indices.to(torch.long), num_classes=total).to(torch.bool)
+        signed_scores = signed_scores.float()
+        ranked = torch.where(
+            matches,
+            signed_scores.abs()[:, None],
+            torch.full((), float("-inf"), device=indices.device),
+        )
+        best_row = ranked.argmax(dim=0)
+        best_abs = ranked.max(dim=0).values
+        best_signed = signed_scores[best_row]
+        abs_grid = best_abs.view(cells, primitives)
+        primitive = abs_grid.argmax(dim=-1)
+        rank_score = abs_grid.gather(1, primitive[:, None]).squeeze(1)
+        signed_grid = best_signed.view(cells, primitives)
+        choice_score = signed_grid.gather(1, primitive[:, None]).squeeze(1)
+        ids = primitive[None].expand(batch, -1).reshape(batch * cells, 1)
+        rank = rank_score[None].expand(batch, -1).reshape(batch * cells, 1)
+        choice = choice_score[None].expand(batch, -1).reshape(batch * cells, 1)
+        return ids, rank, choice
+
     def forward(
         self,
         state: torch.Tensor,
@@ -128,7 +176,9 @@ class ActionMatrixLayer(nn.Module):
         curriculum_mode: str = "teacher",
         choice_sampling: str = "auto",
         primitive_ablation_ids: Optional[torch.Tensor] = None,
+        primitive_override_ids: Optional[torch.Tensor] = None,
         collect_scan_metrics: bool = True,
+        projection_target_b: Optional[torch.Tensor] = None,
     ):
         b, s, d = state.shape
         src = state.unsqueeze(2).expand(b, s, s, d)
@@ -180,25 +230,79 @@ class ActionMatrixLayer(nn.Module):
             ensure_all_candidates=full_scan,
             collect_metrics=collect_scan_metrics,
         )
-        k = min(self.top_k, proposal_logits.shape[-1])
+        proposal_rank_logits = proposal_logits
+        proposal_choice_logits = proposal_logits
+        all_primitive_effects = None
+        projection_enabled = (
+            projection_target_b is not None
+            and (self.enable_single_signed_projection or self.enable_pair_jl_bilinear)
+        )
+        if projection_enabled:
+            primitive_count = self.pm.num_primitives
+            all_ids = torch.arange(primitive_count, device=state.device).view(1, -1)
+            all_ids = all_ids.expand(b * s * s, -1)
+            all_primitive_effects = self.executor(flat_src, flat_tgt, flat_mem, all_ids)
+            effects = (
+                all_primitive_effects.view(b, s * s, primitive_count, d)
+                .permute(1, 2, 0, 3)
+                .reshape(s * s * primitive_count, b, d)
+            )
+            projected = self.scanner.projection_proposals(
+                effects.detach(),
+                projection_target_b.detach(),
+                single_top_k=min(32, effects.shape[0]),
+                pair_top_k=self.pair_candidate_budget,
+                enable_single=self.enable_single_signed_projection,
+                enable_pair=self.enable_pair_jl_bilinear,
+            )
+            scan_metrics.update(projected["metrics"])
+            extra_ids, extra_rank, extra_choice, extra_sources = [], [], [], []
+            if self.enable_single_signed_projection:
+                single_indices = projected["single_indices"]
+                single_signed = projected["single"]["signed_score"][single_indices]
+                ids, rank, choice_score = self._projection_candidate_column(
+                    single_indices, single_signed, b
+                )
+                extra_ids.append(ids)
+                extra_rank.append(rank.to(proposal_logits.dtype))
+                extra_choice.append(choice_score.to(proposal_logits.dtype))
+                extra_sources.append(torch.full_like(ids, 5))
+            if self.enable_pair_jl_bilinear:
+                endpoints = torch.cat([projected["pair_left"], projected["pair_right"]])
+                endpoint_scores = torch.cat([
+                    projected["pair_signed_score"], projected["pair_signed_score"]
+                ])
+                ids, rank, choice_score = self._projection_candidate_column(
+                    endpoints, endpoint_scores, b
+                )
+                extra_ids.append(ids)
+                extra_rank.append(rank.to(proposal_logits.dtype))
+                extra_choice.append(choice_score.to(proposal_logits.dtype))
+                extra_sources.append(torch.full_like(ids, 6))
+            cand_ids = torch.cat([cand_ids, *extra_ids], dim=-1)
+            source_ids = torch.cat([source_ids, *extra_sources], dim=-1)
+            proposal_rank_logits = torch.cat([proposal_rank_logits, *extra_rank], dim=-1)
+            proposal_choice_logits = torch.cat([proposal_choice_logits, *extra_choice], dim=-1)
+        k = min(self.top_k, proposal_rank_logits.shape[-1])
         if not full_scan and k >= 4:
             # Exploration quota: expose one strongest candidate from each
             # production source, then fill remaining slots globally. This does
             # not force controller choice or any primitive/layer role.
             quota_pos = torch.stack(
                 [
-                    proposal_logits.masked_fill(source_ids != source_id, float("-inf")).argmax(dim=-1)
+                    proposal_rank_logits.masked_fill(source_ids != source_id, float("-inf")).argmax(dim=-1)
                     for source_id in range(4)
                 ],
                 dim=-1,
             )
-            selected = torch.zeros_like(proposal_logits, dtype=torch.bool)
+            selected = torch.zeros_like(proposal_rank_logits, dtype=torch.bool)
             selected.scatter_(1, quota_pos, True)
-            remaining = proposal_logits.masked_fill(selected, float("-inf")).topk(k=k - 4, dim=-1).indices
+            remaining = proposal_rank_logits.masked_fill(selected, float("-inf")).topk(k=k - 4, dim=-1).indices
             top_pos = torch.cat([quota_pos, remaining], dim=-1)
-            top_vals = proposal_logits.gather(1, top_pos)
+            top_vals = proposal_choice_logits.gather(1, top_pos)
         else:
-            top_vals, top_pos = proposal_logits.topk(k=k, dim=-1)
+            top_pos = proposal_rank_logits.topk(k=k, dim=-1).indices
+            top_vals = proposal_choice_logits.gather(1, top_pos)
         top_ids = cand_ids.gather(1, top_pos)
         top_source_ids = source_ids.gather(1, top_pos)
 
@@ -227,21 +331,30 @@ class ActionMatrixLayer(nn.Module):
             + _ln_logits(top_vals)
             + primitive_pair_component
         )
-        if choice_sampling not in {"auto", "gumbel", "softmax"}:
+        if choice_sampling not in {"auto", "gumbel", "softmax", "uniform"}:
             raise ValueError(f"unknown choice sampling: {choice_sampling!r}")
         use_gumbel = self.training and choice_sampling in {"auto", "gumbel"}
-        choice = (
-            F.gumbel_softmax(choice_logits, tau=tau, hard=False, dim=-1)
-            if use_gumbel
-            else F.softmax(choice_logits / max(float(tau), 1e-4), dim=-1)
-        )
+        if choice_sampling == "uniform":
+            choice = torch.full_like(choice_logits, 1.0 / choice_logits.shape[-1])
+        else:
+            choice = (
+                F.gumbel_softmax(choice_logits, tau=tau, hard=False, dim=-1)
+                if use_gumbel
+                else F.softmax(choice_logits / max(float(tau), 1e-4), dim=-1)
+            )
         if primitive_ablation_ids is not None:
             ablate = primitive_ablation_ids.to(device=top_ids.device).reshape(b * s * s, 1)
             keep = (top_ids != ablate).to(choice.dtype)
             choice = choice * keep
             choice = choice / choice.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+        if primitive_override_ids is not None:
+            override = primitive_override_ids.to(device=top_ids.device).reshape(b * s * s, 1)
+            forced = (top_ids == override).to(choice.dtype)
+            available = forced.sum(dim=-1, keepdim=True) > 0
+            forced = forced / forced.sum(dim=-1, keepdim=True).clamp_min(1.0)
+            choice = torch.where(available, forced, choice)
 
-        source_names = ("grid", "semantic", "usage", "random", "global")
+        source_names = ("grid", "semantic", "usage", "random", "global", "single_signed_projection", "pair_jl16")
         if collect_scan_metrics:
             with torch.no_grad():
                 for source_id, source_name in enumerate(source_names):
@@ -252,8 +365,27 @@ class ActionMatrixLayer(nn.Module):
                 scan_metrics["scanner_source_mass_sum"] = float(
                     sum(scan_metrics[f"{name}_candidate_usage"] for name in source_names)
                 )
+                scan_metrics["single_signed_projection_usage"] = scan_metrics[
+                    "single_signed_projection_candidate_usage"
+                ]
+                scan_metrics["pair_jl16_usage"] = scan_metrics[
+                    "pair_jl16_candidate_usage"
+                ]
+        elif projection_enabled:
+            with torch.no_grad():
+                scan_metrics["single_signed_projection_usage"] = float(
+                    (choice * (top_source_ids == 5).to(choice.dtype)).sum(dim=-1).mean().cpu()
+                )
+                scan_metrics["pair_jl16_usage"] = float(
+                    (choice * (top_source_ids == 6).to(choice.dtype)).sum(dim=-1).mean().cpu()
+                )
 
-        primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
+        if all_primitive_effects is None:
+            primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
+        else:
+            primitive_out = all_primitive_effects.gather(
+                1, top_ids.unsqueeze(-1).expand(-1, -1, d)
+            )
         transformed = (choice.unsqueeze(-1) * primitive_out).sum(dim=1)
 
         pair_edge = self._flat_pair_bias(self.edge_pair_bias, b, flat_context.dtype, flat_context.device)
@@ -354,7 +486,7 @@ class ActionMatrixLayer(nn.Module):
             "primitive_pair_bias": self.primitive_pair_bias.detach(),
             "scan_metrics": scan_metrics,
             "curriculum_mode": curriculum_mode,
-            "choice_sampling": "gumbel" if use_gumbel else "softmax",
+            "choice_sampling": "uniform" if choice_sampling == "uniform" else ("gumbel" if use_gumbel else "softmax"),
         }
 
         new_memory = 0.95 * memory + 0.05 * next_state.mean(dim=1)
@@ -374,6 +506,11 @@ class ActionMatrixModel(nn.Module):
         input_norm: str = "none",
         state_norm: str = "none",
         final_read: str = "last",
+        enable_single_signed_projection: bool = False,
+        single_proj_dim: int = 32,
+        enable_pair_jl_bilinear: bool = False,
+        pair_jl_dim: int = 16,
+        pair_candidate_budget: int = 64,
     ) -> None:
         super().__init__()
         if input_norm not in {"none", "layernorm"}:
@@ -396,6 +533,11 @@ class ActionMatrixModel(nn.Module):
                 top_k=top_k,
                 sim_rank=sim_rank,
                 state_norm=state_norm,
+                enable_single_signed_projection=enable_single_signed_projection,
+                single_proj_dim=single_proj_dim,
+                enable_pair_jl_bilinear=enable_pair_jl_bilinear,
+                pair_jl_dim=pair_jl_dim,
+                pair_candidate_budget=pair_candidate_budget,
             )
             for _ in range(layers)
         ])
@@ -414,6 +556,19 @@ class ActionMatrixModel(nn.Module):
         weights = F.softmax(self.layer_read_logits[: len(outputs)].to(dtype=stack.dtype), dim=0)
         return (weights[:, None, None] * stack).sum(dim=0), weights
 
+    def _projection_task_signal(self, state: torch.Tensor) -> torch.Tensor:
+        """Deterministic pseudo-label CE-gradient magnitude, without task labels."""
+        pooled = state.mean(dim=1)
+        if isinstance(self.classifier, nn.Sequential):
+            logits = pooled
+            for module in self.classifier:
+                if not isinstance(module, nn.Dropout):
+                    logits = module(logits)
+        else:
+            logits = self.classifier(pooled)
+        confidence = logits.float().softmax(dim=-1).max(dim=-1).values
+        return (1.0 - confidence).detach()
+
     def forward(
         self,
         x: torch.Tensor,
@@ -427,6 +582,7 @@ class ActionMatrixModel(nn.Module):
         curriculum_mode: str = "teacher",
         choice_sampling: str = "auto",
         primitive_ablation_ids: Optional[list[Optional[torch.Tensor]]] = None,
+        primitive_override_ids: Optional[list[Optional[torch.Tensor]]] = None,
         collect_scan_metrics: bool = True,
     ):
         b = x.shape[0]
@@ -436,6 +592,14 @@ class ActionMatrixModel(nn.Module):
         slot_address = self.slot_embed.to(dtype=state.dtype, device=state.device)
         if disable_slot_address:
             slot_address = torch.zeros_like(slot_address)
+
+        projection_target_b = None
+        if any(
+            layer.enable_single_signed_projection or layer.enable_pair_jl_bilinear
+            for layer in self.layers
+        ):
+            with torch.no_grad():
+                projection_target_b = self._projection_task_signal(state)
 
         outputs = []
         traces = []
@@ -460,7 +624,13 @@ class ActionMatrixModel(nn.Module):
                     if primitive_ablation_ids is not None and idx < len(primitive_ablation_ids)
                     else None
                 ),
+                primitive_override_ids=(
+                    primitive_override_ids[idx]
+                    if primitive_override_ids is not None and idx < len(primitive_override_ids)
+                    else None
+                ),
                 collect_scan_metrics=collect_scan_metrics,
+                projection_target_b=projection_target_b,
             )
             if ablate_state_after is not None and idx == ablate_state_after:
                 state = torch.zeros_like(state)

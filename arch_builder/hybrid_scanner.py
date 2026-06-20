@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 
 from .primitive_matrix import PrimitiveMatrix5x5
+from .projection_scanner import ProjectionScannerSources
 
 
 class HybridScanner(nn.Module):
@@ -20,6 +21,8 @@ class HybridScanner(nn.Module):
         semantic_k: int = 4,
         usage_k: int = 5,
         random_k: int = 1,
+        single_proj_dim: int = 32,
+        pair_jl_dim: int = 16,
     ) -> None:
         super().__init__()
         self.local_k = local_k
@@ -40,6 +43,24 @@ class HybridScanner(nn.Module):
             nn.Linear(prim_embed_dim, 1),
         )
         self.anchor = nn.Linear(context_dim, 25)
+        self.projection_sources = ProjectionScannerSources(
+            effect_dim=dim,
+            single_proj_dim=single_proj_dim,
+            pair_proj_dim=pair_jl_dim,
+        )
+
+    def projection_proposals(
+        self,
+        effects_nbd: torch.Tensor,
+        credit_signal_b: torch.Tensor,
+        **kwargs,
+    ) -> Dict[str, object]:
+        """Bounded proposal API; measured credit remains source of truth."""
+        return self.projection_sources.propose(
+            effects_nbd,
+            credit_signal_b,
+            **kwargs,
+        )
 
     def forward(
         self,
@@ -104,6 +125,12 @@ class HybridScanner(nn.Module):
                     "semantic_grid_mismatch": float(semantic_grid_mismatch.cpu()),
                     "semantic_neighbor_entropy": float(semantic_entropy.mean().cpu()),
                     "scanner_full_scan": float(ensure_all_candidates),
+                    "single_signed_projection_usage": 0.0,
+                    "pair_jl16_usage": 0.0,
+                    "flat_shortcut_candidate_usage": 0.0,
+                    "compositional_pair_candidate_usage": 0.0,
+                    "measured_delta_loss_is_source_of_truth": True,
+                    "expected_actions_used_for_training": False,
                 }
 
         return candidate_ids, proposal_logits, source_ids, metrics

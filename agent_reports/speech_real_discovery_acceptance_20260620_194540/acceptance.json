@@ -1,0 +1,38 @@
+{
+  "acceptance_status": "PASS",
+  "checks": {
+    "three_unique_learned_seeds": true,
+    "three_unique_frozen_seeds": true,
+    "three_unique_random_seeds": true,
+    "learned_above_chance_margin": true,
+    "learned_beats_frozen_controller": true,
+    "learned_beats_random_controller": true,
+    "generic_credit_contract_all_seeds": true,
+    "median_simulator_ablation_positive": true,
+    "median_simulator_changes_choice": true,
+    "median_true_non_grid_usage_positive": true,
+    "no_primitive_collapse_all_seeds": true
+  },
+  "chance": 0.1,
+  "learned_mean_acc": 0.6143229166666667,
+  "frozen_mean_acc": 0.36328125,
+  "random_mean_acc": 0.3854166666666667,
+  "median_sim_disabled_delta": 0.14660954475402832,
+  "median_choice_without_sim_delta": 0.03444889187812805,
+  "median_true_non_grid_usage": 0.9827946545556188,
+  "learned_reports": [
+    "agent_reports/speech_real_discovery_acceptance_20260620_194540/learned_seed1/final_report.json",
+    "agent_reports/speech_real_discovery_acceptance_20260620_194540/learned_seed2/final_report.json",
+    "agent_reports/speech_real_discovery_acceptance_20260620_194540/learned_seed3/final_report.json"
+  ],
+  "frozen_reports": [
+    "agent_reports/speech_real_discovery_acceptance_20260620_194540/frozen_seed1/final_report.json",
+    "agent_reports/speech_real_discovery_acceptance_20260620_194540/frozen_seed2/final_report.json",
+    "agent_reports/speech_real_discovery_acceptance_20260620_194540/frozen_seed3/final_report.json"
+  ],
+  "random_reports": [
+    "agent_reports/speech_real_discovery_acceptance_20260620_194540/random_seed1/final_report.json",
+    "agent_reports/speech_real_discovery_acceptance_20260620_194540/random_seed2/final_report.json",
+    "agent_reports/speech_real_discovery_acceptance_20260620_194540/random_seed3/final_report.json"
+  ]
+}

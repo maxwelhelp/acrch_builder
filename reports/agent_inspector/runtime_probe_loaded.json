@@ -2,7 +2,7 @@
   "schema": "runtime_probe_contract.v3",
   "project": "acrch_builder",
   "producer": "tools/project_probe/probe_learning_loop.py",
-  "timestamp": 1781972676.8713648,
+  "timestamp": 1781973785.6817117,
   "run_type": "one_batch_backward_probe",
   "note": "Uses the same canonical objective as training; reports aggregate and per-loss autograd connectivity separately.",
   "config": {

@@ -1,0 +1,38 @@
+{
+  "old_report": "/tmp/acrch_scanner_compare/old/final_report.json",
+  "new_report": "/tmp/acrch_scanner_compare/new_final/final_report.json",
+  "old": {
+    "acc": 0.0,
+    "samples_per_second": 38.55950746157692,
+    "credit_closed": 1.0,
+    "sim_disabled_delta": -0.0031490325927734375,
+    "choice_without_sim_delta": 0.026953984051942825,
+    "single_signed_projection_usage": 0.0,
+    "pair_jl16_usage": 0.0,
+    "primitive_top_share": 0.17215198278427124,
+    "active_cells": 16.0
+  },
+  "new": {
+    "acc": 0.03125,
+    "samples_per_second": 34.07658910565015,
+    "credit_closed": 1.0,
+    "sim_disabled_delta": -0.0030562877655029297,
+    "choice_without_sim_delta": 0.03585943579673767,
+    "single_signed_projection_usage": 0.06741072237491608,
+    "pair_jl16_usage": 0.13634656369686127,
+    "primitive_top_share": 0.18766967952251434,
+    "active_cells": 16.0
+  },
+  "delta_new_minus_old": {
+    "acc": 0.03125,
+    "samples_per_second": -4.4829183559267705,
+    "credit_closed": 0.0,
+    "sim_disabled_delta": 9.274482727050781e-05,
+    "choice_without_sim_delta": 0.008905451744794846,
+    "single_signed_projection_usage": 0.06741072237491608,
+    "pair_jl16_usage": 0.13634656369686127,
+    "primitive_top_share": 0.015517696738243103,
+    "active_cells": 0.0
+  },
+  "scope": "single_seed_single_epoch_comparison_not_acceptance"
+}

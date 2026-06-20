@@ -17,6 +17,8 @@ trainer does not import the synthetic vertical-slice trainer, does not read
 - normalized signed credit trains controller choice and scanner anchor;
 - raw measured gain calibrates simulator prediction;
 - measured credit updates usage candidates;
+- a separate unchosen budget forces 1-2 top-k alternatives and measures
+  `CE(full)-CE(forced)` instead of pointlessly ablating an unused action;
 - source quotas expose grid/semantic/usage/random candidates without forcing choice;
 - generic sparsity, topology consistency, exploration and anti-collapse losses.
 
@@ -48,3 +50,11 @@ trainer does not import the synthetic vertical-slice trainer, does not read
 
 The real smoke is not an acceptance result. A full/multi-seed P40 run is still
 required before any universal discovery PASS.
+
+## Acceptance boundary
+
+- one report is only `SMOKE_PASS` or `SMOKE_FAIL`, with `acceptance_status=NOT_RUN`;
+- `global_candidate_usage` is reported as `global_scan_usage` and is excluded
+  from the semantic+usage+random non-grid gate;
+- universal acceptance requires learned/frozen/random controller runs over three
+  unique seeds through `commands/run_speechcommands_real_discovery_acceptance.sh`.
