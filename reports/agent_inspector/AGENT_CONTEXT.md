@@ -17,31 +17,31 @@
 
 ## Risk nodes
 
-- `entrypoint` role=`entrypoint` degree=`201` file=`` line=``
+- `entrypoint` role=`entrypoint` degree=`213` file=`` line=``
 - `parser` role=`entrypoint` degree=`74` file=`arch_builder/train_vertical_slice.py` line=`1451`
-- `controller` role=`controller` degree=`64` file=`` line=``
-- `model_core` role=`model_core` degree=`50` file=`` line=``
-- `parser` role=`entrypoint` degree=`47` file=`arch_builder/train_audio_frontend.py` line=`21`
-- `train` role=`model_core` degree=`47` file=`arch_builder/train_vertical_slice.py` line=`1240`
+- `controller` role=`controller` degree=`65` file=`` line=``
+- `parser` role=`entrypoint` degree=`57` file=`arch_builder/train_audio_frontend.py` line=`34`
+- `train` role=`model_core` degree=`52` file=`arch_builder/train_vertical_slice.py` line=`1240`
+- `model_core` role=`model_core` degree=`52` file=`` line=``
+- `data` role=`data` degree=`47` file=`` line=``
 - `memory` role=`memory` degree=`46` file=`` line=``
-- `data` role=`data` degree=`45` file=`` line=``
 - `tools/agent_codegraph/build_agent_codegraph.py` role=`scanner` degree=`43` file=`` line=``
 - `arch_builder/audio_frontend.py` role=`data` degree=`41` file=`` line=``
 - `arch_builder/token_slot_replacement.py` role=`controller` degree=`41` file=`` line=``
 - `ActionMatrixLayer.__init__` role=`controller` degree=`40` file=`arch_builder/model.py` line=`32`
+- `primitive_matrix` role=`primitive_matrix` degree=`39` file=`` line=``
 - `arch_builder/train_vertical_slice.py` role=`data` degree=`38` file=`` line=``
 - `parser` role=`entrypoint` degree=`38` file=`tools/project_probe/probe_learning_loop.py` line=`60`
 - `SyntheticAudioOrderTask.sample` role=`data` degree=`37` file=`arch_builder/audio_frontend.py` line=`68`
 - `ActionMatrixLayer.forward` role=`controller` degree=`37` file=`arch_builder/model.py` line=`118`
-- `SpeechCommandsAcceptanceTask.sample` role=`data` degree=`36` file=`arch_builder/speechcommands_data.py` line=`236`
+- `SpeechCommandsAcceptanceTask.sample` role=`data` degree=`36` file=`arch_builder/speechcommands_data.py` line=`247`
 - `SyntheticKnownProgramTask.sample` role=`data` degree=`35` file=`arch_builder/synthetic_tasks.py` line=`46`
+- `arch_builder/train_audio_frontend.py` role=`reporting` degree=`35` file=`` line=``
 - `tools/build_code_logic_graph.py` role=`scanner` degree=`35` file=`` line=``
+- `__future__` role=`external` degree=`34` file=`` line=``
 - `CausalPositionTask.sample` role=`data` degree=`34` file=`arch_builder/token_slot_replacement.py` line=`31`
-- `primitive_matrix` role=`primitive_matrix` degree=`34` file=`` line=``
-- `StructuredMatrixAudioFrontend.__init__` role=`unknown` degree=`33` file=`arch_builder/audio_frontend.py` line=`174`
-- `arch_builder/transformer_plugin.py` role=`credit` degree=`33` file=`` line=``
-- `main` role=`entrypoint` degree=`33` file=`tools/project_probe/transformer_plugin_proof.py` line=`141`
-- `scanner` role=`scanner` degree=`33` file=`` line=``
+- `main` role=`entrypoint` degree=`34` file=`tools/project_probe/transformer_plugin_proof.py` line=`141`
+- `scanner` role=`scanner` degree=`34` file=`` line=``
 
 ## Probe metrics
 
@@ -170,7 +170,7 @@
 
 ## Loss connectivity
 
-- `ce_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.02357533552391193, 'gate_controller': 0.06617680257992534, 'scanner': 0.02702736429399929, 'simulator': 0.021691520464025733, 'executor': 0.008733703633045015, 'classifier': 0.17847803786736963}`
+- `ce_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.023575337377523275, 'gate_controller': 0.06617680305548365, 'scanner': 0.027027360175044007, 'simulator': 0.021691519253499842, 'executor': 0.008733704472429308, 'classifier': 0.17847803786736963}`
 - `sim_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'simulator': 0.3771499548089005}`
 - `expected_choice_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 3.5780965172290555, 'scanner': 22.255673337101133, 'simulator': 28.149049722043365}`
 - `non_expected_primitive_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.06021537309509909, 'scanner': 0.7748562106662926, 'simulator': 0.9248962295283985}`

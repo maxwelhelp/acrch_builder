@@ -6,7 +6,7 @@
 - expected_semantic_rank: `2`
 - semantic_entropy: `3.1899380683898926`
 - embedding_rank: `17.0`
-- semantic_grid_mismatch: `0.3333333333333333`
+- semantic_grid_mismatch: `0.3333333432674408`
 - global_rescue_rate: `1.0`
 - semantic_candidate_real_gain: `0.486328125`
 - usage_candidate_real_gain: `0.486328125`

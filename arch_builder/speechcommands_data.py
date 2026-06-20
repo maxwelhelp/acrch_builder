@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from functools import partial
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Sequence
@@ -90,6 +91,11 @@ class SpeechCommandsFiltered(torch.utils.data.Dataset):
         self._torchaudio, SPEECHCOMMANDS = _import_speechcommands()
 
         root_path = Path(root).expanduser().resolve()
+        # torchaudio appends ``SpeechCommands/speech_commands_v0.02`` itself.
+        # Accept both the parent root and the concrete SpeechCommands directory
+        # users naturally point at.
+        if root_path.name == "SpeechCommands" and (root_path / "speech_commands_v0.02").is_dir():
+            root_path = root_path.parent
         if download:
             root_path.mkdir(parents=True, exist_ok=True)
         elif not root_path.exists():
@@ -189,26 +195,33 @@ class SpeechCommandsAcceptanceTask:
         pin_memory: bool,
         drop_last: bool,
     ):
-        collate = lambda b: collate_waveforms(b, seconds=self.seconds, sample_rate=self.sample_rate)
+        collate = partial(
+            collate_waveforms,
+            seconds=self.seconds,
+            sample_rate=self.sample_rate,
+        )
+        worker_options = {
+            "num_workers": workers,
+            "pin_memory": pin_memory,
+            "persistent_workers": workers > 0,
+        }
+        if workers > 0:
+            worker_options["prefetch_factor"] = 2
         train_loader = torch.utils.data.DataLoader(
             self.train_ds,
             batch_size=batch_size,
             shuffle=True,
-            num_workers=workers,
-            pin_memory=pin_memory,
             drop_last=drop_last,
             collate_fn=collate,
-            persistent_workers=(workers > 0),
+            **worker_options,
         )
         val_loader = torch.utils.data.DataLoader(
             self.val_ds,
             batch_size=eval_batch_size,
             shuffle=False,
-            num_workers=workers,
-            pin_memory=pin_memory,
             drop_last=False,
             collate_fn=collate,
-            persistent_workers=(workers > 0),
+            **worker_options,
         )
         test_loader = None
         if self.test_ds is not None:
@@ -216,11 +229,9 @@ class SpeechCommandsAcceptanceTask:
                 self.test_ds,
                 batch_size=eval_batch_size,
                 shuffle=False,
-                num_workers=workers,
-                pin_memory=pin_memory,
                 drop_last=False,
                 collate_fn=collate,
-                persistent_workers=(workers > 0),
+                **worker_options,
             )
         return train_loader, val_loader, test_loader
 

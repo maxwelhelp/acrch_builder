@@ -11,7 +11,7 @@
       "id": "controller",
       "label": "controller",
       "kind": "grad_group",
-      "grad_norm": 8.891132219013317,
+      "grad_norm": 8.891132219022637,
       "critical": true,
       "status": "grad_ok"
     },
@@ -19,7 +19,7 @@
       "id": "scanner",
       "label": "scanner",
       "kind": "grad_group",
-      "grad_norm": 55.3096456201006,
+      "grad_norm": 55.30964473729453,
       "critical": true,
       "status": "grad_ok"
     },
@@ -27,7 +27,7 @@
       "id": "simulator",
       "label": "simulator",
       "kind": "grad_group",
-      "grad_norm": 69.93541703445287,
+      "grad_norm": 69.93541703441221,
       "critical": true,
       "status": "grad_ok"
     },
@@ -43,7 +43,7 @@
       "id": "model_core",
       "label": "model_core",
       "kind": "grad_group",
-      "grad_norm": 92.12578488465313,
+      "grad_norm": 92.12578435461205,
       "critical": true,
       "status": "grad_ok"
     },
@@ -51,7 +51,7 @@
       "id": "executor",
       "label": "executor",
       "kind": "grad_group",
-      "grad_norm": 0.008839524814099366,
+      "grad_norm": 0.008839524814755553,
       "critical": false,
       "status": "grad_ok"
     },

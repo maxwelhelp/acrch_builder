@@ -262,6 +262,14 @@ class AudioMatrixClassifier(nn.Module):
             state_norm=state_norm,
             final_read=final_read,
         )
+        # Generic multiclass readout: no layer roles or task-specific operators.
+        self.backbone.classifier = nn.Sequential(
+            nn.LayerNorm(dim),
+            nn.Linear(dim, dim * 2),
+            nn.SiLU(),
+            nn.Dropout(0.10),
+            nn.Linear(dim * 2, classes),
+        )
 
     def forward(self, waveforms: torch.Tensor, tau: float = 1.0, curriculum_mode: str = "teacher"):
         features = self.frontend(waveforms)

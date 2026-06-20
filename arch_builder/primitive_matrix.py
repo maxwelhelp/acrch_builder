@@ -79,6 +79,21 @@ class PrimitiveMatrix5x5(nn.Module):
         self.register_buffer("descriptor", desc, persistent=False)
         self.register_buffer("usage_score", torch.zeros(len(self.names)), persistent=False)
         self.register_buffer("usage_observations", torch.zeros(len(self.names)), persistent=False)
+        local_lookup = []
+        for idx in range(len(self.names)):
+            r, c = self.infos[idx].row, self.infos[idx].col
+            vals = [
+                rr * 5 + cc
+                for rr in range(max(0, r - 1), min(5, r + 2))
+                for cc in range(max(0, c - 1), min(5, c + 2))
+            ]
+            vals.extend([idx] * (9 - len(vals)))
+            local_lookup.append(vals[:9])
+        self.register_buffer(
+            "local_radius1_lookup",
+            torch.tensor(local_lookup, dtype=torch.long),
+            persistent=False,
+        )
 
     @property
     def num_primitives(self) -> int:
@@ -101,18 +116,10 @@ class PrimitiveMatrix5x5(nn.Module):
         return torch.tensor(rows, dtype=torch.float32)
 
     def local_window(self, ids: torch.Tensor, radius: int = 1) -> torch.Tensor:
-        flat = ids.reshape(-1).detach().cpu()
-        out: List[List[int]] = []
-        for idx in flat.tolist():
-            r, c = self.infos[idx].row, self.infos[idx].col
-            vals: List[int] = []
-            for rr in range(max(0, r - radius), min(5, r + radius + 1)):
-                for cc in range(max(0, c - radius), min(5, c + radius + 1)):
-                    vals.append(rr * 5 + cc)
-            while len(vals) < (2 * radius + 1) ** 2:
-                vals.append(idx)
-            out.append(vals[: (2 * radius + 1) ** 2])
-        return torch.tensor(out, dtype=torch.long, device=ids.device).view(*ids.shape, -1)
+        if radius != 1:
+            raise ValueError("only the precomputed radius=1 topology is supported")
+        lookup = self.local_radius1_lookup.to(ids.device)
+        return lookup[ids]
 
     def semantic_topk(self, ids: torch.Tensor, k: int = 4) -> torch.Tensor:
         emb = F.normalize(self.emb, dim=-1)

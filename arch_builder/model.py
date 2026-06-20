@@ -127,6 +127,8 @@ class ActionMatrixLayer(nn.Module):
         disable_sim_result: bool = False,
         curriculum_mode: str = "teacher",
         choice_sampling: str = "auto",
+        primitive_ablation_ids: Optional[torch.Tensor] = None,
+        collect_scan_metrics: bool = True,
     ):
         b, s, d = state.shape
         src = state.unsqueeze(2).expand(b, s, s, d)
@@ -169,15 +171,34 @@ class ActionMatrixLayer(nn.Module):
                 .expand(b, s * s, -1)
                 .reshape(b * s * s, -1)
             )
+        full_scan = self.top_k >= self.pm.num_primitives
         cand_ids, proposal_logits, source_ids, scan_metrics = self.scanner(
             flat_context,
             flat_mem,
             self.pm,
             prev_action_emb=prev_action_emb,
-            ensure_all_candidates=(self.top_k >= self.pm.num_primitives),
+            ensure_all_candidates=full_scan,
+            collect_metrics=collect_scan_metrics,
         )
         k = min(self.top_k, proposal_logits.shape[-1])
-        top_vals, top_pos = proposal_logits.topk(k=k, dim=-1)
+        if not full_scan and k >= 4:
+            # Exploration quota: expose one strongest candidate from each
+            # production source, then fill remaining slots globally. This does
+            # not force controller choice or any primitive/layer role.
+            quota_pos = torch.stack(
+                [
+                    proposal_logits.masked_fill(source_ids != source_id, float("-inf")).argmax(dim=-1)
+                    for source_id in range(4)
+                ],
+                dim=-1,
+            )
+            selected = torch.zeros_like(proposal_logits, dtype=torch.bool)
+            selected.scatter_(1, quota_pos, True)
+            remaining = proposal_logits.masked_fill(selected, float("-inf")).topk(k=k - 4, dim=-1).indices
+            top_pos = torch.cat([quota_pos, remaining], dim=-1)
+            top_vals = proposal_logits.gather(1, top_pos)
+        else:
+            top_vals, top_pos = proposal_logits.topk(k=k, dim=-1)
         top_ids = cand_ids.gather(1, top_pos)
         top_source_ids = source_ids.gather(1, top_pos)
 
@@ -214,15 +235,23 @@ class ActionMatrixLayer(nn.Module):
             if use_gumbel
             else F.softmax(choice_logits / max(float(tau), 1e-4), dim=-1)
         )
+        if primitive_ablation_ids is not None:
+            ablate = primitive_ablation_ids.to(device=top_ids.device).reshape(b * s * s, 1)
+            keep = (top_ids != ablate).to(choice.dtype)
+            choice = choice * keep
+            choice = choice / choice.sum(dim=-1, keepdim=True).clamp_min(1e-8)
 
         source_names = ("grid", "semantic", "usage", "random", "global")
-        with torch.no_grad():
-            for source_id, source_name in enumerate(source_names):
-                source_mass = (choice * (top_source_ids == source_id).to(choice.dtype)).sum(dim=-1).mean()
-                scan_metrics[f"{source_name}_candidate_usage"] = float(source_mass.cpu())
-            scan_metrics["scanner_source_mass_sum"] = float(
-                sum(scan_metrics[f"{name}_candidate_usage"] for name in source_names)
-            )
+        if collect_scan_metrics:
+            with torch.no_grad():
+                for source_id, source_name in enumerate(source_names):
+                    source_mass = (choice * (top_source_ids == source_id).to(choice.dtype)).sum(dim=-1).mean()
+                    scan_metrics[f"{source_name}_candidate_usage"] = float(source_mass.cpu())
+                    source_coverage = (top_source_ids == source_id).any(dim=-1).float().mean()
+                    scan_metrics[f"{source_name}_candidate_coverage"] = float(source_coverage.cpu())
+                scan_metrics["scanner_source_mass_sum"] = float(
+                    sum(scan_metrics[f"{name}_candidate_usage"] for name in source_names)
+                )
 
         primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
         transformed = (choice.unsqueeze(-1) * primitive_out).sum(dim=1)
@@ -285,6 +314,7 @@ class ActionMatrixLayer(nn.Module):
             "chosen": chosen.detach(),
             "predicted_gain": predicted_gain.detach(),
             "predicted_gain_for_loss": predicted_gain,
+            "scanner_anchor_logits_for_loss": self.scanner.anchor(flat_context),
             "mode": mode.detach(),
             "mode_for_loss": mode,
             "edge": edge.detach(),
@@ -396,6 +426,8 @@ class ActionMatrixModel(nn.Module):
         ablate_state_after: Optional[int] = None,
         curriculum_mode: str = "teacher",
         choice_sampling: str = "auto",
+        primitive_ablation_ids: Optional[list[Optional[torch.Tensor]]] = None,
+        collect_scan_metrics: bool = True,
     ):
         b = x.shape[0]
         s = self.slots
@@ -423,6 +455,12 @@ class ActionMatrixModel(nn.Module):
                 disable_sim_result=disable_sim_result,
                 curriculum_mode=curriculum_mode,
                 choice_sampling=choice_sampling,
+                primitive_ablation_ids=(
+                    primitive_ablation_ids[idx]
+                    if primitive_ablation_ids is not None and idx < len(primitive_ablation_ids)
+                    else None
+                ),
+                collect_scan_metrics=collect_scan_metrics,
             )
             if ablate_state_after is not None and idx == ablate_state_after:
                 state = torch.zeros_like(state)

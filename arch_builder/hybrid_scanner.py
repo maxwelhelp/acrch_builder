@@ -48,6 +48,7 @@ class HybridScanner(nn.Module):
         primitive_matrix: PrimitiveMatrix5x5,
         prev_action_emb: torch.Tensor | None = None,
         ensure_all_candidates: bool = False,
+        collect_metrics: bool = True,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float]]:
         n = context.shape[0]
         device = context.device
@@ -88,20 +89,21 @@ class HybridScanner(nn.Module):
         feat = torch.cat([ctx, mem, self.candidate_proj(cand_emb), prev], dim=-1)
         proposal_logits = self.score(feat).squeeze(-1)
 
-        with torch.no_grad():
-            sem_not_grid = []
-            for i in range(n):
-                grid = set(local[i].tolist())
-                sem = semantic[i].tolist()
-                sem_not_grid.append(sum(1 for x in sem if x not in grid) / max(1, len(sem)))
-            emb = torch.nn.functional.normalize(primitive_matrix.emb, dim=-1)
-            similarity = emb[anchor_ids] @ emb.t()
-            semantic_prob = torch.softmax(similarity, dim=-1)
-            semantic_entropy = (-(semantic_prob + 1e-8) * (semantic_prob + 1e-8).log()).sum(dim=-1)
-            metrics = {
-                "semantic_grid_mismatch": float(sum(sem_not_grid) / max(1, len(sem_not_grid))),
-                "semantic_neighbor_entropy": float(semantic_entropy.mean().cpu()),
-                "scanner_full_scan": float(ensure_all_candidates),
-            }
+        metrics: Dict[str, float] = {}
+        if collect_metrics:
+            with torch.no_grad():
+                semantic_outside_grid = ~(
+                    semantic.unsqueeze(-1) == local.unsqueeze(1)
+                ).any(dim=-1)
+                semantic_grid_mismatch = semantic_outside_grid.float().mean()
+                emb = torch.nn.functional.normalize(primitive_matrix.emb, dim=-1)
+                similarity = emb[anchor_ids] @ emb.t()
+                semantic_prob = torch.softmax(similarity, dim=-1)
+                semantic_entropy = (-(semantic_prob + 1e-8) * (semantic_prob + 1e-8).log()).sum(dim=-1)
+                metrics = {
+                    "semantic_grid_mismatch": float(semantic_grid_mismatch.cpu()),
+                    "semantic_neighbor_entropy": float(semantic_entropy.mean().cpu()),
+                    "scanner_full_scan": float(ensure_all_candidates),
+                }
 
         return candidate_ids, proposal_logits, source_ids, metrics

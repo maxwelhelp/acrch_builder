@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -76,6 +76,344 @@ class ModeCreditLedger:
                 ("deploy", self.deploy),
             )
         }
+
+
+@dataclass(frozen=True)
+class CounterfactualTarget:
+    layer: int
+    cell: int
+    primitive: int
+
+
+@dataclass
+class CounterfactualRecord:
+    targets: Tuple[CounterfactualTarget, ...]
+    gain: float
+    measured_step: int
+    applied_step: int = -1
+
+
+class BoundedCounterfactualCredit:
+    """Oracle-free, delayed credit from batched loss interventions.
+
+    Each intervention removes the currently selected primitive from one or two
+    cells and measures ``CE(ablated) - CE(full)`` on a separate microbatch.
+    Positive gain means the removed action was useful. Measurements are queued
+    and may influence training only after ``advance`` on a later optimizer step.
+    """
+
+    def __init__(
+        self,
+        layers: int,
+        slots: int,
+        primitives: int,
+        budget: int = 8,
+        random_fraction: float = 0.25,
+        pair_fraction: float = 0.25,
+        ema_decay: float = 0.9,
+    ) -> None:
+        self.layers = layers
+        self.slots = slots
+        self.primitives = primitives
+        self.budget = max(2, int(budget))
+        self.random_fraction = float(random_fraction)
+        self.pair_fraction = float(pair_fraction)
+        self.ema_decay = float(ema_decay)
+        shape = (layers, slots * slots, primitives)
+        self.ema = torch.zeros(shape)
+        self.count = torch.zeros(shape)
+        self.age = torch.zeros(shape)
+        self.pending: List[CounterfactualRecord] = []
+        self.active: List[CounterfactualRecord] = []
+        self.step = 0
+        self.total_measurements = 0
+        self.total_joint_measurements = 0
+        self.last_metrics: Dict[str, float] = {}
+        self.gain_scale = 1e-3
+        self.last_random_targets = 0
+
+    def _targets_from_trace(self, trace: Dict[str, object]) -> List[CounterfactualTarget]:
+        scored: List[Tuple[float, CounterfactualTarget]] = []
+        e = self.slots * self.slots
+        for layer_idx, layer in enumerate(trace["layers"]):
+            chosen = layer["chosen"].view(-1, e)
+            active = layer["active"].view(-1, e).float().mean(dim=0)
+            choice = layer["choice"].view(-1, e, layer["choice"].shape[-1]).float()
+            entropy = (-(choice.clamp_min(1e-8) * choice.clamp_min(1e-8).log()).sum(dim=-1)).mean(dim=0)
+            modes = F.one_hot(chosen, num_classes=self.primitives).sum(dim=0).argmax(dim=-1)
+            score = active + 0.05 * entropy
+            for cell in range(e):
+                scored.append(
+                    (
+                        float(score[cell].cpu()),
+                        CounterfactualTarget(layer_idx, cell, int(modes[cell].cpu())),
+                    )
+                )
+        scored.sort(key=lambda item: item[0], reverse=True)
+        pair_count = min(self.budget // 2, int(round(self.budget * self.pair_fraction)))
+        single_count = self.budget - pair_count
+        random_count = min(single_count, max(1, int(round(single_count * self.random_fraction))))
+        high_count = max(1, single_count - random_count)
+        selected = [target for _, target in scored[:high_count]]
+        remaining = [target for _, target in scored[high_count:]]
+        if remaining and random_count:
+            order = torch.randperm(len(remaining))[:random_count].tolist()
+            selected.extend(remaining[i] for i in order)
+            self.last_random_targets = len(order)
+        else:
+            self.last_random_targets = 0
+        return selected[:single_count]
+
+    def advance(self, primitive_matrix=None) -> int:
+        """Apply previous measurements and age the ledger exactly once."""
+        self.step += 1
+        self.age.add_(1.0)
+        ready, self.pending = self.pending, []
+        if not ready:
+            return 0
+        ids, gains = [], []
+        for record in ready:
+            record.applied_step = self.step
+            share = record.gain / max(1, len(record.targets))
+            for target in record.targets:
+                idx = (target.layer, target.cell, target.primitive)
+                old = float(self.ema[idx])
+                self.ema[idx] = self.ema_decay * old + (1.0 - self.ema_decay) * share
+                self.count[idx] += 1.0
+                self.age[idx] = 0.0
+                ids.append(target.primitive)
+                gains.append(share)
+        if primitive_matrix is not None and ids:
+            primitive_matrix.update_usage_credit(
+                torch.tensor(ids, device=primitive_matrix.usage_score.device),
+                torch.tensor(gains, device=primitive_matrix.usage_score.device),
+            )
+        self.active = ready
+        return len(ready)
+
+    def alignment_losses(
+        self,
+        trace: Dict[str, object],
+    ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, float]]:
+        device = trace["layers"][0]["choice_for_loss"].device
+        z = torch.zeros((), device=device)
+        if not self.active:
+            return z, z, {"credit_alignment_items": 0.0}
+        policy_losses, simulator_losses = [], []
+        predicted, measured = [], []
+        e = self.slots * self.slots
+        for record in self.active:
+            share = float(record.gain) / max(1, len(record.targets))
+            advantage = max(-5.0, min(5.0, share / max(self.gain_scale, 1e-6)))
+            for target in record.targets:
+                layer = trace["layers"][target.layer]
+                cand = layer["candidate_ids"].view(-1, e, layer["candidate_ids"].shape[-1])[:, target.cell]
+                choice = layer["choice_for_loss"].view(-1, e, layer["choice_for_loss"].shape[-1])[:, target.cell]
+                pred = layer["predicted_gain_for_loss"].view(-1, e, layer["predicted_gain_for_loss"].shape[-1])[:, target.cell]
+                mask = (cand == target.primitive).to(choice.dtype)
+                present = mask.sum(dim=-1) > 0
+                if not bool(present.any()):
+                    continue
+                mass = (choice * mask).sum(dim=-1)[present].clamp(1e-6, 1.0 - 1e-6)
+                if advantage >= 0:
+                    policy_losses.append(-advantage * mass.log().mean())
+                else:
+                    policy_losses.append(-(-advantage) * (1.0 - mass).log().mean())
+                anchor_logits = layer["scanner_anchor_logits_for_loss"].view(
+                    -1, e, self.primitives
+                )[:, target.cell]
+                anchor_mass = anchor_logits.softmax(dim=-1)[:, target.primitive].clamp(1e-6, 1.0 - 1e-6)
+                if advantage >= 0:
+                    policy_losses.append(-0.5 * advantage * anchor_mass.log().mean())
+                else:
+                    policy_losses.append(-0.5 * (-advantage) * (1.0 - anchor_mass).log().mean())
+                pred_value = (pred * mask).sum(dim=-1)[present]
+                simulator_losses.append(F.mse_loss(pred_value.float(), torch.full_like(pred_value.float(), share)))
+                predicted.append(float(pred_value.detach().mean().cpu()))
+                measured.append(share)
+        if not policy_losses:
+            return z, z, {"credit_alignment_items": 0.0}
+        corr = 0.0
+        if len(predicted) >= 2:
+            p = torch.tensor(predicted)
+            m = torch.tensor(measured)
+            if p.std(unbiased=False) > 1e-8 and m.std(unbiased=False) > 1e-8:
+                corr = float(torch.corrcoef(torch.stack([p, m]))[0, 1])
+        return (
+            torch.stack(policy_losses).mean(),
+            torch.stack(simulator_losses).mean() if simulator_losses else z,
+            {"credit_alignment_items": float(len(policy_losses)), "sim_pred_real_corr": corr},
+        )
+
+    @torch.no_grad()
+    def collect(
+        self,
+        backbone,
+        features: torch.Tensor,
+        labels: torch.Tensor,
+        tau: float,
+    ) -> Dict[str, float]:
+        was_training = backbone.training
+        backbone.eval()
+        full_logits, full_trace = backbone(
+            features,
+            tau=tau,
+            curriculum_mode="deploy",
+            choice_sampling="softmax",
+            collect_scan_metrics=False,
+        )
+        full_loss = F.cross_entropy(full_logits.float(), labels, reduction="none")
+        singles = self._targets_from_trace(full_trace)
+        pair_count = min(self.budget - len(singles), max(0, int(round(self.budget * self.pair_fraction))))
+        interventions: List[Tuple[CounterfactualTarget, ...]] = [(target,) for target in singles]
+        if len(singles) >= 2:
+            for i in range(pair_count):
+                a = singles[(2 * i) % len(singles)]
+                b = singles[(2 * i + 1) % len(singles)]
+                if a != b:
+                    interventions.append((a, b))
+        interventions = interventions[: self.budget]
+        if not interventions:
+            backbone.train(was_training)
+            return {"credit_measurements": 0.0}
+
+        variants = len(interventions)
+        batch = features.shape[0]
+        repeated = features.unsqueeze(0).expand(variants, *features.shape).reshape(variants * batch, *features.shape[1:])
+        layer_ablate = [
+            torch.full(
+                (variants, batch, self.slots * self.slots),
+                -1,
+                dtype=torch.long,
+                device=features.device,
+            )
+            for _ in range(self.layers)
+        ]
+        for variant, targets in enumerate(interventions):
+            for target in targets:
+                layer_ablate[target.layer][variant, :, target.cell] = target.primitive
+        layer_ablate = [x.reshape(variants * batch, self.slots, self.slots) for x in layer_ablate]
+        ablated_logits, _ = backbone(
+            repeated,
+            tau=tau,
+            curriculum_mode="deploy",
+            choice_sampling="softmax",
+            primitive_ablation_ids=layer_ablate,
+            collect_scan_metrics=False,
+        )
+        repeated_labels = labels.unsqueeze(0).expand(variants, batch).reshape(-1)
+        ablated_loss = F.cross_entropy(
+            ablated_logits.float(), repeated_labels, reduction="none"
+        ).view(variants, batch)
+        gains = ablated_loss.mean(dim=1) - full_loss.mean()
+        single_gain = {
+            targets[0]: float(gain.cpu())
+            for targets, gain in zip(interventions, gains)
+            if len(targets) == 1
+        }
+        records = []
+        joint_synergies = []
+        for targets, gain_tensor in zip(interventions, gains):
+            gain = float(gain_tensor.cpu())
+            if len(targets) > 1:
+                synergy = gain - sum(single_gain.get(target, 0.0) for target in targets)
+                joint_synergies.append(synergy)
+                gain = synergy
+            records.append(
+                CounterfactualRecord(targets=targets, gain=gain, measured_step=self.step)
+            )
+        measured_abs = float(gains.abs().mean().cpu())
+        self.gain_scale = 0.95 * self.gain_scale + 0.05 * max(measured_abs, 1e-6)
+        self.pending.extend(records)
+        self.total_measurements += len(records)
+        self.total_joint_measurements += sum(len(record.targets) > 1 for record in records)
+        positive = (gains > 0).float().mean()
+        self.last_metrics = {
+            "credit_measurements": float(len(records)),
+            "credit_joint_measurements": float(sum(len(record.targets) > 1 for record in records)),
+            "credit_gain_mean": float(gains.mean().cpu()),
+            "credit_gain_abs_mean": float(gains.abs().mean().cpu()),
+            "credit_positive_fraction": float(positive.cpu()),
+            "credit_budget_used": float(len(records)),
+            "credit_budget_limit": float(self.budget),
+            "credit_gain_scale": float(self.gain_scale),
+            "credit_joint_synergy_mean": float(sum(joint_synergies) / max(1, len(joint_synergies))),
+            "credit_random_targets": float(self.last_random_targets),
+        }
+        backbone.train(was_training)
+        return dict(self.last_metrics)
+
+    def metrics(self) -> Dict[str, float]:
+        observed = self.count > 0
+        return {
+            **self.last_metrics,
+            "credit_closed": float(self.total_measurements > 0 and bool(observed.any())),
+            "credit_pending": float(len(self.pending)),
+            "credit_active": float(len(self.active)),
+            "credit_total_measurements": float(self.total_measurements),
+            "credit_total_joint_measurements": float(self.total_joint_measurements),
+            "credit_items": float(observed.sum()),
+            "credit_age_mean": float(self.age[observed].mean()) if bool(observed.any()) else 0.0,
+            "credit_gain_ema_abs_mean": float(self.ema[observed].abs().mean()) if bool(observed.any()) else 0.0,
+        }
+
+
+def generic_discovery_health_loss(
+    trace: Dict[str, object],
+    slots: int,
+    num_primitives: int,
+    target_active_cells: int,
+) -> Tuple[torch.Tensor, Dict[str, float]]:
+    """Task-agnostic anti-collapse pressure for real discovery."""
+    losses = []
+    active_counts, top_shares, entropies = [], [], []
+    e = slots * slots
+    keep = max(1, min(e, int(target_active_cells)))
+    for layer in trace["layers"]:
+        choice = layer["choice_for_loss"]
+        cand = layer["candidate_ids"]
+        b = choice.shape[0] // e
+        active = (
+            layer["edge_for_loss"]
+            * layer["write_for_loss"]
+            * layer["phase_for_loss"]
+        ).view(b, e)
+        mean_active = active.mean(dim=0)
+        top_mask = torch.zeros_like(mean_active)
+        top_mask.scatter_(0, mean_active.topk(keep).indices, 1.0)
+        tail = (active * (1.0 - top_mask[None])).mean()
+        topology_variance = active.var(dim=0, unbiased=False).mean()
+        entropy = -(choice.clamp_min(1e-8) * choice.clamp_min(1e-8).log()).sum(dim=-1).mean()
+        coverage = -choice.clamp_min(1e-8).log().mean()
+
+        primitive_mass = torch.zeros(
+            choice.shape[0], num_primitives, device=choice.device, dtype=choice.dtype
+        )
+        primitive_mass.scatter_add_(1, cand, choice)
+        global_mass = primitive_mass.mean(dim=0)
+        global_mass = global_mass / global_mass.sum().clamp_min(1e-8)
+        top_share = global_mass.max()
+        collapse = F.relu(top_share - 0.65).pow(2)
+        alive_floor = F.relu(0.03 - active.mean()).pow(2)
+        top_alive_floor = F.relu(0.12 - mean_active.topk(keep).values.mean()).pow(2)
+        losses.append(
+            0.10 * tail
+            + 0.05 * topology_variance
+            + 0.01 * F.relu(0.8 - entropy).pow(2)
+            + 0.0005 * coverage
+            + 0.05 * collapse
+            + 0.10 * alive_floor
+            + 0.20 * top_alive_floor
+        )
+        active_counts.append((mean_active > 0.05).float().sum())
+        top_shares.append(top_share.detach())
+        entropies.append(entropy.detach())
+    total = torch.stack(losses).mean()
+    return total, {
+        "active_cells": float(torch.stack(active_counts).mean().detach().cpu()),
+        "primitive_top_share": float(torch.stack(top_shares).mean().cpu()),
+        "choice_entropy": float(torch.stack(entropies).mean().cpu()),
+    }
 
 
 def _rng_state():

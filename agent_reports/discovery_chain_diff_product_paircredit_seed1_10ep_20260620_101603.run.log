@@ -1,0 +1,28 @@
+epoch 001/10 train=0.7027/49.75% val=0.6938/49.67% edge_prog=0.035 any_prog=0.054 active_cells=3.0 top_share=0.362 adaptR=0.01 adaptC=0.00 adaptS=0.00 write_mass=0.029 write_gate=0.108 phase=teacher honesty=0.497 final=last cand=1.000 choice_mass=0.033 oracle=100.0% sim_delta=+0.0106
+epoch 002/10 train=0.6988/49.81% val=0.6932/49.54% edge_prog=0.128 any_prog=0.126 active_cells=3.0 top_share=0.300 adaptR=0.01 adaptC=0.00 adaptS=0.00 write_mass=0.045 write_gate=0.144 phase=teacher honesty=0.495 final=last cand=1.000 choice_mass=0.042 oracle=100.0% sim_delta=+0.0045
+epoch 003/10 train=0.6973/50.64% val=0.6932/50.07% edge_prog=0.418 any_prog=0.451 active_cells=3.0 top_share=0.164 adaptR=0.01 adaptC=0.00 adaptS=0.00 write_mass=0.058 write_gate=0.167 phase=teacher honesty=0.501 final=last cand=1.000 choice_mass=0.071 oracle=100.0% sim_delta=+0.0038
+epoch 004/10 train=0.6560/60.61% val=0.6023/67.32% edge_prog=0.982 any_prog=0.917 active_cells=3.5 top_share=0.635 adaptR=0.99 adaptC=0.73 adaptS=0.23 write_mass=0.071 write_gate=0.187 phase=teacher honesty=0.673 final=last cand=1.000 choice_mass=0.803 oracle=100.0% sim_delta=+0.0289
+epoch 005/10 train=0.5360/72.92% val=0.5366/72.75% edge_prog=1.000 any_prog=0.979 active_cells=3.5 top_share=0.792 adaptR=1.00 adaptC=0.95 adaptS=0.26 write_mass=0.079 write_gate=0.253 phase=teacher honesty=0.728 final=last cand=1.000 choice_mass=0.935 oracle=100.0% sim_delta=+0.0370
+epoch 006/10 train=0.5168/74.34% val=0.5072/74.74% edge_prog=0.997 any_prog=0.836 active_cells=3.0 top_share=0.603 adaptR=1.00 adaptC=0.66 adaptS=0.23 write_mass=0.070 write_gate=0.245 phase=teacher honesty=0.747 final=last cand=1.000 choice_mass=0.905 oracle=100.0% sim_delta=+0.0406
+epoch 007/10 train=0.5130/74.45% val=0.5137/73.63% edge_prog=0.931 any_prog=0.689 active_cells=3.0 top_share=0.572 adaptR=0.99 adaptC=0.57 adaptS=0.22 write_mass=0.066 write_gate=0.242 phase=teacher honesty=0.736 final=last cand=1.000 choice_mass=0.863 oracle=100.0% sim_delta=+0.0231
+epoch 008/10 train=0.5024/75.08% val=0.5076/74.58% edge_prog=0.910 any_prog=0.638 active_cells=2.5 top_share=0.536 adaptR=0.99 adaptC=0.45 adaptS=0.21 write_mass=0.062 write_gate=0.234 phase=teacher honesty=0.746 final=last cand=1.000 choice_mass=0.860 oracle=100.0% sim_delta=+0.0377
+epoch 009/10 train=0.5076/74.77% val=0.5034/75.03% edge_prog=0.922 any_prog=0.622 active_cells=2.0 top_share=0.500 adaptR=0.99 adaptC=0.35 adaptS=0.21 write_mass=0.063 write_gate=0.236 phase=teacher honesty=0.750 final=last cand=1.000 choice_mass=0.841 oracle=100.0% sim_delta=+0.0836
+epoch 010/10 train=0.5079/74.71% val=0.4926/76.01% edge_prog=0.939 any_prog=0.628 active_cells=3.0 top_share=0.502 adaptR=0.99 adaptC=0.35 adaptS=0.21 write_mass=0.063 write_gate=0.235 phase=teacher honesty=0.760 final=last cand=1.000 choice_mass=0.830 oracle=100.0% sim_delta=+0.1244
+
+=== DISCOVERY SUMMARY ===
+out = agent_reports/discovery_chain_diff_product_paircredit_seed1_10ep_20260620_101603
+best_acc = 0.7600911458333334
+last_acc = 0.7600911458333334
+expected_candidate_present = 1.0
+expected_edge_choice_mass = 0.8302138646443685
+expected_edge_recovery = 0.9388020833333334
+expected_any_recovery = 0.627685546875
+program_expected_top_cells = [13, 11]
+program_active_cells = [3, 3]
+primitive_top_share = 0.5016072690486908
+program_verdicts = ['primitive_collapse', 'primitive_collapse']
+sim_disabled_delta = 0.12436684966087341
+choice_without_sim_delta = 0.04315279796719551
+loss_accounting_error = 3.2117364323624997e-10
+checks = {'learned_accuracy_above_chance': True, 'full_scan_candidates_present': True, 'no_primitive_collapse': False}
+DISCOVERY FAIL: learned program did not meet acceptance

@@ -12,10 +12,23 @@ import torch.nn.functional as F
 
 from .audio_frontend import AudioBatch as SyntheticAudioBatch
 from .audio_frontend import AudioMatrixClassifier, SyntheticAudioOrderTask, build_frontend
-from .reporting import ensure_dir, write_json
+from .reporting import append_csv, ensure_dir, write_json
 from .speechcommands_data import AudioBatch as SpeechCommandsAudioBatch
 from .speechcommands_data import SpeechCommandsAcceptanceTask, normalize_classes
-from .train_vertical_slice import curriculum_phase
+from .credit import BoundedCounterfactualCredit, generic_discovery_health_loss
+
+
+def curriculum_phase(epoch: int, total_epochs: int, schedule: str) -> str:
+    """Audio-only scaffold schedule; real discovery bypasses it entirely."""
+    if schedule == "teacher":
+        return "teacher"
+    teacher_end = max(1, int(total_epochs * 0.33))
+    audit_end = max(teacher_end + 1, int(total_epochs * 0.66))
+    if epoch <= teacher_end:
+        return "teacher"
+    if epoch <= audit_end:
+        return "audit"
+    return "deploy"
 
 
 def parser() -> argparse.ArgumentParser:
@@ -56,6 +69,16 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--out-dir", default="agent_reports/audio_frontend_smoke")
     ap.add_argument("--latest-report", default="LATEST_AUDIO_FRONTEND_REPORT.md")
+    ap.add_argument("--discovery", action="store_true", help="oracle-free real counterfactual discovery")
+    ap.add_argument("--credit-budget", type=int, default=8)
+    ap.add_argument("--credit-interval", type=int, default=8)
+    ap.add_argument("--credit-batch-size", type=int, default=16)
+    ap.add_argument("--lambda-credit-policy", type=float, default=0.20)
+    ap.add_argument("--lambda-credit-simulator", type=float, default=0.10)
+    ap.add_argument("--lambda-discovery-health", type=float, default=1.0)
+    ap.add_argument("--target-active-cells", type=int, default=3)
+    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--log-every", type=int, default=20)
     return ap
 
 
@@ -93,8 +116,8 @@ def _batch_y(batch) -> torch.Tensor:
 
 
 def _move_batch(batch, device: str):
-    x = _batch_x(batch).to(device)
-    y = _batch_y(batch).to(device)
+    x = _batch_x(batch).to(device, non_blocking=True)
+    y = _batch_y(batch).to(device, non_blocking=True)
     if isinstance(batch, SpeechCommandsAudioBatch):
         return SpeechCommandsAudioBatch(x=x, y=y)
     if isinstance(batch, SyntheticAudioBatch):
@@ -126,6 +149,7 @@ def evaluate(
     source_mass = defaultdict(float)
     trace_sum = defaultdict(float)
     trace_count = 0
+    source_trace_count = 0
     for _ in range(max(1, steps)):
         batch = _sample(task, batch_size, device, split=split)
         batch, logits, trace = _run_model(model, batch, tau=tau, curriculum_mode=curriculum_mode, device=device)
@@ -136,22 +160,33 @@ def evaluate(
         loss_sum += float(loss.detach().cpu()) * _batch_y(batch).shape[0]
         trace_count += 1
         for layer in trace.get("layers", []):
+            source_trace_count += 1
             scan = layer.get("scan_metrics", {})
-            for key in ("grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "scanner_source_mass_sum"):
+            for key in (
+                "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "global_candidate_usage",
+                "grid_candidate_coverage", "semantic_candidate_coverage", "usage_candidate_coverage", "random_candidate_coverage", "global_candidate_coverage",
+                "scanner_source_mass_sum",
+            ):
                 if key in scan:
                     trace_sum[key] += float(scan[key])
-        if trace.get("layers"):
-            first = trace["layers"][0]
-            for key in ("listen_gate", "active", "cell_output_gate"):
-                if key in first and hasattr(first[key], "float"):
-                    trace_sum[f"layer0_{key}_mean"] += float(first[key].float().mean().detach().cpu())
+        for layer_idx, layer in enumerate(trace.get("layers", [])):
+            for key in ("listen_gate", "active", "cell_output_gate", "cell_write_mass"):
+                if key in layer and hasattr(layer[key], "float"):
+                    trace_sum[f"layer{layer_idx}_{key}_mean"] += float(layer[key].float().mean().detach().cpu())
+            if "active" in layer:
+                grid = layer["active"].view(-1, model.backbone.slots * model.backbone.slots).float().mean(dim=0)
+                trace_sum[f"layer{layer_idx}_active_cells"] += float((grid > 0.05).float().sum().cpu())
+            if "choice" in layer:
+                choice = layer["choice"].float().clamp_min(1e-8)
+                trace_sum[f"layer{layer_idx}_choice_entropy"] += float((-(choice * choice.log()).sum(dim=-1).mean()).cpu())
     out = {
         "acc": correct / max(1, total),
         "loss": loss_sum / max(1, total),
     }
     if trace_count:
         for key, value in trace_sum.items():
-            out[key] = value / trace_count
+            divisor = source_trace_count if key.endswith("candidate_usage") or key.endswith("candidate_coverage") or key == "scanner_source_mass_sum" else trace_count
+            out[key] = value / max(1, divisor)
     return out
 
 
@@ -179,6 +214,20 @@ def collect_ablations(model: AudioMatrixClassifier, task, batch_size: int, devic
     logits_no_result, _ = run(disable_sim_result=True)
     logits_no_slot, _ = run(disable_slot_address=True)
     logits_no_layer0, _ = run(ablate_layer_output=0)
+    logits_no_state0, _ = run(ablate_state_after=0)
+
+    def primitive_dist(trace):
+        rows = []
+        for layer in trace.get("layers", []):
+            out = torch.zeros(
+                layer["candidate_ids"].shape[0],
+                model.backbone.pm.num_primitives,
+                device=layer["choice"].device,
+                dtype=layer["choice"].dtype,
+            )
+            out.scatter_add_(1, layer["candidate_ids"], layer["choice"])
+            rows.append(out)
+        return torch.cat(rows, dim=0) if rows else torch.zeros(1, 1, device=device)
 
     out = {
         "sim_disabled_delta": float((F.cross_entropy(logits_no_sim, _batch_y(batch)) - F.cross_entropy(logits_full, _batch_y(batch))).detach().cpu()),
@@ -186,15 +235,152 @@ def collect_ablations(model: AudioMatrixClassifier, task, batch_size: int, devic
         "sim_result_disabled_delta": float((F.cross_entropy(logits_no_result, _batch_y(batch)) - F.cross_entropy(logits_full, _batch_y(batch))).detach().cpu()),
         "slot_disabled_delta": float((F.cross_entropy(logits_no_slot, _batch_y(batch)) - F.cross_entropy(logits_full, _batch_y(batch))).detach().cpu()),
         "layer0_output_disabled_delta": float((F.cross_entropy(logits_no_layer0, _batch_y(batch)) - F.cross_entropy(logits_full, _batch_y(batch))).detach().cpu()),
+        "layer0_state_disabled_delta": float((F.cross_entropy(logits_no_state0, _batch_y(batch)) - F.cross_entropy(logits_full, _batch_y(batch))).detach().cpu()),
+        "choice_without_sim_delta": float((primitive_dist(trace_full) - primitive_dist(run(disable_sim=True)[1])).abs().mean().cpu()),
     }
     if trace_full.get("layers"):
         first = trace_full["layers"][0]
         scan = first.get("scan_metrics", {})
-        for key in ("grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "scanner_source_mass_sum"):
+        for key in (
+            "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "global_candidate_usage",
+            "grid_candidate_coverage", "semantic_candidate_coverage", "usage_candidate_coverage", "random_candidate_coverage", "global_candidate_coverage",
+            "scanner_source_mass_sum",
+        ):
             if key in scan:
                 out[key] = float(scan[key])
     model.backbone.pm.usage_score.copy_(usage_state)
     return out
+
+
+def _next_batch(iterator, loader):
+    try:
+        return next(iterator), iterator
+    except StopIteration:
+        iterator = iter(loader)
+        return next(iterator), iterator
+
+
+def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
+    """Real-data discovery with no expected actions and no layer-role schedule."""
+    train_loader, _, _ = task.loaders(
+        batch_size=args.batch_size,
+        eval_batch_size=args.eval_batch_size,
+        workers=args.workers,
+        pin_memory=device.startswith("cuda"),
+        drop_last=True,
+    )
+    train_iter = iter(train_loader)
+    credit = BoundedCounterfactualCredit(
+        layers=model.backbone.num_layers,
+        slots=model.backbone.slots,
+        primitives=model.backbone.pm.num_primitives,
+        budget=args.credit_budget,
+    )
+    best = 0.0
+    train_acc = train_loss = 0.0
+    last_diag: Dict[str, float] = {}
+    global_step = 0
+    for epoch in range(1, args.epochs + 1):
+        epoch_start = time.perf_counter()
+        model.train()
+        total = correct = 0
+        loss_sum = 0.0
+        tau = max(args.tau_min, args.tau_start * (args.tau_decay ** (epoch - 1)))
+        for step in range(max(1, args.steps_per_epoch)):
+            global_step += 1
+            raw_batch, train_iter = _next_batch(train_iter, train_loader)
+            batch = _move_batch(raw_batch, device)
+            credit.advance(model.backbone.pm)
+            opt.zero_grad(set_to_none=True)
+            with torch.amp.autocast(device_type="cuda", dtype=dtype, enabled=device.startswith("cuda") and dtype != torch.float32):
+                features = model.frontend(_batch_x(batch))
+                logits, trace = model.backbone(
+                    features,
+                    tau=tau,
+                    curriculum_mode="deploy",
+                    choice_sampling="softmax",
+                    collect_scan_metrics=False,
+                )
+                ce = F.cross_entropy(logits, _batch_y(batch))
+                policy_loss, simulator_loss, align_metrics = credit.alignment_losses(trace)
+                health_loss, health_metrics = generic_discovery_health_loss(
+                    trace,
+                    slots=model.backbone.slots,
+                    num_primitives=model.backbone.pm.num_primitives,
+                    target_active_cells=args.target_active_cells,
+                )
+                loss = (
+                    ce
+                    + args.lambda_credit_policy * policy_loss
+                    + args.lambda_credit_simulator * simulator_loss
+                    + args.lambda_discovery_health * health_loss
+                )
+            scaler.scale(loss).backward()
+            scaler.unscale_(opt)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            scaler.step(opt)
+            scaler.update()
+
+            if global_step % max(1, args.credit_interval) == 0:
+                credit_raw, train_iter = _next_batch(train_iter, train_loader)
+                credit_batch = _move_batch(credit_raw, device)
+                credit_x = _batch_x(credit_batch)[: args.credit_batch_size]
+                credit_y = _batch_y(credit_batch)[: args.credit_batch_size]
+                with torch.no_grad(), torch.amp.autocast(
+                    device_type="cuda",
+                    dtype=dtype,
+                    enabled=device.startswith("cuda") and dtype != torch.float32,
+                ):
+                    credit_features = model.frontend(credit_x)
+                credit.collect(model.backbone, credit_features, credit_y, tau=tau)
+
+            n = _batch_y(batch).shape[0]
+            total += n
+            correct += (logits.argmax(dim=-1) == _batch_y(batch)).sum().item()
+            loss_sum += float(loss.detach().cpu()) * n
+            last_diag = {
+                "ce_loss": float(ce.detach().cpu()),
+                "credit_policy_loss": float(policy_loss.detach().cpu()),
+                "credit_simulator_loss": float(simulator_loss.detach().cpu()),
+                "discovery_health_loss": float(health_loss.detach().cpu()),
+                **align_metrics,
+                **health_metrics,
+                **credit.metrics(),
+            }
+            if args.log_every > 0 and global_step % args.log_every == 0:
+                print(
+                    f"discovery step={global_step} ce={last_diag['ce_loss']:.4f} "
+                    f"acc={correct/max(1,total):.3f} active={last_diag['active_cells']:.1f} "
+                    f"top={last_diag['primitive_top_share']:.3f} "
+                    f"credit={int(last_diag.get('credit_total_measurements', 0))} "
+                    f"gain={last_diag.get('credit_gain_mean', 0.0):+.5f}",
+                    flush=True,
+                )
+        train_acc = correct / max(1, total)
+        train_loss = loss_sum / max(1, total)
+        ev = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, "deploy")
+        best = max(best, ev["acc"])
+        samples_per_second = total / max(1e-8, time.perf_counter() - epoch_start)
+        last_diag["train_samples_per_second"] = float(samples_per_second)
+        append_csv(
+            ensure_dir(Path(args.out_dir)) / "metrics.csv",
+            {
+                "epoch": epoch,
+                "train_acc": train_acc,
+                "train_loss": train_loss,
+                "val_acc": ev["acc"],
+                "val_loss": ev["loss"],
+                "samples_per_second": samples_per_second,
+                **last_diag,
+            },
+        )
+        print(
+            f"real-discovery epoch={epoch}/{args.epochs} train={train_acc:.3f} "
+            f"val={ev['acc']:.3f} speed={samples_per_second:.1f}/s "
+            f"credit_closed={bool(credit.metrics().get('credit_closed', 0))}",
+            flush=True,
+        )
+    return train_acc, train_loss, best, {**last_diag, **credit.metrics()}
 
 
 def _build_task(args):
@@ -247,13 +433,13 @@ def _report_synthetic(args, model: AudioMatrixClassifier, task, train_acc: float
     full = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="teacher")
     audit = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="audit")
     deploy = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="deploy")
-    honesty_score = deploy["acc"] / max(1e-8, full["acc"])
+    honesty_score = deploy["acc"] / full["acc"] if full["acc"] > 0 else 0.0
     waveform_length = args.length
     return {
         "variant": args.variant,
         "dataset": args.dataset,
         "task": "synthetic_audio_order",
-        "curriculum_schedule": args.curriculum_schedule,
+        "curriculum_schedule": "none" if args.discovery else args.curriculum_schedule,
         "honesty_floor": float(args.honesty_floor),
         "honesty_score": float(honesty_score),
         "train_acc": float(train_acc),
@@ -279,10 +465,16 @@ def _report_synthetic(args, model: AudioMatrixClassifier, task, train_acc: float
     }
 
 
-def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAcceptanceTask, train_acc: float, train_loss: float, best_full: float, device: str, start: float) -> Dict[str, object]:
-    full = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="teacher", split="validation")
-    audit = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="audit", split="validation")
+def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAcceptanceTask, train_acc: float, train_loss: float, best_full: float, device: str, start: float, discovery_metrics: Dict[str, float] | None = None) -> Dict[str, object]:
     deploy = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="deploy", split="validation")
+    if args.discovery:
+        # Real discovery has no scaffold/hint modes. Reuse the exact same
+        # measured deploy result instead of comparing different random batches.
+        full = dict(deploy)
+        audit = dict(deploy)
+    else:
+        full = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="teacher", split="validation")
+        audit = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="audit", split="validation")
     test = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="deploy", split="testing") if task.test_ds is not None else None
     ablations = collect_ablations(model, task, min(args.eval_batch_size, 32), device, tau=args.tau_min)
     chance = 1.0 / max(1, len(task.classes))
@@ -309,12 +501,15 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         "test_acc": float(test["acc"]) if test is not None else None,
         "deploy_above_random": bool(deploy["acc"] >= chance),
         "deploy_above_random_margin": float(deploy["acc"] - chance),
-        "status": "PASS" if deploy["acc"] >= chance and honesty_score >= args.honesty_floor else "FAIL",
+        "supervision_mode": "real_counterfactual_discovery" if args.discovery else "ce_only",
+        "expected_actions_used_for_training": False,
+        "layer_role_priors_used": False,
         "val_metrics": full,
         "audit_metrics": audit,
         "deploy_metrics": deploy,
         "test_metrics": test or {},
         "ablations": ablations,
+        "discovery_metrics": discovery_metrics or {},
         "frontend": {
             "params": float(sum(p.numel() for p in model.frontend.parameters())),
             "flops": float(model.frontend.report(waveform_length, args.slots, args.dim)["flops"]),
@@ -328,14 +523,30 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         "seconds": time.time() - start,
     }
     report["checks"] = {
-        "deploy_above_random": report["deploy_above_random"],
+        "deploy_above_random": deploy["acc"] >= chance + (0.02 if args.discovery else 0.0),
         "honesty_retained": report["honesty_score"] >= args.honesty_floor,
         "simulator_ce_ablation_positive": ablations["sim_disabled_delta"] > 0,
+        "simulator_changes_choice": ablations.get("choice_without_sim_delta", 0.0) > 1e-5,
         "non_grid_scanner_usage_positive": (
-            ablations.get("semantic_candidate_usage", 0.0) + ablations.get("usage_candidate_usage", 0.0) + ablations.get("random_candidate_usage", 0.0)
+            ablations.get("semantic_candidate_usage", 0.0) + ablations.get("usage_candidate_usage", 0.0) + ablations.get("random_candidate_usage", 0.0) + ablations.get("global_candidate_usage", 0.0)
         ) > 0.05,
-        "layer0_ablation_positive": ablations["layer0_output_disabled_delta"] > 0,
+        "layer0_ablation_positive": (
+            ablations["layer0_state_disabled_delta"] > 0
+            if args.layers > 1
+            else ablations["layer0_output_disabled_delta"] > 0
+        ),
     }
+    if args.discovery:
+        report["checks"].pop("honesty_retained", None)
+        report["checks"].update({
+            "credit_closed": bool((discovery_metrics or {}).get("credit_closed", 0.0)),
+            "bounded_credit_budget": (discovery_metrics or {}).get("credit_budget_used", args.credit_budget + 1) <= args.credit_budget,
+            "joint_credit_measured": (discovery_metrics or {}).get("credit_total_joint_measurements", 0.0) > 0,
+            "random_credit_budget_nonzero": (discovery_metrics or {}).get("credit_random_targets", 0.0) > 0,
+            "no_primitive_collapse": (discovery_metrics or {}).get("primitive_top_share", 1.0) < 0.65,
+            "active_path_alive": (discovery_metrics or {}).get("active_cells", 0.0) > 0,
+        })
+    report["status"] = "PASS" if all(report["checks"].values()) else "FAIL"
     return report
 
 
@@ -362,11 +573,26 @@ def train_variant(args) -> Dict[str, object]:
     dtype = amp_dtype(args.amp)
 
     start = time.time()
-    train_acc, train_loss, best_full = _train(args, model, task, opt, scaler, dtype, device)
+    discovery_metrics: Dict[str, float] = {}
+    if args.dataset == "speechcommands" and args.discovery:
+        train_acc, train_loss, best_full, discovery_metrics = _train_real_discovery(
+            args, model, task, opt, scaler, dtype, device
+        )
+    else:
+        train_acc, train_loss, best_full = _train(args, model, task, opt, scaler, dtype, device)
     if args.dataset == "speechcommands":
-        report = _report_real(args, model, task, train_acc, train_loss, best_full, device, start)
+        report = _report_real(args, model, task, train_acc, train_loss, best_full, device, start, discovery_metrics)
     else:
         report = _report_synthetic(args, model, task, train_acc, train_loss, best_full, device, start)
+    out_dir = ensure_dir(Path(args.out_dir))
+    torch.save(
+        {
+            "model_state": model.state_dict(),
+            "args": vars(args),
+            "report_status": report.get("status"),
+        },
+        out_dir / "model_last.pt",
+    )
     return report
 
 

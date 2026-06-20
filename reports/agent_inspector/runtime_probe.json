@@ -2,7 +2,7 @@
   "schema": "runtime_probe_contract.v3",
   "project": "acrch_builder",
   "producer": "tools/project_probe/probe_learning_loop.py",
-  "timestamp": 1781939050.5679169,
+  "timestamp": 1781972676.8713648,
   "run_type": "one_batch_backward_probe",
   "note": "Uses the same canonical objective as training; reports aggregate and per-loss autograd connectivity separately.",
   "config": {
@@ -175,11 +175,11 @@
       "grad_fn": "NllLossBackward0",
       "applicable": true,
       "target_grad_norms": {
-        "choice_controller": 0.02357533552391193,
-        "gate_controller": 0.06617680257992534,
-        "scanner": 0.02702736429399929,
-        "simulator": 0.021691520464025733,
-        "executor": 0.008733703633045015,
+        "choice_controller": 0.023575337377523275,
+        "gate_controller": 0.06617680305548365,
+        "scanner": 0.027027360175044007,
+        "simulator": 0.021691519253499842,
+        "executor": 0.008733704472429308,
         "classifier": 0.17847803786736963
       },
       "connected_to_intended_target": true
@@ -440,14 +440,14 @@
     }
   },
   "grad_norms": {
-    "controller": 8.891132219013317,
-    "scanner": 55.3096456201006,
-    "simulator": 69.93541703445287,
-    "executor": 0.008839524814099366,
+    "controller": 8.891132219022637,
+    "scanner": 55.30964473729453,
+    "simulator": 69.93541703441221,
+    "executor": 0.008839524814755553,
     "memory": null,
     "classifier": 0.17847803786736963,
     "primitive_matrix": 21.394500732421875,
-    "model_core": 92.12578488465313
+    "model_core": 92.12578435461205
   },
   "credit_path": {
     "expected_edge_present": true,
