@@ -10,7 +10,7 @@ from .primitive_matrix import PrimitiveMatrix5x5
 from .hybrid_scanner import HybridScanner
 from .simulator import LowRankSimulator
 from .executor import ActionExecutor
-
+from .self_delta_candidate_field import SelfDeltaCandidateField
 
 def _ln_logits(x: torch.Tensor) -> torch.Tensor:
     return F.layer_norm(x, x.shape[-1:])
@@ -42,6 +42,10 @@ class ActionMatrixLayer(nn.Module):
         enable_pair_jl_bilinear: bool = False,
         pair_jl_dim: int = 16,
         pair_candidate_budget: int = 64,
+        projection_logit_cap: float = 0.0,
+        enable_self_delta_probe: bool = False,
+        enable_self_delta_choice: bool = False,
+        self_delta_max_scale: float = 0.25,
     ) -> None:
         super().__init__()
         if state_norm not in {"none", "layernorm"}:
@@ -54,6 +58,10 @@ class ActionMatrixLayer(nn.Module):
         self.enable_single_signed_projection = enable_single_signed_projection
         self.enable_pair_jl_bilinear = enable_pair_jl_bilinear
         self.pair_candidate_budget = pair_candidate_budget
+        self.projection_logit_cap = float(projection_logit_cap)
+        self.enable_self_delta_probe = bool(enable_self_delta_probe)
+        self.enable_self_delta_choice = bool(enable_self_delta_choice)
+        self.self_delta_max_scale = float(self_delta_max_scale)
 
         context_dim = dim * 5
         emb_dim = primitive_matrix.emb.shape[-1]
@@ -66,6 +74,14 @@ class ActionMatrixLayer(nn.Module):
         )
         self.simulator = LowRankSimulator(dim=dim, num_primitives=primitive_matrix.num_primitives, rank=sim_rank, embed_dim=emb_dim)
         self.executor = ActionExecutor(dim=dim, primitive_matrix=primitive_matrix)
+
+        self.self_delta_field = SelfDeltaCandidateField(
+            dim=dim,
+            context_dim=context_dim,
+            prim_embed_dim=emb_dim,
+            hidden=max(64, dim * 2),
+        )
+        self.self_delta_logit_scale = nn.Parameter(torch.tensor(-6.0))
 
         self.context_logits = nn.Linear(context_dim, top_k)
         self.sim_logits = nn.Linear(dim, 1)
@@ -179,6 +195,9 @@ class ActionMatrixLayer(nn.Module):
         primitive_override_ids: Optional[torch.Tensor] = None,
         collect_scan_metrics: bool = True,
         projection_target_b: Optional[torch.Tensor] = None,
+        disable_self_delta: bool = False,
+        zero_self_delta: bool = False,
+        shuffle_self_delta: bool = False,
     ):
         b, s, d = state.shape
         src = state.unsqueeze(2).expand(b, s, s, d)
@@ -307,6 +326,54 @@ class ActionMatrixLayer(nn.Module):
         top_source_ids = source_ids.gather(1, top_pos)
 
         sim, predicted_gain = self.simulator(flat_src, top_ids)
+
+        if all_primitive_effects is None:
+            primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
+        else:
+            primitive_out = all_primitive_effects.gather(
+                1, top_ids.unsqueeze(-1).expand(-1, -1, d)
+            )
+
+        self_delta_component = torch.zeros_like(predicted_gain)
+        self_delta_metrics = {}
+        self_delta_scale = torch.zeros((), device=flat_context.device, dtype=flat_context.dtype)
+
+        self_delta_active = (
+            self.enable_self_delta_probe
+            or self.enable_self_delta_choice
+        )
+
+        if self_delta_active and not disable_self_delta:
+            top_prim_emb = self.pm.emb.to(
+                device=flat_context.device,
+                dtype=flat_context.dtype,
+            )[top_ids]
+
+            self_delta_component, self_delta_metrics = self.self_delta_field(
+                flat_context=flat_context,
+                flat_src=flat_src,
+                flat_tgt=flat_tgt,
+                top_prim_emb=top_prim_emb,
+                sim=sim,
+                actual=primitive_out,
+                detach_actual=True,
+            )
+
+            if zero_self_delta:
+                self_delta_component = torch.zeros_like(self_delta_component)
+
+            if shuffle_self_delta and self_delta_component.shape[0] > 1:
+                perm = torch.randperm(
+                    self_delta_component.shape[0],
+                    device=self_delta_component.device,
+                )
+                self_delta_component = self_delta_component[perm]
+
+            self_delta_scale = (
+                self.self_delta_max_scale
+                * torch.sigmoid(self.self_delta_logit_scale)
+            ).to(dtype=flat_context.dtype)
+
         sim_component = (
             torch.zeros_like(predicted_gain)
             if disable_sim or disable_sim_result
@@ -324,13 +391,29 @@ class ActionMatrixLayer(nn.Module):
         ).reshape(1, s * s, self.pm.num_primitives).expand(b, -1, -1)
         primitive_pair = primitive_pair.reshape(b * s * s, self.pm.num_primitives)
         primitive_pair_component = primitive_pair.gather(1, top_ids)
+        proposal_component = _ln_logits(top_vals)
+        projection_mask = top_source_ids >= 5
+        if projection_enabled and self.projection_logit_cap > 0:
+            # Only limit positive source dominance. A symmetric clamp would
+            # lift strongly negative signed evidence and increase usage.
+            capped = proposal_component.clamp(max=self.projection_logit_cap)
+            with torch.no_grad():
+                selected_projection = projection_mask
+                clipped = selected_projection & (proposal_component > self.projection_logit_cap)
+                scan_metrics["projection_logit_cap"] = self.projection_logit_cap
+                scan_metrics["projection_logit_clipped_fraction"] = float(
+                    clipped.float().sum().div(selected_projection.float().sum().clamp_min(1.0)).cpu()
+                )
+            proposal_component = torch.where(projection_mask, capped, proposal_component)
         choice_logits = (
             _ln_logits(context_component)
             + _ln_logits(gain_component)
             + _ln_logits(sim_component)
-            + _ln_logits(top_vals)
+            + proposal_component
             + primitive_pair_component
         )
+        if self.enable_self_delta_choice and not disable_self_delta:
+            choice_logits = choice_logits + self_delta_scale * _ln_logits(self_delta_component)
         if choice_sampling not in {"auto", "gumbel", "softmax", "uniform"}:
             raise ValueError(f"unknown choice sampling: {choice_sampling!r}")
         use_gumbel = self.training and choice_sampling in {"auto", "gumbel"}
@@ -380,12 +463,7 @@ class ActionMatrixLayer(nn.Module):
                     (choice * (top_source_ids == 6).to(choice.dtype)).sum(dim=-1).mean().cpu()
                 )
 
-        if all_primitive_effects is None:
-            primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
-        else:
-            primitive_out = all_primitive_effects.gather(
-                1, top_ids.unsqueeze(-1).expand(-1, -1, d)
-            )
+        # primitive_out already computed before choice logits for optional self-delta diagnostics.
         transformed = (choice.unsqueeze(-1) * primitive_out).sum(dim=1)
 
         pair_edge = self._flat_pair_bias(self.edge_pair_bias, b, flat_context.dtype, flat_context.device)
@@ -485,6 +563,19 @@ class ActionMatrixLayer(nn.Module):
             "cell_output_pair_bias": self.cell_output_pair_bias.detach(),
             "primitive_pair_bias": self.primitive_pair_bias.detach(),
             "scan_metrics": scan_metrics,
+            "self_delta_component": self_delta_component.detach(),
+            "self_delta_scale": self_delta_scale.detach(),
+            "self_delta_enabled": torch.tensor(
+                float(self_delta_active),
+                device=flat_context.device,
+            ).detach(),
+            "self_delta_choice_enabled": torch.tensor(
+                float(self.enable_self_delta_choice),
+                device=flat_context.device,
+            ).detach(),
+            "self_delta_metrics": {
+                k: v.detach() for k, v in self_delta_metrics.items()
+            },
             "curriculum_mode": curriculum_mode,
             "choice_sampling": "uniform" if choice_sampling == "uniform" else ("gumbel" if use_gumbel else "softmax"),
         }
@@ -511,6 +602,10 @@ class ActionMatrixModel(nn.Module):
         enable_pair_jl_bilinear: bool = False,
         pair_jl_dim: int = 16,
         pair_candidate_budget: int = 64,
+        projection_logit_cap: float = 0.0,
+        enable_self_delta_probe: bool = False,
+        enable_self_delta_choice: bool = False,
+        self_delta_max_scale: float = 0.25,
     ) -> None:
         super().__init__()
         if input_norm not in {"none", "layernorm"}:
@@ -538,6 +633,10 @@ class ActionMatrixModel(nn.Module):
                 enable_pair_jl_bilinear=enable_pair_jl_bilinear,
                 pair_jl_dim=pair_jl_dim,
                 pair_candidate_budget=pair_candidate_budget,
+                projection_logit_cap=projection_logit_cap,
+                enable_self_delta_probe=enable_self_delta_probe,
+                enable_self_delta_choice=enable_self_delta_choice,
+                self_delta_max_scale=self_delta_max_scale,
             )
             for _ in range(layers)
         ])
@@ -584,6 +683,9 @@ class ActionMatrixModel(nn.Module):
         primitive_ablation_ids: Optional[list[Optional[torch.Tensor]]] = None,
         primitive_override_ids: Optional[list[Optional[torch.Tensor]]] = None,
         collect_scan_metrics: bool = True,
+        disable_self_delta: bool = False,
+        zero_self_delta: bool = False,
+        shuffle_self_delta: bool = False,
     ):
         b = x.shape[0]
         s = self.slots
@@ -631,6 +733,9 @@ class ActionMatrixModel(nn.Module):
                 ),
                 collect_scan_metrics=collect_scan_metrics,
                 projection_target_b=projection_target_b,
+                disable_self_delta=disable_self_delta,
+                zero_self_delta=zero_self_delta,
+                shuffle_self_delta=shuffle_self_delta,
             )
             if ablate_state_after is not None and idx == ablate_state_after:
                 state = torch.zeros_like(state)

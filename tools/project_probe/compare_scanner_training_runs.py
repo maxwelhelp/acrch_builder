@@ -16,6 +16,8 @@ FIELDS = (
     "pair_jl16_usage",
     "primitive_top_share",
     "active_cells",
+    "projection_logit_cap",
+    "projection_logit_clipped_fraction",
 )
 
 

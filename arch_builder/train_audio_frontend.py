@@ -28,7 +28,22 @@ PROJECTION_METRIC_KEYS = (
     "pair_jl16_top_score",
     "pair_jl16_seconds",
     "pair_jl16_pairs_tested",
+    "projection_logit_cap",
+    "projection_logit_clipped_fraction",
 )
+
+SELF_DELTA_METRIC_KEYS = (
+    "self_delta_mean",
+    "self_delta_abs",
+    "self_delta_score_mean",
+    "self_delta_score_std",
+    "self_delta_sim_norm",
+    "self_delta_actual_norm",
+    "self_delta_scale",
+    "self_delta_enabled",
+    "self_delta_choice_enabled",
+)
+
 
 
 def curriculum_phase(epoch: int, total_epochs: int, schedule: str) -> str:
@@ -99,6 +114,12 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--enable-pair-jl-bilinear", action="store_true")
     ap.add_argument("--pair-jl-dim", type=int, default=16)
     ap.add_argument("--pair-candidate-budget", type=int, default=64)
+    ap.add_argument("--projection-logit-cap", type=float, default=0.0)
+    ap.add_argument("--primitive-top-share-target", type=float, default=0.60)
+    ap.add_argument("--primitive-entropy-floor", type=float, default=0.65)
+    ap.add_argument("--enable-self-delta-probe", action="store_true")
+    ap.add_argument("--enable-self-delta-choice", action="store_true")
+    ap.add_argument("--self-delta-max-scale", type=float, default=0.25)
     return ap
 
 
@@ -190,6 +211,18 @@ def evaluate(
             ):
                 if key in scan:
                     trace_sum[key] += float(scan[key])
+
+            sdm = layer.get("self_delta_metrics", {})
+            for k, v in sdm.items():
+                if hasattr(v, "detach"):
+                    trace_sum[k] += float(v.detach().float().cpu())
+                else:
+                    trace_sum[k] += float(v)
+
+            for key in ("self_delta_scale", "self_delta_enabled", "self_delta_choice_enabled"):
+                if key in layer and hasattr(layer[key], "detach"):
+                    trace_sum[key] += float(layer[key].detach().float().cpu())
+
         for layer_idx, layer in enumerate(trace.get("layers", [])):
             for key in ("listen_gate", "active", "cell_output_gate", "cell_write_mass"):
                 if key in layer and hasattr(layer[key], "float"):
@@ -259,6 +292,34 @@ def collect_ablations(model: AudioMatrixClassifier, task, batch_size: int, devic
         "layer0_state_disabled_delta": float((F.cross_entropy(logits_no_state0, _batch_y(batch)) - F.cross_entropy(logits_full, _batch_y(batch))).detach().cpu()),
         "choice_without_sim_delta": float((primitive_dist(trace_full) - primitive_dist(run(disable_sim=True)[1])).abs().mean().cpu()),
     }
+
+    if getattr(model.backbone, "enable_self_delta_probe", False) or any(
+        getattr(layer, "enable_self_delta_probe", False) or getattr(layer, "enable_self_delta_choice", False)
+        for layer in model.backbone.layers
+    ):
+        logits_no_self, trace_no_self = run(disable_self_delta=True)
+        logits_zero_self, trace_zero_self = run(zero_self_delta=True)
+        logits_shuf_self, trace_shuf_self = run(shuffle_self_delta=True)
+
+        out["self_delta_disabled_delta"] = float(
+            (F.cross_entropy(logits_no_self, _batch_y(batch)) - F.cross_entropy(logits_full, _batch_y(batch))).detach().cpu()
+        )
+        out["self_delta_zero_delta"] = float(
+            (F.cross_entropy(logits_zero_self, _batch_y(batch)) - F.cross_entropy(logits_full, _batch_y(batch))).detach().cpu()
+        )
+        out["self_delta_shuffle_delta"] = float(
+            (F.cross_entropy(logits_shuf_self, _batch_y(batch)) - F.cross_entropy(logits_full, _batch_y(batch))).detach().cpu()
+        )
+        out["choice_without_self_delta_delta"] = float(
+            (primitive_dist(trace_full) - primitive_dist(trace_no_self)).abs().mean().cpu()
+        )
+        out["choice_zero_self_delta_delta"] = float(
+            (primitive_dist(trace_full) - primitive_dist(trace_zero_self)).abs().mean().cpu()
+        )
+        out["choice_shuffle_self_delta_delta"] = float(
+            (primitive_dist(trace_full) - primitive_dist(trace_shuf_self)).abs().mean().cpu()
+        )
+
     if trace_full.get("layers"):
         first = trace_full["layers"][0]
         scan = first.get("scan_metrics", {})
@@ -335,11 +396,13 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                         slots=model.backbone.slots,
                         num_primitives=model.backbone.pm.num_primitives,
                         target_active_cells=args.target_active_cells,
+                        primitive_top_share_target=args.primitive_top_share_target,
+                        primitive_entropy_floor=args.primitive_entropy_floor,
                     )
                 else:
                     policy_loss = simulator_loss = health_loss = torch.zeros((), device=ce.device)
                     align_metrics = {"credit_alignment_items": 0.0, "sim_pred_real_corr": 0.0}
-                    health_metrics = {"active_cells": 0.0, "primitive_top_share": 0.0, "choice_entropy": 0.0}
+                    health_metrics = {"active_cells": 0.0, "primitive_top_share": 0.0, "primitive_entropy": 0.0, "choice_entropy": 0.0}
                 loss = (
                     ce
                     + args.lambda_credit_policy * policy_loss
@@ -552,6 +615,9 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
             "enable_pair_jl_bilinear": bool(args.enable_pair_jl_bilinear),
             "pair_jl_dim": int(args.pair_jl_dim),
             "pair_candidate_budget": int(args.pair_candidate_budget),
+            "projection_logit_cap": float(args.projection_logit_cap),
+            "primitive_top_share_target": float(args.primitive_top_share_target),
+            "primitive_entropy_floor": float(args.primitive_entropy_floor),
         },
         "val_metrics": full,
         "audit_metrics": audit,
@@ -582,6 +648,23 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         "pair_jl16_usage": float((discovery_metrics or {}).get("pair_jl16_usage", 0.0)),
         "primitive_top_share": float((discovery_metrics or {}).get("primitive_top_share", 0.0)),
         "active_cells": float((discovery_metrics or {}).get("active_cells", 0.0)),
+        "projection_logit_cap": float((discovery_metrics or {}).get("projection_logit_cap", args.projection_logit_cap)),
+        "projection_logit_clipped_fraction": float((discovery_metrics or {}).get("projection_logit_clipped_fraction", 0.0)),
+        "self_delta_enabled": float(deploy.get("self_delta_enabled", 0.0)),
+        "self_delta_choice_enabled": float(deploy.get("self_delta_choice_enabled", 0.0)),
+        "self_delta_mean": float(deploy.get("self_delta_mean", 0.0)),
+        "self_delta_abs": float(deploy.get("self_delta_abs", 0.0)),
+        "self_delta_score_mean": float(deploy.get("self_delta_score_mean", 0.0)),
+        "self_delta_score_std": float(deploy.get("self_delta_score_std", 0.0)),
+        "self_delta_sim_norm": float(deploy.get("self_delta_sim_norm", 0.0)),
+        "self_delta_actual_norm": float(deploy.get("self_delta_actual_norm", 0.0)),
+        "self_delta_scale": float(deploy.get("self_delta_scale", 0.0)),
+        "self_delta_disabled_delta": float(ablations.get("self_delta_disabled_delta", 0.0)),
+        "self_delta_zero_delta": float(ablations.get("self_delta_zero_delta", 0.0)),
+        "self_delta_shuffle_delta": float(ablations.get("self_delta_shuffle_delta", 0.0)),
+        "choice_without_self_delta_delta": float(ablations.get("choice_without_self_delta_delta", 0.0)),
+        "choice_zero_self_delta_delta": float(ablations.get("choice_zero_self_delta_delta", 0.0)),
+        "choice_shuffle_self_delta_delta": float(ablations.get("choice_shuffle_self_delta_delta", 0.0)),
     }
     report["checks"] = {
         "deploy_above_random": deploy["acc"] >= chance + (0.02 if args.discovery else 0.0),
@@ -610,7 +693,10 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
             "joint_credit_measured": (discovery_metrics or {}).get("credit_total_joint_measurements", 0.0) > 0,
             "random_credit_budget_nonzero": (discovery_metrics or {}).get("credit_random_targets", 0.0) > 0,
             "unchosen_candidate_credit_measured": (discovery_metrics or {}).get("credit_unchosen_measurements", 0.0) > 0,
-            "no_primitive_collapse": (discovery_metrics or {}).get("primitive_top_share", 1.0) < 0.65,
+            "no_primitive_collapse": (
+                (discovery_metrics or {}).get("primitive_top_share", 1.0)
+                <= args.primitive_top_share_target
+            ),
             "active_path_alive": (discovery_metrics or {}).get("active_cells", 0.0) > 0,
         })
     local_ok = all(report["checks"].values())
@@ -641,6 +727,10 @@ def train_variant(args) -> Dict[str, object]:
         enable_pair_jl_bilinear=args.enable_pair_jl_bilinear,
         pair_jl_dim=args.pair_jl_dim,
         pair_candidate_budget=args.pair_candidate_budget,
+        projection_logit_cap=args.projection_logit_cap,
+        enable_self_delta_probe=args.enable_self_delta_probe or args.enable_self_delta_choice,
+        enable_self_delta_choice=args.enable_self_delta_choice,
+        self_delta_max_scale=args.self_delta_max_scale,
     ).to(device)
     model.choice_sampling = "uniform" if args.controller_baseline == "random" else "auto"
     if args.controller_baseline in {"frozen", "random"}:

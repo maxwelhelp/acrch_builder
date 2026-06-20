@@ -30,3 +30,11 @@ on CPU. A CPU run can only return `SMOKE_PASS`.
 
 This synthetic probe validates the scanner operators. It is not real discovery
 acceptance and cannot prove SpeechCommands learning quality.
+
+## Real-train stabilization
+
+The recommended real-train mode is single signed projection only. Pair JL is
+disabled unless `ENABLE_PAIR_JL_BILINEAR=1` is explicitly supplied. Projection
+logit capping is disabled by default (`PROJECTION_LOGIT_CAP=0.0`). Collapse is
+controlled on the final primitive distribution across all scanner sources with
+a top-share target of 0.60 and normalized primitive-entropy pressure.

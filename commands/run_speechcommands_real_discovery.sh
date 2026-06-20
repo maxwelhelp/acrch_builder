@@ -12,6 +12,12 @@ fi
 if [[ "${ENABLE_PAIR_JL_BILINEAR:-0}" == "1" ]]; then
   SCANNER_ARGS+=(--enable-pair-jl-bilinear)
 fi
+if [[ "${ENABLE_SELF_DELTA_PROBE:-0}" == "1" ]]; then
+  SCANNER_ARGS+=(--enable-self-delta-probe)
+fi
+if [[ "${ENABLE_SELF_DELTA_CHOICE:-0}" == "1" ]]; then
+  SCANNER_ARGS+=(--enable-self-delta-choice)
+fi
 
 python -m arch_builder.train_audio_frontend \
   --dataset speechcommands \
@@ -46,11 +52,15 @@ python -m arch_builder.train_audio_frontend \
   --single-proj-dim "${SINGLE_PROJ_DIM:-32}" \
   --pair-jl-dim "${PAIR_JL_DIM:-16}" \
   --pair-candidate-budget "${PAIR_CANDIDATE_BUDGET:-64}" \
+  --projection-logit-cap "${PROJECTION_LOGIT_CAP:-0.0}" \
+  --primitive-top-share-target "${PRIMITIVE_TOP_SHARE_TARGET:-0.60}" \
+  --primitive-entropy-floor "${PRIMITIVE_ENTROPY_FLOOR:-0.65}" \
   --target-active-cells "${TARGET_ACTIVE_CELLS:-6}" \
   --train-limit "${TRAIN_LIMIT:-0}" \
   --val-limit "${VAL_LIMIT:-0}" \
   --test-limit "${TEST_LIMIT:-2000}" \
   --log-every "${LOG_EVERY:-20}" \
+  --self-delta-max-scale "${SELF_DELTA_MAX_SCALE:-0.25}" \
   --out-dir "$OUT" \
   --latest-report "$OUT/LATEST_RUN_REPORT.md" \
   "${SCANNER_ARGS[@]}"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -424,10 +425,12 @@ def generic_discovery_health_loss(
     slots: int,
     num_primitives: int,
     target_active_cells: int,
+    primitive_top_share_target: float = 0.60,
+    primitive_entropy_floor: float = 0.65,
 ) -> Tuple[torch.Tensor, Dict[str, float]]:
     """Task-agnostic anti-collapse pressure for real discovery."""
     losses = []
-    active_counts, top_shares, entropies = [], [], []
+    active_counts, top_shares, entropies, primitive_entropies = [], [], [], []
     e = slots * slots
     keep = max(1, min(e, int(target_active_cells)))
     for layer in trace["layers"]:
@@ -454,7 +457,11 @@ def generic_discovery_health_loss(
         global_mass = primitive_mass.mean(dim=0)
         global_mass = global_mass / global_mass.sum().clamp_min(1e-8)
         top_share = global_mass.max()
-        collapse = F.relu(top_share - 0.65).pow(2)
+        primitive_entropy = -(
+            global_mass.clamp_min(1e-8) * global_mass.clamp_min(1e-8).log()
+        ).sum() / math.log(max(2, num_primitives))
+        collapse = F.relu(top_share - primitive_top_share_target).pow(2)
+        diversity = F.relu(primitive_entropy_floor - primitive_entropy).pow(2)
         alive_floor = F.relu(0.03 - active.mean()).pow(2)
         top_alive_floor = F.relu(0.12 - mean_active.topk(keep).values.mean()).pow(2)
         losses.append(
@@ -462,17 +469,22 @@ def generic_discovery_health_loss(
             + 0.05 * topology_variance
             + 0.01 * F.relu(0.8 - entropy).pow(2)
             + 0.0005 * coverage
-            + 0.05 * collapse
+            + 2.00 * collapse
+            + 0.50 * diversity
             + 0.10 * alive_floor
             + 0.20 * top_alive_floor
         )
         active_counts.append((mean_active > 0.05).float().sum())
         top_shares.append(top_share.detach())
         entropies.append(entropy.detach())
+        primitive_entropies.append(primitive_entropy.detach())
     total = torch.stack(losses).mean()
     return total, {
         "active_cells": float(torch.stack(active_counts).mean().detach().cpu()),
         "primitive_top_share": float(torch.stack(top_shares).mean().cpu()),
+        "primitive_entropy": float(torch.stack(primitive_entropies).mean().cpu()),
+        "primitive_top_share_target": float(primitive_top_share_target),
+        "primitive_entropy_floor": float(primitive_entropy_floor),
         "choice_entropy": float(torch.stack(entropies).mean().cpu()),
     }
 

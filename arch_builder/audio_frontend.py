@@ -253,6 +253,10 @@ class AudioMatrixClassifier(nn.Module):
         enable_pair_jl_bilinear: bool = False,
         pair_jl_dim: int = 16,
         pair_candidate_budget: int = 64,
+        projection_logit_cap: float = 0.0,
+        enable_self_delta_probe: bool = False,
+        enable_self_delta_choice: bool = False,
+        self_delta_max_scale: float = 0.25,
     ) -> None:
         super().__init__()
         self.frontend = frontend
@@ -272,6 +276,10 @@ class AudioMatrixClassifier(nn.Module):
             enable_pair_jl_bilinear=enable_pair_jl_bilinear,
             pair_jl_dim=pair_jl_dim,
             pair_candidate_budget=pair_candidate_budget,
+            projection_logit_cap=projection_logit_cap,
+            enable_self_delta_probe=enable_self_delta_probe,
+            enable_self_delta_choice=enable_self_delta_choice,
+            self_delta_max_scale=self_delta_max_scale,
         )
         # Generic multiclass readout: no layer roles or task-specific operators.
         self.backbone.classifier = nn.Sequential(
@@ -282,13 +290,24 @@ class AudioMatrixClassifier(nn.Module):
             nn.Linear(dim * 2, classes),
         )
 
-    def forward(self, waveforms: torch.Tensor, tau: float = 1.0, curriculum_mode: str = "teacher"):
+    def forward(
+        self,
+        waveforms: torch.Tensor,
+        tau: float = 1.0,
+        curriculum_mode: str = "teacher",
+        disable_self_delta: bool = False,
+        zero_self_delta: bool = False,
+        shuffle_self_delta: bool = False,
+    ):
         features = self.frontend(waveforms)
         logits, trace = self.backbone(
             features,
             tau=tau,
             curriculum_mode=curriculum_mode,
             choice_sampling=self.choice_sampling,
+            disable_self_delta=disable_self_delta,
+            zero_self_delta=zero_self_delta,
+            shuffle_self_delta=shuffle_self_delta,
         )
         trace = dict(trace)
         trace["frontend_variant"] = self.frontend.frontend_name

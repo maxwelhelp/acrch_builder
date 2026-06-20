@@ -45,6 +45,7 @@ def write_latest_report(path: Path, report_dir: str, summary: Dict[str, object])
         "semantic_grid_mismatch", "semantic_neighbor_entropy", "scanner_full_scan", "primitive_embedding_rank", "usage_entropy", "usage_credit_observations",
         "single_signed_projection_usage", "single_signed_projection_candidate_count", "single_signed_projection_top_score", "single_signed_projection_signed_score_mean",
         "pair_jl16_usage", "pair_jl16_candidate_count", "pair_jl16_top_score", "pair_jl16_seconds", "pair_jl16_pairs_tested",
+        "projection_logit_cap", "projection_logit_clipped_fraction",
         "flat_shortcut_candidate_usage", "compositional_pair_candidate_usage",
         "measured_delta_loss_is_source_of_truth", "expected_actions_used_for_training",
         "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "global_candidate_usage", "scanner_source_mass_sum",
