@@ -75,14 +75,6 @@ class ActionMatrixLayer(nn.Module):
         self.simulator = LowRankSimulator(dim=dim, num_primitives=primitive_matrix.num_primitives, rank=sim_rank, embed_dim=emb_dim)
         self.executor = ActionExecutor(dim=dim, primitive_matrix=primitive_matrix)
 
-        self.self_delta_field = SelfDeltaCandidateField(
-            dim=dim,
-            context_dim=context_dim,
-            prim_embed_dim=emb_dim,
-            hidden=max(64, dim * 2),
-        )
-        self.self_delta_logit_scale = nn.Parameter(torch.tensor(-6.0))
-
         self.context_logits = nn.Linear(context_dim, top_k)
         self.sim_logits = nn.Linear(dim, 1)
         self.prev_action_proj = nn.Linear(primitive_matrix.num_primitives, context_dim, bias=False)
@@ -114,6 +106,18 @@ class ActionMatrixLayer(nn.Module):
         )
 
         self._init_gate_priors()
+
+        self.self_delta_field = None
+        if self.enable_self_delta_probe or self.enable_self_delta_choice:
+            cpu_rng = torch.random.get_rng_state()
+            self.self_delta_field = SelfDeltaCandidateField(
+                dim=dim,
+                context_dim=context_dim,
+                prim_embed_dim=emb_dim,
+                hidden=max(64, dim * 2),
+            )
+            torch.random.set_rng_state(cpu_rng)
+        self.self_delta_logit_scale = nn.Parameter(torch.tensor(-6.0))
 
     def _init_gate_priors(self) -> None:
         with torch.no_grad():
@@ -339,8 +343,8 @@ class ActionMatrixLayer(nn.Module):
         self_delta_scale = torch.zeros((), device=flat_context.device, dtype=flat_context.dtype)
 
         self_delta_active = (
-            self.enable_self_delta_probe
-            or self.enable_self_delta_choice
+            self.self_delta_field is not None
+            and (self.enable_self_delta_probe or self.enable_self_delta_choice)
         )
 
         if self_delta_active and not disable_self_delta:

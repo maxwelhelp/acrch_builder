@@ -1,0 +1,312 @@
+{
+  "device": "cuda",
+  "config": {
+    "device": "cuda",
+    "seed": 1,
+    "dim": 64,
+    "rank": 16,
+    "hidden": 128,
+    "batch": 2048,
+    "top_k": 8,
+    "steps": 300,
+    "lr": 0.002
+  },
+  "primitive_count": 25,
+  "history": [
+    {
+      "step": 1,
+      "loss_fullD": 0.8344179391860962,
+      "loss_jl16": 0.8693422079086304,
+      "loss_jl32": 0.8155288100242615,
+      "loss_scalar": 0.7362774610519409,
+      "grad_full": 0.11345976001268034,
+      "grad_jl16": 0.20034131927605306,
+      "grad_jl32": 0.14953299593007313,
+      "grad_scalar": 0.1823273476593252,
+      "random_choice": {
+        "top1_acc": 0.12060546875,
+        "regret": 0.7985529899597168,
+        "captured_oracle_gain": -0.014310479164123535
+      },
+      "fullD_choice": {
+        "top1_acc": 0.16552734375,
+        "regret": 0.7901560068130493,
+        "captured_oracle_gain": -0.0036448240280151367
+      },
+      "jl16_choice": {
+        "top1_acc": 0.10546875,
+        "regret": 0.8184025287628174,
+        "captured_oracle_gain": -0.03952312469482422
+      },
+      "jl32_choice": {
+        "top1_acc": 0.1328125,
+        "regret": 0.7595691680908203,
+        "captured_oracle_gain": 0.03520619869232178
+      },
+      "scalar_choice": {
+        "top1_acc": 0.14501953125,
+        "regret": 0.7704739570617676,
+        "captured_oracle_gain": 0.021355092525482178
+      },
+      "oracle_choice": {
+        "top1_acc": 1.0,
+        "regret": 0.0,
+        "captured_oracle_gain": 1.0
+      }
+    },
+    {
+      "step": 60,
+      "loss_fullD": 0.6670119166374207,
+      "loss_jl16": 0.5606480240821838,
+      "loss_jl32": 0.5865789651870728,
+      "loss_scalar": 0.29074627161026,
+      "grad_full": 0.017588419968230053,
+      "grad_jl16": 0.06933465670565565,
+      "grad_jl32": 0.04668038633470376,
+      "grad_scalar": 0.06104356892544139,
+      "random_choice": {
+        "top1_acc": 0.13427734375,
+        "regret": 0.7859516739845276,
+        "captured_oracle_gain": 0.0005641579627990723
+      },
+      "fullD_choice": {
+        "top1_acc": 0.16455078125,
+        "regret": 0.7864017486572266,
+        "captured_oracle_gain": -8.225440979003906e-06
+      },
+      "jl16_choice": {
+        "top1_acc": 0.20703125,
+        "regret": 0.7762110233306885,
+        "captured_oracle_gain": 0.012950599193572998
+      },
+      "jl32_choice": {
+        "top1_acc": 0.2373046875,
+        "regret": 0.7937614321708679,
+        "captured_oracle_gain": -0.009366989135742188
+      },
+      "scalar_choice": {
+        "top1_acc": 0.32177734375,
+        "regret": 0.4011729955673218,
+        "captured_oracle_gain": 0.48985832929611206
+      },
+      "oracle_choice": {
+        "top1_acc": 1.0,
+        "regret": 0.0,
+        "captured_oracle_gain": 1.0
+      }
+    },
+    {
+      "step": 120,
+      "loss_fullD": 0.6674873232841492,
+      "loss_jl16": 0.4577502906322479,
+      "loss_jl32": 0.531305193901062,
+      "loss_scalar": 0.286241352558136,
+      "grad_full": 0.010998051522478881,
+      "grad_jl16": 0.04235400502956126,
+      "grad_jl32": 0.027779256731089712,
+      "grad_scalar": 0.04384904776815987,
+      "random_choice": {
+        "top1_acc": 0.14111328125,
+        "regret": 0.8072589039802551,
+        "captured_oracle_gain": -0.004673361778259277
+      },
+      "fullD_choice": {
+        "top1_acc": 0.20654296875,
+        "regret": 0.7668250799179077,
+        "captured_oracle_gain": 0.04564845561981201
+      },
+      "jl16_choice": {
+        "top1_acc": 0.19775390625,
+        "regret": 0.7745452523231506,
+        "captured_oracle_gain": 0.03604036569595337
+      },
+      "jl32_choice": {
+        "top1_acc": 0.22412109375,
+        "regret": 0.7565022706985474,
+        "captured_oracle_gain": 0.05849570035934448
+      },
+      "scalar_choice": {
+        "top1_acc": 0.3740234375,
+        "regret": 0.3744017481803894,
+        "captured_oracle_gain": 0.5340386033058167
+      },
+      "oracle_choice": {
+        "top1_acc": 1.0,
+        "regret": 0.0,
+        "captured_oracle_gain": 1.0
+      }
+    },
+    {
+      "step": 180,
+      "loss_fullD": 0.667402446269989,
+      "loss_jl16": 0.40782445669174194,
+      "loss_jl32": 0.4538634419441223,
+      "loss_scalar": 0.2822551131248474,
+      "grad_full": 0.014078181289917469,
+      "grad_jl16": 0.03441907474912484,
+      "grad_jl32": 0.029314425639233855,
+      "grad_scalar": 0.14107828367606223,
+      "random_choice": {
+        "top1_acc": 0.1435546875,
+        "regret": 0.7576555013656616,
+        "captured_oracle_gain": 0.06735175848007202
+      },
+      "fullD_choice": {
+        "top1_acc": 0.18994140625,
+        "regret": 0.7035440802574158,
+        "captured_oracle_gain": 0.13396108150482178
+      },
+      "jl16_choice": {
+        "top1_acc": 0.22705078125,
+        "regret": 0.7228714227676392,
+        "captured_oracle_gain": 0.11016976833343506
+      },
+      "jl32_choice": {
+        "top1_acc": 0.2451171875,
+        "regret": 0.60663902759552,
+        "captured_oracle_gain": 0.2532479166984558
+      },
+      "scalar_choice": {
+        "top1_acc": 0.35302734375,
+        "regret": 0.41202276945114136,
+        "captured_oracle_gain": 0.49281394481658936
+      },
+      "oracle_choice": {
+        "top1_acc": 1.0,
+        "regret": 0.0,
+        "captured_oracle_gain": 1.0
+      }
+    },
+    {
+      "step": 240,
+      "loss_fullD": 0.6334012746810913,
+      "loss_jl16": 0.3679368495941162,
+      "loss_jl32": 0.4188835322856903,
+      "loss_scalar": 0.2703284025192261,
+      "grad_full": 0.01129712935709019,
+      "grad_jl16": 0.024703997536483887,
+      "grad_jl32": 0.0185871964006132,
+      "grad_scalar": 0.1196248894111059,
+      "random_choice": {
+        "top1_acc": 0.11962890625,
+        "regret": 0.7796075344085693,
+        "captured_oracle_gain": 0.003132462501525879
+      },
+      "fullD_choice": {
+        "top1_acc": 0.205078125,
+        "regret": 0.6178765892982483,
+        "captured_oracle_gain": 0.20993435382843018
+      },
+      "jl16_choice": {
+        "top1_acc": 0.2216796875,
+        "regret": 0.6703991889953613,
+        "captured_oracle_gain": 0.1427748203277588
+      },
+      "jl32_choice": {
+        "top1_acc": 0.2412109375,
+        "regret": 0.5807803273200989,
+        "captured_oracle_gain": 0.2573685646057129
+      },
+      "scalar_choice": {
+        "top1_acc": 0.36083984375,
+        "regret": 0.3911104202270508,
+        "captured_oracle_gain": 0.49989545345306396
+      },
+      "oracle_choice": {
+        "top1_acc": 1.0,
+        "regret": 0.0,
+        "captured_oracle_gain": 1.0
+      }
+    },
+    {
+      "step": 300,
+      "loss_fullD": 0.6378229856491089,
+      "loss_jl16": 0.3592339754104614,
+      "loss_jl32": 0.41216447949409485,
+      "loss_scalar": 0.2714630365371704,
+      "grad_full": 0.011326970301816763,
+      "grad_jl16": 0.02358044866032272,
+      "grad_jl32": 0.019709658904094096,
+      "grad_scalar": 0.05609998878084751,
+      "random_choice": {
+        "top1_acc": 0.109375,
+        "regret": 0.7984461188316345,
+        "captured_oracle_gain": -0.0034900903701782227
+      },
+      "fullD_choice": {
+        "top1_acc": 0.2314453125,
+        "regret": 0.6421394348144531,
+        "captured_oracle_gain": 0.192956805229187
+      },
+      "jl16_choice": {
+        "top1_acc": 0.20751953125,
+        "regret": 0.6839982271194458,
+        "captured_oracle_gain": 0.14034849405288696
+      },
+      "jl32_choice": {
+        "top1_acc": 0.2373046875,
+        "regret": 0.6054500341415405,
+        "captured_oracle_gain": 0.2390681505203247
+      },
+      "scalar_choice": {
+        "top1_acc": 0.3564453125,
+        "regret": 0.37797361612319946,
+        "captured_oracle_gain": 0.5249613523483276
+      },
+      "oracle_choice": {
+        "top1_acc": 1.0,
+        "regret": 0.0,
+        "captured_oracle_gain": 1.0
+      }
+    }
+  ],
+  "last": {
+    "step": 300,
+    "loss_fullD": 0.6378229856491089,
+    "loss_jl16": 0.3592339754104614,
+    "loss_jl32": 0.41216447949409485,
+    "loss_scalar": 0.2714630365371704,
+    "grad_full": 0.011326970301816763,
+    "grad_jl16": 0.02358044866032272,
+    "grad_jl32": 0.019709658904094096,
+    "grad_scalar": 0.05609998878084751,
+    "random_choice": {
+      "top1_acc": 0.109375,
+      "regret": 0.7984461188316345,
+      "captured_oracle_gain": -0.0034900903701782227
+    },
+    "fullD_choice": {
+      "top1_acc": 0.2314453125,
+      "regret": 0.6421394348144531,
+      "captured_oracle_gain": 0.192956805229187
+    },
+    "jl16_choice": {
+      "top1_acc": 0.20751953125,
+      "regret": 0.6839982271194458,
+      "captured_oracle_gain": 0.14034849405288696
+    },
+    "jl32_choice": {
+      "top1_acc": 0.2373046875,
+      "regret": 0.6054500341415405,
+      "captured_oracle_gain": 0.2390681505203247
+    },
+    "scalar_choice": {
+      "top1_acc": 0.3564453125,
+      "regret": 0.37797361612319946,
+      "captured_oracle_gain": 0.5249613523483276
+    },
+    "oracle_choice": {
+      "top1_acc": 1.0,
+      "regret": 0.0,
+      "captured_oracle_gain": 1.0
+    }
+  },
+  "checks": {
+    "scalar_beats_random_top1": true,
+    "scalar_captures_gain": true,
+    "jl16_beats_random_top1": true,
+    "jl32_beats_random_top1": true,
+    "fullD_beats_random_top1": true
+  },
+  "status": "PASS"
+}

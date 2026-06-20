@@ -4,6 +4,7 @@ from typing import Dict, Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class SelfDeltaCandidateField(nn.Module):
@@ -97,5 +98,10 @@ class SelfDeltaCandidateField(nn.Module):
             "self_delta_score_std": score.std(unbiased=False).detach(),
             "self_delta_sim_norm": sim.float().norm(dim=-1).mean().detach(),
             "self_delta_actual_norm": actual_ref.float().norm(dim=-1).mean().detach(),
+            "self_delta_rel_error": (
+                delta.float().pow(2).sum(dim=-1).sqrt()
+                / actual_ref.float().pow(2).sum(dim=-1).sqrt().clamp_min(1e-2)
+            ).mean().detach(),
+            "self_delta_sim_actual_cos": F.cosine_similarity(sim.float(), actual_ref.float(), dim=-1).mean().detach(),
         }
         return score, metrics

@@ -11,7 +11,7 @@
       "id": "controller",
       "label": "controller",
       "kind": "grad_group",
-      "grad_norm": 9.403875170615061,
+      "grad_norm": 9.873315120619484,
       "critical": true,
       "status": "grad_ok"
     },
@@ -19,7 +19,7 @@
       "id": "scanner",
       "label": "scanner",
       "kind": "grad_group",
-      "grad_norm": 66.17521797143831,
+      "grad_norm": 56.47704585698383,
       "critical": true,
       "status": "grad_ok"
     },
@@ -27,7 +27,7 @@
       "id": "simulator",
       "label": "simulator",
       "kind": "grad_group",
-      "grad_norm": 60.124817514625526,
+      "grad_norm": 72.53517897395224,
       "critical": true,
       "status": "grad_ok"
     },
@@ -35,7 +35,7 @@
       "id": "classifier",
       "label": "classifier",
       "kind": "grad_group",
-      "grad_norm": 0.2531065135236596,
+      "grad_norm": 0.2194379588442435,
       "critical": true,
       "status": "grad_ok"
     },
@@ -43,7 +43,7 @@
       "id": "model_core",
       "label": "model_core",
       "kind": "grad_group",
-      "grad_norm": 92.4534793166275,
+      "grad_norm": 95.00851657457861,
       "critical": true,
       "status": "grad_ok"
     },
@@ -51,7 +51,7 @@
       "id": "executor",
       "label": "executor",
       "kind": "grad_group",
-      "grad_norm": 0.002945919520017496,
+      "grad_norm": 0.007422932194433172,
       "critical": false,
       "status": "grad_ok"
     },
@@ -67,7 +67,7 @@
       "id": "primitive_matrix",
       "label": "primitive_matrix",
       "kind": "grad_group",
-      "grad_norm": 21.5550594329834,
+      "grad_norm": 21.857725143432617,
       "critical": false,
       "status": "grad_ok"
     }

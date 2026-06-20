@@ -20,13 +20,13 @@
 - `entrypoint` role=`entrypoint` degree=`256` file=`` line=``
 - `scanner` role=`scanner` degree=`75` file=`` line=``
 - `parser` role=`entrypoint` degree=`74` file=`arch_builder/train_vertical_slice.py` line=`1451`
-- `parser` role=`entrypoint` degree=`70` file=`arch_builder/train_audio_frontend.py` line=`62`
+- `parser` role=`entrypoint` degree=`70` file=`arch_builder/train_audio_frontend.py` line=`64`
 - `controller` role=`controller` degree=`68` file=`` line=``
 - `model_core` role=`model_core` degree=`53` file=`` line=``
 - `train` role=`model_core` degree=`52` file=`arch_builder/train_vertical_slice.py` line=`1240`
-- `ActionMatrixLayer.forward` role=`controller` degree=`51` file=`arch_builder/model.py` line=`182`
+- `ActionMatrixLayer.__init__` role=`controller` degree=`51` file=`arch_builder/model.py` line=`32`
+- `ActionMatrixLayer.forward` role=`controller` degree=`51` file=`arch_builder/model.py` line=`184`
 - `data` role=`data` degree=`51` file=`` line=``
-- `ActionMatrixLayer.__init__` role=`controller` degree=`49` file=`arch_builder/model.py` line=`32`
 - `memory` role=`memory` degree=`47` file=`` line=``
 - `primitive_matrix` role=`primitive_matrix` degree=`46` file=`` line=``
 - `tools/agent_codegraph/build_agent_codegraph.py` role=`scanner` degree=`43` file=`` line=``
@@ -45,77 +45,77 @@
 
 ## Probe metrics
 
-- `loss`: `10.116487503051758`
-- `train_acc`: `0.484375`
-- `gain_disabled_delta`: `0.0009115934371948242`
-- `sim_result_disabled_delta`: `-0.006317079067230225`
-- `sim_disabled_delta`: `-0.007093191146850586`
-- `choice_without_sim_delta`: `0.03830656781792641`
-- `ce_loss`: `0.7061218619346619`
-- `sim_loss`: `0.10033326596021652`
-- `expected_choice_loss`: `3.7030515670776367`
-- `non_expected_primitive_loss`: `0.08598316460847855`
-- `expected_active_loss`: `1.5663228034973145`
-- `non_expected_active_loss`: `0.2183043658733368`
-- `non_expected_tape_loss`: `0.07263918220996857`
-- `non_expected_transform_loss`: `0.6159692406654358`
+- `loss`: `11.687945365905762`
+- `train_acc`: `0.46875`
+- `gain_disabled_delta`: `-0.0011612176895141602`
+- `sim_result_disabled_delta`: `0.0015153884887695312`
+- `sim_disabled_delta`: `-9.965896606445312e-05`
+- `choice_without_sim_delta`: `0.03351388871669769`
+- `ce_loss`: `0.7144190669059753`
+- `sim_loss`: `0.09819504618644714`
+- `expected_choice_loss`: `4.3289794921875`
+- `non_expected_primitive_loss`: `0.04605419188737869`
+- `expected_active_loss`: `1.3355042934417725`
+- `non_expected_active_loss`: `0.23805001378059387`
+- `non_expected_tape_loss`: `0.06686367094516754`
+- `non_expected_transform_loss`: `0.5315576195716858`
 - `primitive_usage_diversity`: `0.0`
-- `cell_choice_diversity`: `0.057872798293828964`
-- `active_budget`: `0.002526224125176668`
-- `tape_budget`: `0.003332945518195629`
+- `cell_choice_diversity`: `0.06197615712881088`
+- `active_budget`: `0.006224518641829491`
+- `tape_budget`: `0.002711885143071413`
 - `layer_action_diversity`: `0.0`
 - `branch_split_loss`: `0.0`
-- `branch_alive_loss`: `0.6998647451400757`
-- `branch_child_loss`: `0.63755863904953`
-- `branch_merge_loss`: `0.7074204683303833`
-- `branch_collector_loss`: `0.276977002620697`
+- `branch_alive_loss`: `0.7249741554260254`
+- `branch_child_loss`: `0.7492016553878784`
+- `branch_merge_loss`: `0.6845924258232117`
+- `branch_collector_loss`: `0.2712554335594177`
 - `discovery_active_floor_loss`: `0.0`
 - `discovery_write_floor_loss`: `0.0`
 - `discovery_choice_exploration_loss`: `0.0`
-- `discovery_choice_coverage_loss`: `5.730668067932129`
-- `discovery_active_tail_loss`: `0.16942241787910461`
-- `discovery_topology_consistency_loss`: `0.004445631057024002`
+- `discovery_choice_coverage_loss`: `5.783565521240234`
+- `discovery_active_tail_loss`: `0.1886119842529297`
+- `discovery_topology_consistency_loss`: `0.00431831507012248`
 - `min_transform_loss`: `0.0`
-- `signal_expected_choice_mass`: `0.07677795737981796`
+- `signal_expected_choice_mass`: `0.056489378213882446`
 - `signal_candidate_present`: `1.0`
-- `signal_primitive_top_share`: `0.17029543220996857`
-- `signal_active_mean`: `0.21843880414962769`
-- `signal_tape_mean`: `0.07268989086151123`
-- `signal_active_cells_soft`: `3.495020866394043`
-- `signal_layer_listen_score`: `0.5479905605316162`
-- `signal_slot_alive_mean`: `0.5116039514541626`
-- `signal_split_two_mass`: `0.35024237632751465`
-- `signal_merge_gate_mean`: `0.5057530403137207`
-- `signal_layer_action_similarity`: `0.3854101300239563`
-- `adaptive_recovery_gate`: `0.009328806772828102`
-- `adaptive_collapse_gate`: `8.031117613427341e-05`
-- `adaptive_sparse_gate`: `0.005427151918411255`
-- `adaptive_dependency_gate`: `0.7729215621948242`
-- `adaptive_choice_boost`: `2.486006736755371`
-- `eff_lambda_choice`: `2.486006736755371`
-- `eff_lambda_non_expected_primitive`: `2.0077794033568352e-05`
-- `eff_lambda_primitive_usage_diversity`: `4.0155587157642e-06`
-- `eff_lambda_cell_choice_diversity`: `4.0155587157642e-06`
-- `eff_lambda_non_expected_active`: `0.00010854303400265053`
-- `eff_lambda_non_expected_tape`: `0.00027135759592056274`
-- `eff_lambda_non_expected_transform`: `0.00010854303400265053`
-- `eff_lambda_active_budget`: `0.00010854303400265053`
-- `eff_lambda_tape_budget`: `0.00010854303400265053`
-- `eff_lambda_layer_action_diversity`: `3.103711833318812e-06`
-- `program_recovery_rate`: `0.09375`
-- `expected_edge_recovery`: `0.09375`
-- `expected_any_recovery`: `0.08984375`
+- `signal_primitive_top_share`: `0.14773979783058167`
+- `signal_active_mean`: `0.23938778042793274`
+- `signal_tape_mean`: `0.06689934432506561`
+- `signal_active_cells_soft`: `3.8302042484283447`
+- `signal_layer_listen_score`: `0.5846965312957764`
+- `signal_slot_alive_mean`: `0.47127604484558105`
+- `signal_split_two_mass`: `0.324476420879364`
+- `signal_merge_gate_mean`: `0.5050967931747437`
+- `signal_layer_action_similarity`: `0.4715169668197632`
+- `adaptive_recovery_gate`: `0.007254280615597963`
+- `adaptive_collapse_gate`: `4.720810102298856e-05`
+- `adaptive_sparse_gate`: `0.004606034141033888`
+- `adaptive_dependency_gate`: `0.8433946967124939`
+- `adaptive_choice_boost`: `2.4891185760498047`
+- `eff_lambda_choice`: `2.4891185760498047`
+- `eff_lambda_non_expected_primitive`: `1.180202525574714e-05`
+- `eff_lambda_primitive_usage_diversity`: `2.360405005674693e-06`
+- `eff_lambda_cell_choice_diversity`: `2.360405005674693e-06`
+- `eff_lambda_non_expected_active`: `9.212068107444793e-05`
+- `eff_lambda_non_expected_tape`: `0.00023030170996207744`
+- `eff_lambda_non_expected_transform`: `9.212068107444793e-05`
+- `eff_lambda_active_budget`: `9.212068107444793e-05`
+- `eff_lambda_tape_budget`: `9.212068107444793e-05`
+- `eff_lambda_layer_action_diversity`: `1.99075316231756e-06`
+- `program_recovery_rate`: `0.046875`
+- `expected_edge_recovery`: `0.046875`
+- `expected_any_recovery`: `0.044921875`
 - `expected_candidate_present`: `1.0`
-- `expected_edge_choice_mass`: `0.07677795737981796`
-- `layer_output_credit`: `0.07677795737981796`
-- `expected_edge_active`: `0.2292352020740509`
-- `transform_mass`: `0.6160039901733398`
-- `skip_mass`: `0.22177260369062424`
-- `disable_mass`: `0.1622234210371971`
-- `choice_entropy`: `1.604377031326294`
+- `expected_edge_choice_mass`: `0.056489378213882446`
+- `layer_output_credit`: `0.056489378213882446`
+- `expected_edge_active`: `0.2778977155685425`
+- `transform_mass`: `0.529877096414566`
+- `skip_mass`: `0.25466587394475937`
+- `disable_mass`: `0.2154570072889328`
+- `choice_entropy`: `1.6563198566436768`
 - `active_cells`: `16.0`
-- `expected_top_cells`: `1.0`
-- `primitive_top_share`: `0.17029543220996857`
+- `expected_top_cells`: `0.0`
+- `primitive_top_share`: `0.14773980528116226`
 - `active_edges_per_target`: `4.0`
 - `final_read_last`: `1.0`
 - `final_read_mean`: `0.0`
@@ -130,14 +130,14 @@
 - `usage_entropy`: `0.0`
 - `usage_credit_observations`: `0.0`
 - `action_L0_0_1_diff_present`: `1.0`
-- `action_L0_0_1_diff_choice_mass`: `0.07677795737981796`
-- `action_L0_0_1_diff_recovery`: `0.09375`
-- `action_L0_0_1_diff_active`: `0.2292352020740509`
-- `action_L0_0_1_diff_tape`: `0.07640723139047623`
-- `layer_listen_score`: `0.5479905605316162`
-- `layer_action_similarity`: `0.3854101300239563`
-- `semantic_grid_mismatch`: `0.40576171875`
-- `semantic_neighbor_entropy`: `3.176515579223633`
+- `action_L0_0_1_diff_choice_mass`: `0.056489378213882446`
+- `action_L0_0_1_diff_recovery`: `0.046875`
+- `action_L0_0_1_diff_active`: `0.2778977155685425`
+- `action_L0_0_1_diff_tape`: `0.06368668377399445`
+- `layer_listen_score`: `0.5846965312957764`
+- `layer_action_similarity`: `0.4715169668197632`
+- `semantic_grid_mismatch`: `0.3917236328125`
+- `semantic_neighbor_entropy`: `3.176323175430298`
 - `scanner_full_scan`: `1.0`
 - `grid_candidate_usage`: `0.0`
 - `semantic_candidate_usage`: `0.0`
@@ -145,19 +145,19 @@
 - `random_candidate_usage`: `0.0`
 - `global_candidate_usage`: `1.0`
 - `scanner_source_mass_sum`: `1.0`
-- `edge_scale_mean`: `0.9525844752788544`
-- `cell_output_gate_mean`: `0.5345006585121155`
-- `cell_tape_weight_mean`: `0.07268989086151123`
-- `cell_write_mass_mean`: `0.18295937776565552`
-- `target_write_gate_mean`: `0.547180563211441`
-- `slot_alive_mean`: `0.5116039216518402`
-- `slot_alive_count`: `2.1953125`
-- `split_none_mass`: `0.33138349652290344`
-- `split_one_mass`: `0.3183741569519043`
-- `split_two_mass`: `0.35024236142635345`
-- `child_gate_mean`: `0.49242040514945984`
-- `merge_gate_mean`: `0.5057530403137207`
-- `collector_mass_mean`: `0.2591279372572899`
+- `edge_scale_mean`: `1.0077462494373322`
+- `cell_output_gate_mean`: `0.5357646644115448`
+- `cell_tape_weight_mean`: `0.06689934432506561`
+- `cell_write_mass_mean`: `0.18759139627218246`
+- `target_write_gate_mean`: `0.5588402152061462`
+- `slot_alive_mean`: `0.47127602994441986`
+- `slot_alive_count`: `1.296875`
+- `split_none_mass`: `0.3607381284236908`
+- `split_one_mass`: `0.314785435795784`
+- `split_two_mass`: `0.3244764357805252`
+- `child_gate_mean`: `0.5004948228597641`
+- `merge_gate_mean`: `0.505096822977066`
+- `collector_mass_mean`: `0.2569618970155716`
 - `edge_pair_bias_expected`: `0.0`
 - `edge_pair_bias_std`: `0.0`
 - `write_pair_bias_expected`: `0.0`
@@ -166,32 +166,32 @@
 - `phase_pair_bias_std`: `0.0`
 - `cell_output_pair_bias_expected`: `0.0`
 - `cell_output_pair_bias_std`: `0.0`
-- `loss_accounting_error`: `7.636532757260284e-07`
+- `loss_accounting_error`: `3.6118142077157245e-07`
 
 ## Loss connectivity
 
-- `ce_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.026014332948233118, 'gate_controller': 0.09985064863700985, 'scanner': 0.02262662797712771, 'simulator': 0.017192335044105646, 'executor': 0.0029404671733835584, 'classifier': 0.2531065135236596}`
-- `sim_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'simulator': 0.3766370889351197}`
-- `expected_choice_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 3.7824190693625304, 'scanner': 26.616630284354606, 'simulator': 24.182172475586714}`
-- `non_expected_primitive_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.09941930115032328, 'scanner': 1.6232203905195797, 'simulator': 1.395440550721288}`
-- `expected_active_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 3.288085235584836}`
-- `non_expected_active_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.21478749496195917}`
-- `non_expected_tape_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.09772644161223343}`
-- `non_expected_transform_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.39301367246452584}`
+- `ce_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.0242415394665389, 'gate_controller': 0.10189531333556058, 'scanner': 0.043691042567244064, 'simulator': 0.057074824950220024, 'executor': 0.007333287407422169, 'classifier': 0.2194379588442435}`
+- `sim_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'simulator': 0.3759811758402137}`
+- `expected_choice_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 3.9661048171069893, 'scanner': 22.68090295267762, 'simulator': 29.127378329858683}`
+- `non_expected_primitive_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.061553111648120065, 'scanner': 0.8034509251551882, 'simulator': 0.9569787269110899}`
+- `expected_active_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 2.870714531881511}`
+- `non_expected_active_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.2247697375363578}`
+- `non_expected_tape_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.09159525981630147}`
+- `non_expected_transform_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.4248986843832548}`
 - `primitive_usage_diversity`: requires_grad=`True` applicable=`True` connected=`False` target_grad_norms=`{'choice_controller': 0.0, 'scanner': 0.0, 'simulator': 0.0}`
-- `cell_choice_diversity`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.02875568841942186, 'scanner': 0.0960327239572326, 'simulator': 0.05942236798288133}`
-- `active_budget`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.034883155487139536}`
-- `tape_budget`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.011528870905052929}`
+- `cell_choice_diversity`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'choice_controller': 0.030039635628900652, 'scanner': 0.0881975910902677, 'simulator': 0.05759390585684891}`
+- `active_budget`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.04814573981408036}`
+- `tape_budget`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.008630055171346664}`
 - `layer_action_diversity`: requires_grad=`True` applicable=`True` connected=`False` target_grad_norms=`{'choice_controller': 0.0, 'scanner': 0.0, 'simulator': 0.0}`
 - `branch_split_loss`: requires_grad=`False` applicable=`True` connected=`False` target_grad_norms=`{'gate_controller': 0.0}`
-- `branch_alive_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.062074587984358956}`
-- `branch_child_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.12693626864917987}`
-- `branch_merge_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.1387204056238128}`
-- `branch_collector_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.1828809745566907}`
+- `branch_alive_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.07039147504818725}`
+- `branch_child_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.15598931951858316}`
+- `branch_merge_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.15673876908098827}`
+- `branch_collector_loss`: requires_grad=`True` applicable=`True` connected=`True` target_grad_norms=`{'gate_controller': 0.17620548939872205}`
 - `discovery_active_floor_loss`: requires_grad=`True` applicable=`False` connected=`False` target_grad_norms=`{'gate_controller': 0.0}`
 - `discovery_write_floor_loss`: requires_grad=`True` applicable=`False` connected=`False` target_grad_norms=`{'gate_controller': 0.0}`
 - `discovery_choice_exploration_loss`: requires_grad=`True` applicable=`False` connected=`False` target_grad_norms=`{'choice_controller': 0.0, 'scanner': 0.0, 'simulator': 0.0}`
-- `discovery_choice_coverage_loss`: requires_grad=`True` applicable=`False` connected=`True` target_grad_norms=`{'choice_controller': 0.3017208449847245, 'scanner': 1.483750564528976, 'simulator': 2.1872352051136463}`
-- `discovery_active_tail_loss`: requires_grad=`True` applicable=`False` connected=`True` target_grad_norms=`{'gate_controller': 0.1831135701946387}`
-- `discovery_topology_consistency_loss`: requires_grad=`True` applicable=`False` connected=`True` target_grad_norms=`{'gate_controller': 0.01598174389526359}`
+- `discovery_choice_coverage_loss`: requires_grad=`True` applicable=`False` connected=`True` target_grad_norms=`{'choice_controller': 0.3642183727210593, 'scanner': 3.7967764508865463, 'simulator': 1.975801246160521}`
+- `discovery_active_tail_loss`: requires_grad=`True` applicable=`False` connected=`True` target_grad_norms=`{'gate_controller': 0.19345134558168833}`
+- `discovery_topology_consistency_loss`: requires_grad=`True` applicable=`False` connected=`True` target_grad_norms=`{'gate_controller': 0.01647273920698146}`
 - `min_transform_loss`: requires_grad=`True` applicable=`True` connected=`False` target_grad_norms=`{'gate_controller': 0.0}`
