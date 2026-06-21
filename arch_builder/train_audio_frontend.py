@@ -750,6 +750,13 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 "val_acc": ev["acc"],
                 "val_loss": ev["loss"],
                 "samples_per_second": samples_per_second,
+                "behavior_feature_pair_sim_mean": ev.get("behavior_feature_pair_sim_mean", 0.0),
+                "behavior_feature_pair_sim_std": ev.get("behavior_feature_pair_sim_std", 0.0),
+                "mmr_fallback_identity": ev.get("mmr_fallback_identity", 0.0),
+                "source_pool_presence_single_signed_projection": ev.get("source_pool_presence_single_signed_projection", 0.0),
+                "source_after_mmr_presence_single_signed_projection": ev.get("source_after_mmr_presence_single_signed_projection", 0.0),
+                "source_after_choice_presence_single_signed_projection": ev.get("source_after_choice_presence_single_signed_projection", 0.0),
+                "utility_corr_status": last_diag.get("utility_corr_status", 0.0),
                 **last_diag,
             },
         )

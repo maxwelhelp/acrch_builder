@@ -441,12 +441,18 @@ class ActionMatrixLayer(nn.Module):
                 if (source_ids == source_id).any():
                     active_sources.append(source_id)
             
+            # Sort active_sources based on defined priority:
+            # 0 (grid), 1 (semantic), 5 (single_proj), 6 (pair_jl), 2 (usage), 3 (random), 4 (global)
+            priority = {0: 0, 1: 1, 5: 2, 6: 3, 2: 4, 3: 5, 4: 6}
+            active_sources = sorted(active_sources, key=lambda x: priority.get(x, 99))
+            
             quota_limit = min(len(active_sources), k)
             active_sources = active_sources[:quota_limit]
             
             quota_pos_list = []
             for source_id in active_sources:
-                mask = (source_ids == source_id)
+                # Exclude masked -inf logits from the source count to support fallbacks
+                mask = (source_ids == source_id) & (proposal_rank_logits > -1e18)
                 row_has_source = mask.any(dim=-1, keepdim=True)
                 logits_masked = proposal_rank_logits.masked_fill(~mask, float("-inf"))
                 best_idx = logits_masked.argmax(dim=-1, keepdim=True)
@@ -470,6 +476,36 @@ class ActionMatrixLayer(nn.Module):
             top_vals = proposal_choice_logits.gather(1, top_pos)
         top_ids = cand_ids.gather(1, top_pos)
         top_source_ids = source_ids.gather(1, top_pos)
+
+        # Collect detailed single signed projection diagnostics
+        if collect_scan_metrics:
+            with torch.no_grad():
+                has_proj = (source_ids == 5)
+                scan_metrics["single_projection_generated_count"] = float(
+                    projected["single_indices"].numel() if (projection_enabled and "projected" in locals()) else 0.0
+                )
+                scan_metrics["single_projection_raw_candidate_count"] = scan_metrics["single_projection_generated_count"]
+                scan_metrics["single_projection_pre_topk_count"] = float(has_proj.sum().item())
+                
+                in_top = (top_source_ids == 5)
+                scan_metrics["single_projection_topk_count"] = float(in_top.sum().item())
+                scan_metrics["single_projection_in_utility_pool_count"] = scan_metrics["single_projection_topk_count"]
+                
+                if in_top.any():
+                    top_rank_logits = proposal_rank_logits.gather(1, top_pos)
+                    top_choice_logits = proposal_choice_logits.gather(1, top_pos)
+                    proj_top_ranks = top_rank_logits[in_top]
+                    proj_top_choices = top_choice_logits[in_top]
+                    
+                    scan_metrics["single_projection_rank_min"] = float(proj_top_ranks.min().item())
+                    scan_metrics["single_projection_rank_mean"] = float(proj_top_ranks.mean().item())
+                    scan_metrics["single_projection_score_mean"] = float(proj_top_choices.mean().item())
+                    scan_metrics["single_projection_score_max"] = float(proj_top_choices.max().item())
+                else:
+                    scan_metrics["single_projection_rank_min"] = 0.0
+                    scan_metrics["single_projection_rank_mean"] = 0.0
+                    scan_metrics["single_projection_score_mean"] = 0.0
+                    scan_metrics["single_projection_score_max"] = 0.0
 
         sim, predicted_gain = self.simulator(flat_src, top_ids)
 

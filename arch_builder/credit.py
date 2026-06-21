@@ -811,6 +811,13 @@ class BoundedCounterfactualCredit:
 
     def metrics(self) -> Dict[str, float]:
         observed = self.count > 0
+        corr_items = float(len(self.rolling_targets_single))
+        if corr_items >= 8:
+            utility_corr_status = 2.0  # Valid
+        elif corr_items > 0:
+            utility_corr_status = 1.0  # Insufficient
+        else:
+            utility_corr_status = 0.0  # Invalid
         return {
             **self.last_metrics,
             "credit_closed": float(self.total_measurements > 0 and bool(observed.any())),
@@ -821,6 +828,7 @@ class BoundedCounterfactualCredit:
             "credit_items": float(observed.sum()),
             "credit_age_mean": float(self.age[observed].mean()) if bool(observed.any()) else 0.0,
             "credit_gain_ema_abs_mean": float(self.ema[observed].abs().mean()) if bool(observed.any()) else 0.0,
+            "utility_corr_status": utility_corr_status,
         }
 
 
