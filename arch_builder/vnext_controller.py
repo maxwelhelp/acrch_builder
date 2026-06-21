@@ -101,12 +101,16 @@ def batched_mmr_select(
         max_sim = torch.maximum(max_sim, new_sim)
 
     with torch.no_grad():
-        selected_count = selected_mask.float().sum(dim=-1).mean()
-        selected_sim = (sim * selected_mask[:, :, None].float() * selected_mask[:, None, :].float())
-        denom = (selected_mask.float().sum(dim=-1).clamp_min(1.0) ** 2).mean().clamp_min(1.0)
+        mask_f = selected_mask.float()
+        selected_count = mask_f.sum(dim=-1).mean()
+        pair_mask = mask_f[:, :, None] * mask_f[:, None, :]
+        eye = torch.eye(k, dtype=pair_mask.dtype, device=device).unsqueeze(0)
+        offdiag_mask = pair_mask * (1.0 - eye)
+        offdiag_denom = offdiag_mask.sum(dim=(1, 2)).clamp_min(1.0)
+        offdiag_sim = (sim * offdiag_mask).sum(dim=(1, 2)) / offdiag_denom
         metrics = {
             "mmr_selected_count": selected_count.detach(),
-            "mmr_selected_similarity": (selected_sim.sum(dim=(1, 2)).mean() / denom).detach(),
+            "mmr_selected_similarity": offdiag_sim.mean().detach(),
             "mmr_beta": torch.tensor(beta, device=device),
         }
     return selected_mask, metrics
