@@ -257,6 +257,18 @@ class AudioMatrixClassifier(nn.Module):
         enable_self_delta_probe: bool = False,
         enable_self_delta_choice: bool = False,
         self_delta_max_scale: float = 0.25,
+        enable_vnext: bool = False,
+        enable_utility_critic_probe: bool = False,
+        enable_utility_critic_choice: bool = False,
+        utility_pool_size: int = 16,
+        utility_budget: int = 3,
+        utility_mmr_beta: float = 0.35,
+        utility_mmr_mode: str = "hybrid",
+        enable_scanner_feedback_memory: bool = False,
+        enable_mmr_controller: bool = False,
+        enable_lazy_executor: bool = False,
+        enable_category_scanner: bool = False,
+        enable_auto_mined_atoms: bool = False,
     ) -> None:
         super().__init__()
         self.frontend = frontend
@@ -280,6 +292,18 @@ class AudioMatrixClassifier(nn.Module):
             enable_self_delta_probe=enable_self_delta_probe,
             enable_self_delta_choice=enable_self_delta_choice,
             self_delta_max_scale=self_delta_max_scale,
+            enable_vnext=enable_vnext,
+            enable_utility_critic_probe=enable_utility_critic_probe,
+            enable_utility_critic_choice=enable_utility_critic_choice,
+            utility_pool_size=utility_pool_size,
+            utility_budget=utility_budget,
+            utility_mmr_beta=utility_mmr_beta,
+            utility_mmr_mode=utility_mmr_mode,
+            enable_scanner_feedback_memory=enable_scanner_feedback_memory,
+            enable_mmr_controller=enable_mmr_controller,
+            enable_lazy_executor=enable_lazy_executor,
+            enable_category_scanner=enable_category_scanner,
+            enable_auto_mined_atoms=enable_auto_mined_atoms,
         )
         # Generic multiclass readout: no layer roles or task-specific operators.
         self.backbone.classifier = nn.Sequential(

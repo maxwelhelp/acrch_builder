@@ -11,6 +11,7 @@ from .hybrid_scanner import HybridScanner
 from .simulator import LowRankSimulator
 from .executor import ActionExecutor
 from .self_delta_candidate_field import SelfDeltaCandidateField
+from .utility_critic import UtilityCritic
 
 def _ln_logits(x: torch.Tensor) -> torch.Tensor:
     return F.layer_norm(x, x.shape[-1:])
@@ -46,6 +47,18 @@ class ActionMatrixLayer(nn.Module):
         enable_self_delta_probe: bool = False,
         enable_self_delta_choice: bool = False,
         self_delta_max_scale: float = 0.25,
+        enable_vnext: bool = False,
+        enable_utility_critic_probe: bool = False,
+        enable_utility_critic_choice: bool = False,
+        utility_pool_size: int = 16,
+        utility_budget: int = 3,
+        utility_mmr_beta: float = 0.35,
+        utility_mmr_mode: str = "hybrid",
+        enable_scanner_feedback_memory: bool = False,
+        enable_mmr_controller: bool = False,
+        enable_lazy_executor: bool = False,
+        enable_category_scanner: bool = False,
+        enable_auto_mined_atoms: bool = False,
     ) -> None:
         super().__init__()
         if state_norm not in {"none", "layernorm"}:
@@ -62,6 +75,18 @@ class ActionMatrixLayer(nn.Module):
         self.enable_self_delta_probe = bool(enable_self_delta_probe)
         self.enable_self_delta_choice = bool(enable_self_delta_choice)
         self.self_delta_max_scale = float(self_delta_max_scale)
+        self.enable_vnext = bool(enable_vnext)
+        self.enable_utility_critic_probe = bool(enable_utility_critic_probe)
+        self.enable_utility_critic_choice = bool(enable_utility_critic_choice)
+        self.utility_pool_size = int(utility_pool_size)
+        self.utility_budget = int(utility_budget)
+        self.utility_mmr_beta = float(utility_mmr_beta)
+        self.utility_mmr_mode = str(utility_mmr_mode)
+        self.enable_scanner_feedback_memory = bool(enable_scanner_feedback_memory)
+        self.enable_mmr_controller = bool(enable_mmr_controller)
+        self.enable_lazy_executor = bool(enable_lazy_executor)
+        self.enable_category_scanner = bool(enable_category_scanner)
+        self.enable_auto_mined_atoms = bool(enable_auto_mined_atoms)
 
         context_dim = dim * 5
         emb_dim = primitive_matrix.emb.shape[-1]
@@ -118,6 +143,19 @@ class ActionMatrixLayer(nn.Module):
             )
             torch.random.set_rng_state(cpu_rng)
         self.self_delta_logit_scale = nn.Parameter(torch.tensor(-6.0))
+
+        self.utility_critic = None
+        self.utility_logit_scale = None
+        if self.enable_vnext or self.enable_utility_critic_probe or self.enable_utility_critic_choice:
+            cpu_rng = torch.random.get_rng_state()
+            self.utility_critic = UtilityCritic(
+                dim=dim,
+                context_dim=context_dim,
+                prim_embed_dim=emb_dim,
+                hidden=128,
+            )
+            self.utility_logit_scale = nn.Parameter(torch.tensor(-6.0))
+            torch.random.set_rng_state(cpu_rng)
 
     def _init_gate_priors(self) -> None:
         with torch.no_grad():
@@ -331,6 +369,29 @@ class ActionMatrixLayer(nn.Module):
 
         sim, predicted_gain = self.simulator(flat_src, top_ids)
 
+        utility_score = None
+        utility_uncertainty = None
+        utility_metrics = {}
+        if self.utility_critic is not None:
+            flat_target_address = target_address.reshape(b * s * s, d)
+            top_prim_emb = self.pm.emb.to(device=flat_context.device, dtype=flat_context.dtype)[top_ids]
+            utility_score, utility_uncertainty = self.utility_critic(
+                flat_context,
+                top_prim_emb,
+                flat_target_address
+            )
+            with torch.no_grad():
+                utility_metrics = {
+                    "utility_score_mean": float(utility_score.mean().cpu()),
+                    "utility_score_std": float(utility_score.std().cpu()),
+                    "utility_critic_enabled": 1.0,
+                    "utility_choice_enabled": float(self.enable_utility_critic_choice),
+                    "utility_pool_size": float(self.utility_pool_size),
+                    "utility_budget": float(self.utility_budget),
+                    "utility_mmr_beta": float(self.utility_mmr_beta),
+                    "utility_mmr_mode": 1.0 if self.utility_mmr_mode == "hybrid" else 0.0,
+                }
+
         if all_primitive_effects is None:
             primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
         else:
@@ -418,6 +479,10 @@ class ActionMatrixLayer(nn.Module):
         )
         if self.enable_self_delta_choice and not disable_self_delta:
             choice_logits = choice_logits + self_delta_scale * _ln_logits(self_delta_component)
+        if self.enable_utility_critic_choice and utility_score is not None:
+            utility_scale = torch.sigmoid(self.utility_logit_scale).to(dtype=choice_logits.dtype)
+            utility_norm = F.layer_norm(utility_score, (utility_score.shape[-1],))
+            choice_logits = choice_logits + utility_scale * utility_norm
         if choice_sampling not in {"auto", "gumbel", "softmax", "uniform"}:
             raise ValueError(f"unknown choice sampling: {choice_sampling!r}")
         use_gumbel = self.training and choice_sampling in {"auto", "gumbel"}
@@ -580,9 +645,14 @@ class ActionMatrixLayer(nn.Module):
             "self_delta_metrics": {
                 k: v.detach() for k, v in self_delta_metrics.items()
             },
+            "pm_emb": self.pm.emb.detach(),
             "curriculum_mode": curriculum_mode,
             "choice_sampling": "uniform" if choice_sampling == "uniform" else ("gumbel" if use_gumbel else "softmax"),
         }
+        if utility_score is not None:
+            trace["utility_for_loss"] = utility_score
+            trace["uncertainty_for_loss"] = utility_uncertainty
+            trace["utility_metrics"] = utility_metrics
 
         new_memory = 0.95 * memory + 0.05 * next_state.mean(dim=1)
         return next_state, output_state, new_memory, trace
@@ -610,6 +680,18 @@ class ActionMatrixModel(nn.Module):
         enable_self_delta_probe: bool = False,
         enable_self_delta_choice: bool = False,
         self_delta_max_scale: float = 0.25,
+        enable_vnext: bool = False,
+        enable_utility_critic_probe: bool = False,
+        enable_utility_critic_choice: bool = False,
+        utility_pool_size: int = 16,
+        utility_budget: int = 3,
+        utility_mmr_beta: float = 0.35,
+        utility_mmr_mode: str = "hybrid",
+        enable_scanner_feedback_memory: bool = False,
+        enable_mmr_controller: bool = False,
+        enable_lazy_executor: bool = False,
+        enable_category_scanner: bool = False,
+        enable_auto_mined_atoms: bool = False,
     ) -> None:
         super().__init__()
         if input_norm not in {"none", "layernorm"}:
@@ -641,6 +723,18 @@ class ActionMatrixModel(nn.Module):
                 enable_self_delta_probe=enable_self_delta_probe,
                 enable_self_delta_choice=enable_self_delta_choice,
                 self_delta_max_scale=self_delta_max_scale,
+                enable_vnext=enable_vnext,
+                enable_utility_critic_probe=enable_utility_critic_probe,
+                enable_utility_critic_choice=enable_utility_critic_choice,
+                utility_pool_size=utility_pool_size,
+                utility_budget=utility_budget,
+                utility_mmr_beta=utility_mmr_beta,
+                utility_mmr_mode=utility_mmr_mode,
+                enable_scanner_feedback_memory=enable_scanner_feedback_memory,
+                enable_mmr_controller=enable_mmr_controller,
+                enable_lazy_executor=enable_lazy_executor,
+                enable_category_scanner=enable_category_scanner,
+                enable_auto_mined_atoms=enable_auto_mined_atoms,
             )
             for _ in range(layers)
         ])

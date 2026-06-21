@@ -46,6 +46,32 @@ SELF_DELTA_METRIC_KEYS = (
     "self_delta_choice_enabled",
 )
 
+UTILITY_CRITIC_METRICS = (
+    "utility_critic_enabled",
+    "utility_choice_enabled",
+    "utility_pool_size",
+    "utility_budget",
+    "utility_mmr_beta",
+    "utility_mmr_mode",
+    "utility_score_mean",
+    "utility_score_std",
+    "utility_gain_corr",
+    "utility_gain_spearman",
+    "current_predicted_gain_corr",
+    "utility_vs_current_gain_corr_delta",
+    "proposal_top1_measured_gain",
+    "utility_top1_measured_gain",
+    "random_top1_measured_gain",
+    "proposal_best_of_3_measured_gain",
+    "utility_best_of_3_measured_gain",
+    "mmr_best_of_3_measured_gain",
+    "identity_mmr_similarity",
+    "effect_mmr_similarity",
+    "hybrid_mmr_similarity",
+    "utility_overhead_seconds",
+    "choice_without_utility_delta",
+)
+
 
 
 def curriculum_phase(epoch: int, total_epochs: int, schedule: str) -> str:
@@ -122,6 +148,18 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--enable-self-delta-probe", action="store_true")
     ap.add_argument("--enable-self-delta-choice", action="store_true")
     ap.add_argument("--self-delta-max-scale", type=float, default=0.25)
+    ap.add_argument("--enable-vnext", action="store_true")
+    ap.add_argument("--enable-utility-critic-probe", action="store_true")
+    ap.add_argument("--enable-utility-critic-choice", action="store_true")
+    ap.add_argument("--utility-pool-size", type=int, default=16)
+    ap.add_argument("--utility-budget", type=int, default=3)
+    ap.add_argument("--utility-mmr-beta", type=float, default=0.35)
+    ap.add_argument("--utility-mmr-mode", default="hybrid")
+    ap.add_argument("--enable-scanner-feedback-memory", action="store_true")
+    ap.add_argument("--enable-mmr-controller", action="store_true")
+    ap.add_argument("--enable-lazy-executor", action="store_true")
+    ap.add_argument("--enable-category-scanner", action="store_true")
+    ap.add_argument("--enable-auto-mined-atoms", action="store_true")
     return ap
 
 
@@ -224,6 +262,13 @@ def evaluate(
             for key in ("self_delta_scale", "self_delta_enabled", "self_delta_choice_enabled"):
                 if key in layer and hasattr(layer[key], "detach"):
                     trace_sum[key] += float(layer[key].detach().float().cpu())
+
+            um = layer.get("utility_metrics", {})
+            for k, v in um.items():
+                if hasattr(v, "detach"):
+                    trace_sum[k] += float(v.detach().float().cpu())
+                else:
+                    trace_sum[k] += float(v)
 
         for layer_idx, layer in enumerate(trace.get("layers", [])):
             for key in ("listen_gate", "active", "cell_output_gate", "cell_write_mass"):
@@ -669,6 +714,29 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         "choice_without_self_delta_delta": float(ablations.get("choice_without_self_delta_delta", 0.0)),
         "choice_zero_self_delta_delta": float(ablations.get("choice_zero_self_delta_delta", 0.0)),
         "choice_shuffle_self_delta_delta": float(ablations.get("choice_shuffle_self_delta_delta", 0.0)),
+        "utility_critic_enabled": float(deploy.get("utility_critic_enabled", (discovery_metrics or {}).get("utility_critic_enabled", 0.0))),
+        "utility_choice_enabled": float(deploy.get("utility_choice_enabled", (discovery_metrics or {}).get("utility_choice_enabled", 0.0))),
+        "utility_pool_size": float(deploy.get("utility_pool_size", (discovery_metrics or {}).get("utility_pool_size", 0.0))),
+        "utility_budget": float(deploy.get("utility_budget", (discovery_metrics or {}).get("utility_budget", 0.0))),
+        "utility_mmr_beta": float(deploy.get("utility_mmr_beta", (discovery_metrics or {}).get("utility_mmr_beta", 0.0))),
+        "utility_mmr_mode": float(deploy.get("utility_mmr_mode", (discovery_metrics or {}).get("utility_mmr_mode", 0.0))),
+        "utility_score_mean": float(deploy.get("utility_score_mean", (discovery_metrics or {}).get("utility_score_mean", 0.0))),
+        "utility_score_std": float(deploy.get("utility_score_std", (discovery_metrics or {}).get("utility_score_std", 0.0))),
+        "utility_gain_corr": float(deploy.get("utility_gain_corr", (discovery_metrics or {}).get("utility_gain_corr", 0.0))),
+        "utility_gain_spearman": float(deploy.get("utility_gain_spearman", (discovery_metrics or {}).get("utility_gain_spearman", 0.0))),
+        "current_predicted_gain_corr": float(deploy.get("current_predicted_gain_corr", (discovery_metrics or {}).get("current_predicted_gain_corr", 0.0))),
+        "utility_vs_current_gain_corr_delta": float(deploy.get("utility_vs_current_gain_corr_delta", (discovery_metrics or {}).get("utility_vs_current_gain_corr_delta", 0.0))),
+        "proposal_top1_measured_gain": float(deploy.get("proposal_top1_measured_gain", (discovery_metrics or {}).get("proposal_top1_measured_gain", 0.0))),
+        "utility_top1_measured_gain": float(deploy.get("utility_top1_measured_gain", (discovery_metrics or {}).get("utility_top1_measured_gain", 0.0))),
+        "random_top1_measured_gain": float(deploy.get("random_top1_measured_gain", (discovery_metrics or {}).get("random_top1_measured_gain", 0.0))),
+        "proposal_best_of_3_measured_gain": float(deploy.get("proposal_best_of_3_measured_gain", (discovery_metrics or {}).get("proposal_best_of_3_measured_gain", 0.0))),
+        "utility_best_of_3_measured_gain": float(deploy.get("utility_best_of_3_measured_gain", (discovery_metrics or {}).get("utility_best_of_3_measured_gain", 0.0))),
+        "mmr_best_of_3_measured_gain": float(deploy.get("mmr_best_of_3_measured_gain", (discovery_metrics or {}).get("mmr_best_of_3_measured_gain", 0.0))),
+        "identity_mmr_similarity": float(deploy.get("identity_mmr_similarity", (discovery_metrics or {}).get("identity_mmr_similarity", 0.0))),
+        "effect_mmr_similarity": float(deploy.get("effect_mmr_similarity", (discovery_metrics or {}).get("effect_mmr_similarity", 0.0))),
+        "hybrid_mmr_similarity": float(deploy.get("hybrid_mmr_similarity", (discovery_metrics or {}).get("hybrid_mmr_similarity", 0.0))),
+        "utility_overhead_seconds": float(deploy.get("utility_overhead_seconds", (discovery_metrics or {}).get("utility_overhead_seconds", 0.0))),
+        "choice_without_utility_delta": float(deploy.get("choice_without_utility_delta", (discovery_metrics or {}).get("choice_without_utility_delta", 0.0))),
     }
     report["checks"] = {
         "deploy_above_random": deploy["acc"] >= chance + (0.02 if args.discovery else 0.0),
@@ -735,6 +803,18 @@ def train_variant(args) -> Dict[str, object]:
         enable_self_delta_probe=args.enable_self_delta_probe or args.enable_self_delta_choice,
         enable_self_delta_choice=args.enable_self_delta_choice,
         self_delta_max_scale=args.self_delta_max_scale,
+        enable_vnext=args.enable_vnext,
+        enable_utility_critic_probe=args.enable_utility_critic_probe,
+        enable_utility_critic_choice=args.enable_utility_critic_choice,
+        utility_pool_size=args.utility_pool_size,
+        utility_budget=args.utility_budget,
+        utility_mmr_beta=args.utility_mmr_beta,
+        utility_mmr_mode=args.utility_mmr_mode,
+        enable_scanner_feedback_memory=args.enable_scanner_feedback_memory,
+        enable_mmr_controller=args.enable_mmr_controller,
+        enable_lazy_executor=args.enable_lazy_executor,
+        enable_category_scanner=args.enable_category_scanner,
+        enable_auto_mined_atoms=args.enable_auto_mined_atoms,
     ).to(device)
     model.choice_sampling = "uniform" if args.controller_baseline == "random" else "auto"
     if args.controller_baseline in {"frozen", "random"}:

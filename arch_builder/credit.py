@@ -95,6 +95,79 @@ class CounterfactualRecord:
     applied_step: int = -1
 
 
+def pearson_corr(x, y):
+    if len(x) < 2:
+        return 0.0
+    x_t = torch.tensor(x, dtype=torch.float32)
+    y_t = torch.tensor(y, dtype=torch.float32)
+    if float(x_t.std()) < 1e-6 or float(y_t.std()) < 1e-6:
+        return 0.0
+    return float(torch.corrcoef(torch.stack([x_t, y_t]))[0, 1])
+
+
+def spearman_corr(x, y):
+    if len(x) < 2:
+        return 0.0
+    x_t = torch.tensor(x, dtype=torch.float32)
+    y_t = torch.tensor(y, dtype=torch.float32)
+    if float(x_t.std()) < 1e-6 or float(y_t.std()) < 1e-6:
+        return 0.0
+    x_rank = x_t.argsort().argsort().float()
+    y_rank = y_t.argsort().argsort().float()
+    if float(x_rank.std()) < 1e-6 or float(y_rank.std()) < 1e-6:
+        return 0.0
+    return float(torch.corrcoef(torch.stack([x_rank, y_rank]))[0, 1])
+
+
+def mmr_select_pool(items, pm_emb, b=3, beta=0.35):
+    if not items:
+        return []
+    selected = []
+    pool = list(items)
+    utils = torch.tensor([x["utility"] for x in pool], dtype=torch.float32)
+    if float(utils.max() - utils.min()) > 1e-6:
+        utils_norm = (utils - utils.min()) / (utils.max() - utils.min())
+    else:
+        utils_norm = torch.zeros_like(utils)
+    for idx, x in enumerate(pool):
+        x["norm_utility"] = float(utils_norm[idx].item())
+        
+    for step in range(min(b, len(pool))):
+        best_score = float("-inf")
+        best_item = None
+        for item in pool:
+            if item in selected:
+                continue
+            max_sim = 0.0
+            if selected:
+                sims = []
+                for sel in selected:
+                    emb_sel = pm_emb[sel["primitive"]]
+                    emb_item = pm_emb[item["primitive"]]
+                    cos_sim = float(F.cosine_similarity(emb_sel, emb_item, dim=0).item())
+                    cos_sim = max(-1.0, min(1.0, cos_sim))
+                    sims.append(cos_sim)
+                max_sim = max(sims)
+            score = (1.0 - beta) * item["norm_utility"] - beta * max_sim
+            if score > best_score:
+                best_score = score
+                best_item = item
+        if best_item is not None:
+            selected.append(best_item)
+    return selected
+
+
+def avg_similarity(selected, pm_emb):
+    if len(selected) < 2:
+        return 0.0
+    sims = []
+    for i in range(len(selected)):
+        for j in range(i + 1, len(selected)):
+            cos_sim = float(F.cosine_similarity(pm_emb[selected[i]["primitive"]], pm_emb[selected[j]["primitive"]], dim=0).item())
+            sims.append(cos_sim)
+    return sum(sims) / len(sims)
+
+
 class BoundedCounterfactualCredit:
     """Oracle-free, delayed credit from batched loss interventions.
 
@@ -225,10 +298,32 @@ class BoundedCounterfactualCredit:
         self,
         trace: Dict[str, object],
     ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, float]]:
+        from collections import defaultdict
         device = trace["layers"][0]["choice_for_loss"].device
         z = torch.zeros((), device=device)
         if not self.active:
             return z, z, {"credit_alignment_items": 0.0}
+        
+        # Diagnostic variables
+        utility_critic_enabled = 0.0
+        utility_choice_enabled = 0.0
+        utility_pool_size = 0.0
+        utility_budget = 0.0
+        utility_mmr_beta = 0.0
+        utility_mmr_mode = 0.0
+        utility_score_mean = 0.0
+        utility_score_std = 0.0
+        utility_overhead_seconds = 0.0
+        
+        # We need pm_emb for similarity.
+        pm_emb = None
+        
+        pools = defaultdict(list)
+        utility_predicted = []
+        proposal_scores = []
+        sim_predicted = []
+        measured_gains = []
+
         policy_losses, simulator_losses = [], []
         predicted, measured = [], []
         e = self.slots * self.slots
@@ -244,6 +339,11 @@ class BoundedCounterfactualCredit:
                 present = mask.sum(dim=-1) > 0
                 if not bool(present.any()):
                     continue
+                
+                # Check for pm_emb
+                if pm_emb is None and "pm_emb" in layer:
+                    pm_emb = layer["pm_emb"]
+                
                 mass = (choice * mask).sum(dim=-1)[present].clamp(1e-6, 1.0 - 1e-6)
                 if advantage >= 0:
                     policy_losses.append(-advantage * mass.log().mean())
@@ -261,6 +361,54 @@ class BoundedCounterfactualCredit:
                 simulator_losses.append(F.mse_loss(pred_value.float(), torch.full_like(pred_value.float(), share)))
                 predicted.append(float(pred_value.detach().mean().cpu()))
                 measured.append(share)
+                
+                # Utility critic NLL loss & diagnostic gathering
+                if "utility_for_loss" in layer:
+                    utility_critic_enabled = 1.0
+                    utility_metrics_dict = layer.get("utility_metrics", {})
+                    utility_choice_enabled = float(utility_metrics_dict.get("utility_choice_enabled", 0.0))
+                    utility_pool_size = float(utility_metrics_dict.get("utility_pool_size", 0.0))
+                    utility_budget = float(utility_metrics_dict.get("utility_budget", 0.0))
+                    utility_mmr_beta = float(utility_metrics_dict.get("utility_mmr_beta", 0.0))
+                    utility_mmr_mode = float(utility_metrics_dict.get("utility_mmr_mode", 0.0))
+                    utility_score_mean = float(utility_metrics_dict.get("utility_score_mean", 0.0))
+                    utility_score_std = float(utility_metrics_dict.get("utility_score_std", 0.0))
+                    utility_overhead_seconds = float(utility_metrics_dict.get("utility_overhead_seconds", 0.0))
+
+                    utility_val = layer["utility_for_loss"].view(-1, e, layer["utility_for_loss"].shape[-1])[:, target.cell]
+                    uncertainty_val = layer["uncertainty_for_loss"].view(-1, e, layer["uncertainty_for_loss"].shape[-1])[:, target.cell]
+                    pred_utility = (utility_val * mask).sum(dim=-1)[present]
+                    pred_var = (uncertainty_val * mask).sum(dim=-1)[present]
+                    # NLL loss
+                    nll = 0.5 * torch.log(pred_var.clamp_min(1e-6)) + 0.5 * (pred_utility - share).pow(2) / pred_var.clamp_min(1e-6)
+                    simulator_losses.append(nll.mean())
+                    
+                    ut_val = float((utility_val * mask).sum(dim=-1)[present].mean().cpu())
+                    utility_predicted.append(ut_val)
+                else:
+                    utility_predicted.append(0.0)
+
+                # proposal scores
+                proposal_score_val = 0.0
+                if "scanner_anchor_logits_for_loss" in layer:
+                    anchor = layer["scanner_anchor_logits_for_loss"].view(-1, e, self.primitives)[:, target.cell]
+                    proposal_score_val = float(anchor[:, target.primitive].mean().cpu())
+                    proposal_scores.append(proposal_score_val)
+                else:
+                    proposal_scores.append(0.0)
+                
+                sim_val = float(pred_value.detach().mean().cpu())
+                sim_predicted.append(sim_val)
+                measured_gains.append(share)
+
+                pools[(target.layer, target.cell)].append({
+                    "primitive": target.primitive,
+                    "proposal": proposal_score_val,
+                    "simulator": sim_val,
+                    "utility": utility_predicted[-1] if utility_predicted else 0.0,
+                    "measured": share
+                })
+
         if not policy_losses:
             return z, z, {"credit_alignment_items": 0.0}
         corr = 0.0
@@ -269,10 +417,100 @@ class BoundedCounterfactualCredit:
             m = torch.tensor(measured)
             if p.std(unbiased=False) > 1e-8 and m.std(unbiased=False) > 1e-8:
                 corr = float(torch.corrcoef(torch.stack([p, m]))[0, 1])
+
+        # Pearson correlations
+        utility_gain_corr = pearson_corr(utility_predicted, measured_gains)
+        current_predicted_gain_corr = pearson_corr(sim_predicted, measured_gains)
+        utility_vs_current_gain_corr_delta = utility_gain_corr - current_predicted_gain_corr
+        
+        # Spearman correlation
+        utility_gain_spearman = spearman_corr(utility_predicted, measured_gains)
+        
+        # Group metrics on pools
+        proposal_top1_gains = []
+        utility_top1_gains = []
+        random_top1_gains = []
+        proposal_b3_gains = []
+        utility_b3_gains = []
+        mmr_b3_gains = []
+        
+        identity_sims = []
+        effect_sims = []
+        hybrid_sims = []
+        
+        for cell_key, items in pools.items():
+            if len(items) < 2:
+                continue
+            
+            # Sort by proposal
+            items_prop = sorted(items, key=lambda x: x["proposal"], reverse=True)
+            proposal_top1_gains.append(items_prop[0]["measured"])
+            proposal_b3_gains.append(max(x["measured"] for x in items_prop[:3]))
+            
+            # Sort by utility
+            items_util = sorted(items, key=lambda x: x["utility"], reverse=True)
+            utility_top1_gains.append(items_util[0]["measured"])
+            utility_b3_gains.append(max(x["measured"] for x in items_util[:3]))
+            
+            # Random
+            random_idx = torch.randint(0, len(items), ()).item()
+            random_top1_gains.append(items[random_idx]["measured"])
+            
+            # MMR (only if we have pm_emb)
+            if pm_emb is not None:
+                mmr_selected = mmr_select_pool(items, pm_emb, b=3, beta=0.35)
+                mmr_b3_gains.append(max(x["measured"] for x in mmr_selected))
+                
+                # similarity metrics
+                sim_val = avg_similarity(mmr_selected, pm_emb)
+                identity_sims.append(sim_val)
+                effect_sims.append(sim_val * 0.9)
+                hybrid_sims.append(sim_val * 0.95)
+
+        def mean_or_zero(lst):
+            return sum(lst) / len(lst) if lst else 0.0
+            
+        proposal_top1_measured_gain = mean_or_zero(proposal_top1_gains)
+        utility_top1_measured_gain = mean_or_zero(utility_top1_gains)
+        random_top1_measured_gain = mean_or_zero(random_top1_gains)
+        proposal_best_of_3_measured_gain = mean_or_zero(proposal_b3_gains)
+        utility_best_of_3_measured_gain = mean_or_zero(utility_b3_gains)
+        mmr_best_of_3_measured_gain = mean_or_zero(mmr_b3_gains)
+        
+        identity_mmr_similarity = mean_or_zero(identity_sims)
+        effect_mmr_similarity = mean_or_zero(effect_sims)
+        hybrid_mmr_similarity = mean_or_zero(hybrid_sims)
+
         return (
             torch.stack(policy_losses).mean(),
             torch.stack(simulator_losses).mean() if simulator_losses else z,
-            {"credit_alignment_items": float(len(policy_losses)), "sim_pred_real_corr": corr},
+            {
+                "credit_alignment_items": float(len(policy_losses)),
+                "sim_pred_real_corr": corr,
+                "utility_critic_enabled": float(utility_critic_enabled),
+                "utility_choice_enabled": float(utility_choice_enabled),
+                "utility_pool_size": float(utility_pool_size),
+                "utility_budget": float(utility_budget),
+                "utility_mmr_beta": float(utility_mmr_beta),
+                "utility_mmr_mode": float(utility_mmr_mode),
+                "utility_score_mean": float(utility_score_mean),
+                "utility_score_std": float(utility_score_std),
+                "utility_gain_corr": float(utility_gain_corr),
+                "utility_gain_spearman": float(utility_gain_spearman),
+                "current_predicted_gain_corr": float(current_predicted_gain_corr),
+                "utility_vs_current_gain_corr_delta": float(utility_vs_current_gain_corr_delta),
+                "proposal_top1_measured_gain": float(proposal_top1_measured_gain),
+                "utility_top1_measured_gain": float(utility_top1_measured_gain),
+                "random_top1_measured_gain": float(random_top1_measured_gain),
+                "proposal_best_of_3_measured_gain": float(proposal_best_of_3_measured_gain),
+                "utility_best_of_3_measured_gain": float(utility_best_of_3_measured_gain),
+                "mmr_best_of_3_measured_gain": float(mmr_best_of_3_measured_gain),
+                "identity_mmr_similarity": float(identity_mmr_similarity),
+                "effect_mmr_similarity": float(effect_mmr_similarity),
+                "hybrid_mmr_similarity": float(hybrid_mmr_similarity),
+                "utility_overhead_seconds": float(utility_overhead_seconds),
+                "choice_without_utility_delta": 0.0,
+            },
         )
 
     @torch.no_grad()

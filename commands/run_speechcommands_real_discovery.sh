@@ -19,6 +19,44 @@ if [[ "${ENABLE_SELF_DELTA_CHOICE:-0}" == "1" ]]; then
   SCANNER_ARGS+=(--enable-self-delta-choice)
 fi
 
+VNEXT_ARGS=()
+if [[ "${ENABLE_VNEXT:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-vnext)
+fi
+if [[ "${ENABLE_UTILITY_CRITIC_PROBE:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-utility-critic-probe)
+fi
+if [[ "${ENABLE_UTILITY_CRITIC_CHOICE:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-utility-critic-choice)
+fi
+if [[ "${ENABLE_SCANNER_FEEDBACK_MEMORY:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-scanner-feedback-memory)
+fi
+if [[ "${ENABLE_MMR_CONTROLLER:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-mmr-controller)
+fi
+if [[ "${ENABLE_LAZY_EXECUTOR:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-lazy-executor)
+fi
+if [[ -n "${UTILITY_POOL_SIZE:-}" ]]; then
+  VNEXT_ARGS+=(--utility-pool-size "${UTILITY_POOL_SIZE}")
+fi
+if [[ -n "${UTILITY_BUDGET:-}" ]]; then
+  VNEXT_ARGS+=(--utility-budget "${UTILITY_BUDGET}")
+fi
+if [[ -n "${UTILITY_MMR_BETA:-}" ]]; then
+  VNEXT_ARGS+=(--utility-mmr-beta "${UTILITY_MMR_BETA}")
+fi
+if [[ -n "${UTILITY_MMR_MODE:-}" ]]; then
+  VNEXT_ARGS+=(--utility-mmr-mode "${UTILITY_MMR_MODE}")
+fi
+if [[ "${ENABLE_CATEGORY_SCANNER:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-category-scanner)
+fi
+if [[ "${ENABLE_AUTO_MINED_ATOMS:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-auto-mined-atoms)
+fi
+
 python -m arch_builder.train_audio_frontend \
   --dataset speechcommands \
   --variant structured \
@@ -63,6 +101,7 @@ python -m arch_builder.train_audio_frontend \
   --self-delta-max-scale "${SELF_DELTA_MAX_SCALE:-0.25}" \
   --out-dir "$OUT" \
   --latest-report "$OUT/LATEST_RUN_REPORT.md" \
-  "${SCANNER_ARGS[@]}"
+  "${SCANNER_ARGS[@]}" \
+  "${VNEXT_ARGS[@]}"
 
 echo "report: $OUT/final_report.json"
