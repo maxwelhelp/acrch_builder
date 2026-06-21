@@ -14,6 +14,9 @@ PRIMITIVE_GRID: List[List[str]] = [
     ["merge", "split", "route", "edge_gate", "write_gate"],
     ["memory_read", "memory_write", "forget", "recall", "memory_gate"],
     ["output_write", "output_mix", "skip", "replace", "disable"],
+    ["dct", "fft_filter", "wavelet", "spectral_mix", "spectral_gate"],
+    ["qkv_gate", "cross_attend", "self_attend", "key_align", "value_mix"],
+    ["svd_atom_k", "diag", "toeplitz", "block_mean", "mined_gate"],
 ]
 
 
@@ -39,20 +42,35 @@ def _info(name: str, row: int, col: int) -> PrimitiveInfo:
         family = "routing"
     elif row == 3:
         family = "memory"
-    else:
+    elif row == 4:
         family = "control"
+    elif row == 5:
+        family = "spectral"
+    elif row == 6:
+        family = "attention_like"
+    else:
+        family = "mined_local"
 
-    arity = "memory" if family == "memory" else ("binary" if name in {"diff", "merge", "product", "ctx_matrix", "gated_add"} else "unary")
+    if family == "memory" or name == "self_attend":
+        arity = "memory"
+    elif name in {"diff", "merge", "product", "ctx_matrix", "gated_add", "cross_attend", "key_align", "value_mix", "spectral_mix"}:
+        arity = "binary"
+    else:
+        arity = "unary"
+
     effect_map = {
         "identity": "preserve", "gated_keep": "preserve", "diff": "transform", "contrast": "transform", "smooth": "transform",
         "low_rank": "transform", "channel": "transform", "ctx_matrix": "transform", "product": "transform", "gated_add": "merge",
         "merge": "merge", "split": "split", "route": "write", "edge_gate": "write", "write_gate": "write",
         "memory_read": "read", "memory_write": "write", "forget": "disable", "recall": "read", "memory_gate": "write",
         "output_write": "write", "output_mix": "merge", "skip": "skip", "replace": "replace", "disable": "disable",
+        "dct": "transform", "fft_filter": "transform", "wavelet": "transform", "spectral_mix": "merge", "spectral_gate": "transform",
+        "qkv_gate": "transform", "cross_attend": "transform", "self_attend": "transform", "key_align": "transform", "value_mix": "merge",
+        "svd_atom_k": "transform", "diag": "transform", "toeplitz": "transform", "block_mean": "transform", "mined_gate": "transform",
     }
     effect = effect_map.get(name, "transform")
-    cost = "cheap" if row in {0, 2, 4} else ("medium" if row == 3 else "expensive")
-    rank_capable = name in {"low_rank", "channel", "ctx_matrix", "product", "gated_add"}
+    cost = "cheap" if row in {0, 2, 4} else ("medium" if row in {3, 5} else "expensive")
+    rank_capable = name in {"low_rank", "channel", "ctx_matrix", "product", "gated_add", "svd_atom_k"}
     sign_capable = name not in {"disable", "replace"}
     return PrimitiveInfo(name, row, col, family, arity, effect, cost, rank_capable, sign_capable)
 
@@ -88,7 +106,7 @@ class PrimitiveMatrix5x5(nn.Module):
             r, c = self.infos[idx].row, self.infos[idx].col
             vals = [
                 rr * 5 + cc
-                for rr in range(max(0, r - 1), min(5, r + 2))
+                for rr in range(max(0, r - 1), min(len(self.grid), r + 2))
                 for cc in range(max(0, c - 1), min(5, c + 2))
             ]
             vals.extend([idx] * (9 - len(vals)))
@@ -104,7 +122,7 @@ class PrimitiveMatrix5x5(nn.Module):
         return len(self.names)
 
     def _descriptor_matrix(self, infos: List[PrimitiveInfo]) -> torch.Tensor:
-        families = ["local", "learned", "routing", "memory", "control"]
+        families = ["local", "learned", "routing", "memory", "control", "spectral", "attention_like", "mined_local"]
         arities = ["unary", "binary", "memory"]
         effects = ["preserve", "transform", "merge", "split", "write", "read", "skip", "replace", "disable"]
         costs = ["cheap", "medium", "expensive"]
@@ -115,7 +133,7 @@ class PrimitiveMatrix5x5(nn.Module):
             v += [1.0 if x.arity == y else 0.0 for y in arities]
             v += [1.0 if x.effect == y else 0.0 for y in effects]
             v += [1.0 if x.cost == y else 0.0 for y in costs]
-            v += [float(x.rank_capable), float(x.sign_capable), x.row / 4.0, x.col / 4.0]
+            v += [float(x.rank_capable), float(x.sign_capable), x.row / 7.0, x.col / 4.0]
             rows.append(v)
         return torch.tensor(rows, dtype=torch.float32)
 
@@ -160,6 +178,22 @@ class PrimitiveMatrix5x5(nn.Module):
                 unseen = unseen[torch.randperm(unseen.numel(), device=ids.device)]
                 top = torch.cat([top, unseen[: k - top.numel()]])
         return top.view(*([1] * ids.dim()), -1).expand(*ids.shape, -1)
+
+    def category_best(self, ids: torch.Tensor) -> torch.Tensor:
+        device = ids.device
+        bias = self.feedback_gain_ema - 0.5 * self.feedback_regret_ema
+        if self.feedback_count.sum() <= 0:
+            bias = self.usage_score
+        
+        best_ids = []
+        num_rows = len(self.grid)
+        for r in range(num_rows):
+            row_slice = bias[r * 5 : r * 5 + 5]
+            best_idx_in_row = row_slice.argmax().item()
+            best_ids.append(r * 5 + best_idx_in_row)
+            
+        best_tensor = torch.tensor(best_ids, dtype=torch.long, device=device)
+        return best_tensor.view(*([1] * ids.dim()), -1).expand(*ids.shape, -1)
 
     def update_usage_credit(
         self,

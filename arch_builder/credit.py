@@ -119,6 +119,25 @@ def spearman_corr(x, y):
     return float(torch.corrcoef(torch.stack([x_rank, y_rank]))[0, 1])
 
 
+def pairwise_ranking_loss(pred_utility: torch.Tensor, target_scores: Sequence[float] | torch.Tensor) -> torch.Tensor:
+    """Compute pairwise margin ranking loss to align predicted utility order with targets."""
+    if len(target_scores) < 2:
+        return torch.zeros((), device=pred_utility.device)
+    loss_sum = torch.zeros((), device=pred_utility.device)
+    pair_count = 0
+    m = len(target_scores)
+    for i in range(m):
+        for j in range(m):
+            diff = float(target_scores[i]) - float(target_scores[j])
+            if diff > 1e-5:
+                margin = min(1.0, max(0.01, diff))
+                loss_sum = loss_sum + F.relu(margin - (pred_utility[i] - pred_utility[j]))
+                pair_count += 1
+    if pair_count > 0:
+        return loss_sum / pair_count
+    return torch.zeros((), device=pred_utility.device)
+
+
 def mmr_select_pool(items, pm_emb, b=3, beta=0.35):
     if not items:
         return []
@@ -319,6 +338,7 @@ class BoundedCounterfactualCredit:
         pm_emb = None
         
         pools = defaultdict(list)
+        cell_targets = defaultdict(list)
         utility_predicted = []
         proposal_scores = []
         sim_predicted = []
@@ -382,6 +402,8 @@ class BoundedCounterfactualCredit:
                     # NLL loss
                     nll = 0.5 * torch.log(pred_var.clamp_min(1e-6)) + 0.5 * (pred_utility - share).pow(2) / pred_var.clamp_min(1e-6)
                     simulator_losses.append(nll.mean())
+                    
+                    cell_targets[(target.layer, target.cell)].append((pred_utility.mean(), share))
                     
                     ut_val = float((utility_val * mask).sum(dim=-1)[present].mean().cpu())
                     utility_predicted.append(ut_val)
@@ -481,6 +503,15 @@ class BoundedCounterfactualCredit:
         effect_mmr_similarity = mean_or_zero(effect_sims)
         hybrid_mmr_similarity = mean_or_zero(hybrid_sims)
 
+        cf_rank_losses = []
+        for cell_key, items in cell_targets.items():
+            if len(items) >= 2:
+                pred_utils = torch.stack([x[0] for x in items])
+                target_scores = [x[1] for x in items]
+                cf_rank_losses.append(pairwise_ranking_loss(pred_utils, target_scores))
+        if cf_rank_losses:
+            simulator_losses.append(torch.stack(cf_rank_losses).mean())
+
         return (
             torch.stack(policy_losses).mean(),
             torch.stack(simulator_losses).mean() if simulator_losses else z,
@@ -541,14 +572,31 @@ class BoundedCounterfactualCredit:
             )
         full_loss = F.cross_entropy(full_logits.float(), labels, reduction="none")
         singles = self._targets_from_trace(full_trace)
-        pair_count = min(self.budget - len(singles), max(0, int(round(self.budget * self.pair_fraction))))
         interventions: List[Tuple[CounterfactualTarget, ...]] = [(target,) for target in singles]
-        if len(singles) >= 2:
+        
+        remaining_budget = max(0, self.budget - len(interventions))
+        triple_count = min(remaining_budget, 1 if len(singles) >= 3 else 0)
+        triples_added = []
+        if triple_count > 0:
+            for i in range(triple_count):
+                a = singles[(3 * i) % len(singles)]
+                b = singles[(3 * i + 1) % len(singles)]
+                c = singles[(3 * i + 2) % len(singles)]
+                if a != b and b != c and a != c:
+                    triples_added.append((a, b, c))
+            interventions.extend(triples_added)
+            remaining_budget -= len(triples_added)
+            
+        pair_count = min(remaining_budget, max(0, int(round(self.budget * self.pair_fraction))))
+        pairs_added = []
+        if len(singles) >= 2 and pair_count > 0:
             for i in range(pair_count):
                 a = singles[(2 * i) % len(singles)]
                 b = singles[(2 * i + 1) % len(singles)]
                 if a != b:
-                    interventions.append((a, b))
+                    pairs_added.append((a, b))
+            interventions.extend(pairs_added)
+            
         interventions = interventions[: self.budget]
         interventions.extend((target,) for target in self.last_alternative_targets)
         if not interventions:

@@ -24,6 +24,8 @@ class HybridScanner(nn.Module):
         single_proj_dim: int = 32,
         pair_jl_dim: int = 16,
         enable_scanner_feedback_memory: bool = False,
+        enable_category_scanner: bool = False,
+        num_primitives: int = 25,
     ) -> None:
         super().__init__()
         self.local_k = local_k
@@ -43,7 +45,7 @@ class HybridScanner(nn.Module):
             nn.SiLU(),
             nn.Linear(prim_embed_dim, 1),
         )
-        self.anchor = nn.Linear(context_dim, 25)
+        self.anchor = nn.Linear(context_dim, num_primitives)
         self.projection_sources = ProjectionScannerSources(
             effect_dim=dim,
             single_proj_dim=single_proj_dim,
@@ -53,6 +55,12 @@ class HybridScanner(nn.Module):
         if enable_scanner_feedback_memory:
             cpu_rng = torch.random.get_rng_state()
             self.feedback_source_type = nn.Embedding(1, prim_embed_dim)
+            torch.random.set_rng_state(cpu_rng)
+
+        self.category_source_type = None
+        if enable_category_scanner:
+            cpu_rng = torch.random.get_rng_state()
+            self.category_source_type = nn.Embedding(1, prim_embed_dim)
             torch.random.set_rng_state(cpu_rng)
 
 
@@ -96,34 +104,35 @@ class HybridScanner(nn.Module):
             source_ids = torch.full_like(candidate_ids, 4)
             cand_emb = primitive_matrix.emb[candidate_ids] + self.source_type(source_ids)
         else:
+            cand_list = [local, semantic, usage, random]
+            src_list = [
+                torch.zeros_like(local),
+                torch.ones_like(semantic),
+                torch.full_like(usage, 2),
+                torch.full_like(random, 3),
+            ]
+            emb_list = [
+                primitive_matrix.emb[local] + self.source_type(torch.zeros_like(local)),
+                primitive_matrix.emb[semantic] + self.source_type(torch.ones_like(semantic)),
+                primitive_matrix.emb[usage] + self.source_type(torch.full_like(usage, 2)),
+                primitive_matrix.emb[random] + self.source_type(torch.full_like(random, 3)),
+            ]
+            
             if self.feedback_source_type is not None:
                 feedback = primitive_matrix.feedback_topk(anchor_ids, k=3)
-                candidate_ids = torch.cat([local, semantic, usage, random, feedback], dim=-1)
-                source_ids = torch.cat(
-                    [
-                        torch.zeros_like(local),
-                        torch.ones_like(semantic),
-                        torch.full_like(usage, 2),
-                        torch.full_like(random, 3),
-                        torch.full_like(feedback, 4),
-                    ],
-                    dim=-1,
-                )
-                base_emb = primitive_matrix.emb[candidate_ids[:, :-3]] + self.source_type(source_ids[:, :-3])
-                feed_emb = primitive_matrix.emb[candidate_ids[:, -3:]] + self.feedback_source_type(torch.zeros_like(feedback))
-                cand_emb = torch.cat([base_emb, feed_emb], dim=1)
-            else:
-                candidate_ids = torch.cat([local, semantic, usage, random], dim=-1)
-                source_ids = torch.cat(
-                    [
-                        torch.zeros_like(local),
-                        torch.ones_like(semantic),
-                        torch.full_like(usage, 2),
-                        torch.full_like(random, 3),
-                    ],
-                    dim=-1,
-                )
-                cand_emb = primitive_matrix.emb[candidate_ids] + self.source_type(source_ids)
+                cand_list.append(feedback)
+                src_list.append(torch.full_like(feedback, 4))
+                emb_list.append(primitive_matrix.emb[feedback] + self.feedback_source_type(torch.zeros_like(feedback)))
+                
+            if self.category_source_type is not None:
+                category = primitive_matrix.category_best(anchor_ids)
+                cand_list.append(category)
+                src_list.append(torch.full_like(category, 7))
+                emb_list.append(primitive_matrix.emb[category] + self.category_source_type(torch.zeros_like(category)))
+                
+            candidate_ids = torch.cat(cand_list, dim=-1)
+            source_ids = torch.cat(src_list, dim=-1)
+            cand_emb = torch.cat(emb_list, dim=1)
 
         ctx = self.context_proj(context).unsqueeze(1).expand_as(cand_emb)
         mem = self.memory_proj(memory).unsqueeze(1).expand_as(cand_emb)

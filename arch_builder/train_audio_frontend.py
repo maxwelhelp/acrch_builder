@@ -15,7 +15,7 @@ from .audio_frontend import AudioMatrixClassifier, SyntheticAudioOrderTask, buil
 from .reporting import append_csv, ensure_dir, write_json
 from .speechcommands_data import AudioBatch as SpeechCommandsAudioBatch
 from .speechcommands_data import SpeechCommandsAcceptanceTask, normalize_classes
-from .credit import BoundedCounterfactualCredit, generic_discovery_health_loss
+from .credit import BoundedCounterfactualCredit, generic_discovery_health_loss, pairwise_ranking_loss
 
 
 PROJECTION_METRIC_KEYS = (
@@ -446,14 +446,67 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                         primitive_top_share_target=args.primitive_top_share_target,
                         primitive_entropy_floor=args.primitive_entropy_floor,
                     )
+                    
+                    grad_losses = []
+                    grad_nlls = []
+                    grad_ranks = []
+                    for layer_idx, layer in enumerate(model.backbone.layers):
+                        if hasattr(layer, "get_and_clear_grad_credits"):
+                            credits_list = layer.get_and_clear_grad_credits()
+                            if credits_list and layer.utility_critic is not None:
+                                ctx_det, emb_det, head_det, cand_det, grad_credit = credits_list[-1]
+                                ctx_gpu = ctx_det.to(ce.device)
+                                emb_gpu = emb_det.to(ce.device)
+                                head_gpu = head_det.to(ce.device)
+                                grad_credit_gpu = grad_credit.to(ce.device)
+                                
+                                if ctx_gpu.dtype != features.dtype:
+                                    ctx_gpu = ctx_gpu.to(features.dtype)
+                                if emb_gpu.dtype != features.dtype:
+                                    emb_gpu = emb_gpu.to(features.dtype)
+                                if head_gpu.dtype != features.dtype:
+                                    head_gpu = head_gpu.to(features.dtype)
+
+                                pred_util, pred_var = layer.utility_critic(ctx_gpu, emb_gpu, head_gpu)
+                                
+                                grad_mean_abs = float(grad_credit_gpu.abs().mean())
+                                if not hasattr(layer, "grad_scale_ema"):
+                                    layer.grad_scale_ema = 1e-3
+                                layer.grad_scale_ema = 0.99 * layer.grad_scale_ema + 0.01 * max(grad_mean_abs, 1e-8)
+                                
+                                target_scale = credit.gain_scale if hasattr(credit, "gain_scale") else 1e-3
+                                scaled_target = grad_credit_gpu / max(layer.grad_scale_ema, 1e-8) * target_scale
+                                
+                                nll = 0.5 * torch.log(pred_var.clamp_min(1e-6)) + 0.5 * (pred_util - scaled_target).pow(2) / pred_var.clamp_min(1e-6)
+                                grad_nlls.append(nll.mean())
+                                
+                                rank_loss_list = []
+                                for cell_idx in range(scaled_target.shape[0]):
+                                    rank_loss_list.append(pairwise_ranking_loss(pred_util[cell_idx], scaled_target[cell_idx]))
+                                rank_loss = torch.stack(rank_loss_list).mean()
+                                grad_ranks.append(rank_loss)
+                    
+                    if grad_nlls:
+                        grad_nll_loss = torch.stack(grad_nlls).mean()
+                        grad_rank_loss = torch.stack(grad_ranks).mean()
+                        grad_credit_loss = grad_nll_loss + grad_rank_loss
+                        grad_metrics = {
+                            "grad_credit_nll": float(grad_nll_loss.detach().cpu()),
+                            "grad_credit_rank": float(grad_rank_loss.detach().cpu()),
+                        }
+                    else:
+                        grad_credit_loss = torch.zeros((), device=ce.device)
+                        grad_metrics = {"grad_credit_nll": 0.0, "grad_credit_rank": 0.0}
                 else:
                     policy_loss = simulator_loss = health_loss = torch.zeros((), device=ce.device)
+                    grad_credit_loss = torch.zeros((), device=ce.device)
                     align_metrics = {"credit_alignment_items": 0.0, "sim_pred_real_corr": 0.0}
                     health_metrics = {"active_cells": 0.0, "primitive_top_share": 0.0, "primitive_entropy": 0.0, "choice_entropy": 0.0}
+                    grad_metrics = {"grad_credit_nll": 0.0, "grad_credit_rank": 0.0}
                 loss = (
                     ce
                     + args.lambda_credit_policy * policy_loss
-                    + args.lambda_credit_simulator * simulator_loss
+                    + args.lambda_credit_simulator * (simulator_loss + grad_credit_loss)
                     + args.lambda_discovery_health * health_loss
                 )
             scaler.scale(loss).backward()
@@ -490,12 +543,13 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
             last_diag = {
                 "ce_loss": float(ce.detach().cpu()),
                 "credit_policy_loss": float(policy_loss.detach().cpu()),
-                "credit_simulator_loss": float(simulator_loss.detach().cpu()),
+                "credit_simulator_loss": float((simulator_loss + grad_credit_loss).detach().cpu()),
                 "discovery_health_loss": float(health_loss.detach().cpu()),
                 **align_metrics,
                 **health_metrics,
                 **credit.metrics(),
                 **projection_diag,
+                **grad_metrics,
             }
             if args.log_every > 0 and global_step % args.log_every == 0:
                 print(

@@ -138,6 +138,8 @@ class ActionMatrixLayer(nn.Module):
             single_proj_dim=single_proj_dim,
             pair_jl_dim=pair_jl_dim,
             enable_scanner_feedback_memory=self.enable_scanner_feedback_memory,
+            enable_category_scanner=self.enable_category_scanner,
+            num_primitives=primitive_matrix.num_primitives,
         )
         self.simulator = LowRankSimulator(dim=dim, num_primitives=primitive_matrix.num_primitives, rank=sim_rank, embed_dim=emb_dim)
         self.executor = ActionExecutor(dim=dim, primitive_matrix=primitive_matrix)
@@ -206,6 +208,8 @@ class ActionMatrixLayer(nn.Module):
             self.slot_output_weight = nn.Parameter(torch.tensor(0.10))
             self.collector_weight = nn.Parameter(torch.tensor(0.02))
             torch.random.set_rng_state(cpu_rng)
+
+        self.grad_credit_queue = []
 
 
     def _init_gate_priors(self) -> None:
@@ -537,12 +541,12 @@ class ActionMatrixLayer(nn.Module):
         )
         if self.enable_self_delta_choice and not disable_self_delta:
             choice_logits = choice_logits + self_delta_scale * _ln_logits(self_delta_component)
-        if self.enable_utility_critic_choice and utility_score is not None:
+        if self.enable_utility_critic_choice and utility_score is not None and not disable_sim and not disable_sim_result:
             utility_scale = torch.sigmoid(self.utility_logit_scale).to(dtype=choice_logits.dtype)
             utility_norm = F.layer_norm(utility_score, (utility_score.shape[-1],))
             choice_logits = choice_logits + utility_scale * utility_norm
 
-        if self.enable_mmr_controller and utility_score is not None:
+        if self.enable_mmr_controller and utility_score is not None and not disable_sim and not disable_sim_result:
             # ucb = utility_score + beta * uncertainty
             ucb = utility_score
             if utility_uncertainty is not None:
@@ -607,7 +611,7 @@ class ActionMatrixLayer(nn.Module):
 
         # primitive_out already computed before choice logits for optional self-delta diagnostics.
         if lazy_active:
-            if self.enable_mmr_controller and utility_score is not None:
+            if self.enable_mmr_controller and utility_score is not None and not disable_sim and not disable_sim_result:
                 selected_mask = mmr_mask
             else:
                 _, top_b_idx = choice.topk(k=self.utility_budget, dim=-1)
@@ -646,6 +650,43 @@ class ActionMatrixLayer(nn.Module):
         else:
             transformed = (choice.unsqueeze(-1) * primitive_out).sum(dim=1)
 
+        # Online Gradient Trace Credit Hook
+        if self.training and self.utility_critic is not None:
+            ctx_det = flat_context.detach().cpu()
+            head_det = flat_target_address.detach().cpu()
+            top_prim_emb_val = self.pm.emb.to(device=flat_context.device, dtype=flat_context.dtype)[top_ids]
+            if lazy_active:
+                emb_det = top_prim_emb_val.gather(1, selected_pos.unsqueeze(-1).expand(-1, -1, top_prim_emb_val.shape[-1])).detach().cpu()
+                cand_det = top_ids.gather(1, selected_pos).detach().cpu()
+                eff_det = lazy_primitive_out.detach()
+                
+                def make_hook(c_det, e_det, h_det, cand_det, eff_det):
+                    def backward_hook(grad):
+                        if grad is not None:
+                            grad_credit = - (grad * eff_det).sum(dim=-1)
+                            self.grad_credit_queue.append((c_det, e_det, h_det, cand_det, grad_credit.detach().cpu()))
+                            if len(self.grad_credit_queue) > 10:
+                                self.grad_credit_queue.pop(0)
+                        return grad
+                    return backward_hook
+                
+                lazy_primitive_out.register_hook(make_hook(ctx_det, emb_det, head_det, cand_det, eff_det))
+            else:
+                emb_det = top_prim_emb_val.detach().cpu()
+                cand_det = top_ids.detach().cpu()
+                eff_det = primitive_out.detach()
+                
+                def make_hook(c_det, e_det, h_det, cand_det, eff_det):
+                    def backward_hook(grad):
+                        if grad is not None:
+                            grad_credit = - (grad * eff_det).sum(dim=-1)
+                            self.grad_credit_queue.append((c_det, e_det, h_det, cand_det, grad_credit.detach().cpu()))
+                            if len(self.grad_credit_queue) > 10:
+                                self.grad_credit_queue.pop(0)
+                        return grad
+                    return backward_hook
+                
+                primitive_out.register_hook(make_hook(ctx_det, emb_det, head_det, cand_det, eff_det))
 
         pair_edge = self._flat_pair_bias(self.edge_pair_bias, b, flat_context.dtype, flat_context.device)
         pair_write = self._flat_pair_bias(self.write_pair_bias, b, flat_context.dtype, flat_context.device)
@@ -772,6 +813,11 @@ class ActionMatrixLayer(nn.Module):
 
         new_memory = 0.95 * memory + 0.05 * next_state.mean(dim=1)
         return next_state, output_state, new_memory, trace
+
+    def get_and_clear_grad_credits(self):
+        ready = list(self.grad_credit_queue)
+        self.grad_credit_queue.clear()
+        return ready
 
 
 class ActionMatrixModel(nn.Module):
