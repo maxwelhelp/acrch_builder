@@ -442,8 +442,8 @@ class ActionMatrixLayer(nn.Module):
                     active_sources.append(source_id)
             
             # Sort active_sources based on defined priority:
-            # 0 (grid), 1 (semantic), 5 (single_proj), 6 (pair_jl), 2 (usage), 3 (random), 4 (global)
-            priority = {0: 0, 1: 1, 5: 2, 6: 3, 2: 4, 3: 5, 4: 6}
+            # 0 (grid), 1 (semantic), 5 (single_proj), 6 (pair_jl), 3 (random), 2 (usage), 4 (global)
+            priority = {0: 0, 1: 1, 5: 2, 6: 3, 3: 4, 2: 5, 4: 6}
             active_sources = sorted(active_sources, key=lambda x: priority.get(x, 99))
             
             quota_limit = min(len(active_sources), k)
