@@ -372,6 +372,7 @@ class ActionMatrixLayer(nn.Module):
                 .reshape(b * s * s, -1)
             )
         full_scan = self.top_k >= self.pm.num_primitives
+        cell_ids = torch.arange(s * s, device=state.device).repeat(b)
         cand_ids, proposal_logits, source_ids, scan_metrics = self.scanner(
             flat_context,
             flat_mem,
@@ -379,6 +380,7 @@ class ActionMatrixLayer(nn.Module):
             prev_action_emb=prev_action_emb,
             ensure_all_candidates=full_scan,
             collect_metrics=collect_scan_metrics,
+            cell_ids=cell_ids,
         )
         proposal_rank_logits = proposal_logits
         proposal_choice_logits = proposal_logits
@@ -435,15 +437,15 @@ class ActionMatrixLayer(nn.Module):
             proposal_choice_logits = torch.cat([proposal_choice_logits, *extra_choice], dim=-1)
         k = min(self.top_k, proposal_rank_logits.shape[-1])
         if not full_scan and k >= 4:
-            # Dynamic exploration quota across all 7 sources to prevent censoring
+            # Dynamic exploration quota across all 8 sources to prevent censoring
             active_sources = []
-            for source_id in range(7):
+            for source_id in range(8):
                 if (source_ids == source_id).any():
                     active_sources.append(source_id)
             
             # Sort active_sources based on defined priority:
-            # 0 (grid), 1 (semantic), 5 (single_proj), 6 (pair_jl), 3 (random), 2 (usage), 4 (global)
-            priority = {0: 0, 1: 1, 5: 2, 6: 3, 3: 4, 2: 5, 4: 6}
+            # 0 (grid), 1 (semantic), 5 (single_proj), 6 (pair_jl), 4 (feedback), 7 (category), 3 (random), 2 (usage)
+            priority = {0: 0, 1: 1, 5: 2, 6: 3, 4: 4, 7: 5, 3: 6, 2: 7}
             active_sources = sorted(active_sources, key=lambda x: priority.get(x, 99))
             
             quota_limit = min(len(active_sources), k)
@@ -716,7 +718,7 @@ class ActionMatrixLayer(nn.Module):
 
         if self.utility_critic is not None:
             with torch.no_grad():
-                source_names_for_pres = ("grid", "semantic", "usage", "random", "global", "single_signed_projection", "pair_jl16")
+                source_names_for_pres = ("grid", "semantic", "usage", "random", "feedback", "single_signed_projection", "pair_jl16", "category")
                 for source_id, source_name in enumerate(source_names_for_pres):
                     pool_pres = (top_source_ids == source_id).any(dim=-1).float().mean()
                     utility_metrics[f"source_pool_presence_{source_name}"] = float(pool_pres.cpu())
@@ -730,7 +732,7 @@ class ActionMatrixLayer(nn.Module):
                     choice_pres = (choice * (top_source_ids == source_id).to(choice.dtype)).sum(dim=-1).mean()
                     utility_metrics[f"source_after_choice_presence_{source_name}"] = float(choice_pres.cpu())
 
-        source_names = ("grid", "semantic", "usage", "random", "global", "single_signed_projection", "pair_jl16")
+        source_names = ("grid", "semantic", "usage", "random", "feedback", "single_signed_projection", "pair_jl16", "category")
         if collect_scan_metrics:
             with torch.no_grad():
                 for source_id, source_name in enumerate(source_names):
@@ -1027,6 +1029,7 @@ class ActionMatrixModel(nn.Module):
             enable_vnext=enable_vnext,
             num_layers=layers,
             enable_scanner_feedback_memory=enable_scanner_feedback_memory,
+            slots=slots,
         )
         self.layers = nn.ModuleList([
             ActionMatrixLayer(

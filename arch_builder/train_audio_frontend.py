@@ -39,6 +39,15 @@ PROJECTION_METRIC_KEYS = (
     "single_projection_rank_mean",
     "single_projection_score_mean",
     "single_projection_score_max",
+    "feedback_bias_abs",
+    "feedback_staleness",
+    "feedback_count",
+    "feedback_entropy",
+    "feedback_top_share",
+    "feedback_candidate_usage",
+    "category_candidate_usage",
+    "feedback_candidate_coverage",
+    "category_candidate_coverage",
 )
 
 SELF_DELTA_METRIC_KEYS = (
@@ -314,7 +323,9 @@ def evaluate(
             scan = layer.get("scan_metrics", {})
             for key in (
                 "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "global_candidate_usage",
+                "feedback_candidate_usage", "category_candidate_usage",
                 "grid_candidate_coverage", "semantic_candidate_coverage", "usage_candidate_coverage", "random_candidate_coverage", "global_candidate_coverage",
+                "feedback_candidate_coverage", "category_candidate_coverage",
                 "scanner_source_mass_sum",
                 *PROJECTION_METRIC_KEYS,
             ):
@@ -441,7 +452,9 @@ def collect_ablations(model: AudioMatrixClassifier, task, batch_size: int, devic
         scan = first.get("scan_metrics", {})
         for key in (
             "grid_candidate_usage", "semantic_candidate_usage", "usage_candidate_usage", "random_candidate_usage", "global_candidate_usage",
+            "feedback_candidate_usage", "category_candidate_usage",
             "grid_candidate_coverage", "semantic_candidate_coverage", "usage_candidate_coverage", "random_candidate_coverage", "global_candidate_coverage",
+            "feedback_candidate_coverage", "category_candidate_coverage",
             "scanner_source_mass_sum",
             *PROJECTION_METRIC_KEYS,
         ):
@@ -730,6 +743,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 **align_metrics,
                 **health_metrics,
                 **credit.metrics(),
+                **model.backbone.pm.metrics(),
                 **projection_diag,
                 **grad_metrics,
                 **grad_norm_metrics,

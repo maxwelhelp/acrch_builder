@@ -87,6 +87,7 @@ class HybridScanner(nn.Module):
         prev_action_emb: torch.Tensor | None = None,
         ensure_all_candidates: bool = False,
         collect_metrics: bool = True,
+        cell_ids: torch.Tensor | None = None,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float]]:
         n = context.shape[0]
         device = context.device
@@ -121,13 +122,13 @@ class HybridScanner(nn.Module):
             ]
             
             if self.feedback_source_type is not None:
-                feedback = primitive_matrix.feedback_topk(anchor_ids, k=3, layer_idx=self.layer_idx)
+                feedback = primitive_matrix.feedback_topk(anchor_ids, k=3, layer_idx=self.layer_idx, cell_ids=cell_ids)
                 cand_list.append(feedback)
                 src_list.append(torch.full_like(feedback, 4))
                 emb_list.append(primitive_matrix.emb[feedback] + self.feedback_source_type(torch.zeros_like(feedback)))
                 
             if self.category_source_type is not None:
-                category = primitive_matrix.category_best(anchor_ids, layer_idx=self.layer_idx)
+                category = primitive_matrix.category_best(anchor_ids, layer_idx=self.layer_idx, cell_ids=cell_ids)
                 cand_list.append(category)
                 src_list.append(torch.full_like(category, 7))
                 emb_list.append(primitive_matrix.emb[category] + self.category_source_type(torch.zeros_like(category)))

@@ -323,7 +323,7 @@ class BoundedCounterfactualCredit:
         ready, self.pending = self.pending, []
         if not ready:
             return 0
-        ids, gains, layer_ids = [], [], []
+        ids, gains, layer_ids, cell_ids = [], [], [], []
         for record in ready:
             record.applied_step = self.step
             share = record.gain / max(1, len(record.targets))
@@ -336,11 +336,13 @@ class BoundedCounterfactualCredit:
                 ids.append(target.primitive)
                 gains.append(share)
                 layer_ids.append(target.layer)
+                cell_ids.append(target.cell)
         if primitive_matrix is not None and ids:
             primitive_matrix.update_usage_credit(
                 torch.tensor(ids, device=primitive_matrix.usage_score.device),
                 torch.tensor(gains, device=primitive_matrix.usage_score.device),
                 layer_ids=torch.tensor(layer_ids, device=primitive_matrix.usage_score.device),
+                cell_ids=torch.tensor(cell_ids, device=primitive_matrix.usage_score.device),
             )
         self.active = ready
         return len(ready)

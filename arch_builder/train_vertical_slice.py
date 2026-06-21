@@ -1314,9 +1314,16 @@ def train(args) -> None:
             # alone is not credit and eval forwards never mutate usage history.
             with torch.no_grad():
                 sample_credit = (logits.argmax(dim=-1) == batch.y).to(logits.dtype)
-                for layer_trace in trace["layers"]:
+                for layer_idx, layer_trace in enumerate(trace["layers"]):
                     edge_credit = sample_credit.repeat_interleave(args.slots * args.slots)
-                    model.pm.update_usage_credit(layer_trace["chosen"], edge_credit)
+                    cell_ids = torch.arange(args.slots * args.slots, device=logits.device).repeat(args.batch_size)
+                    layer_ids = torch.full_like(layer_trace["chosen"], layer_idx, dtype=torch.long)
+                    model.pm.update_usage_credit(
+                        layer_trace["chosen"],
+                        edge_credit,
+                        layer_ids=layer_ids,
+                        cell_ids=cell_ids,
+                    )
 
             total += args.batch_size
             correct += (logits.argmax(dim=-1) == batch.y).sum().item()

@@ -43,6 +43,7 @@ def write_latest_report(path: Path, report_dir: str, summary: Dict[str, object])
         "gain_disabled_delta", "sim_result_disabled_delta", "sim_disabled_delta", "choice_without_sim_delta",
         "external_delete_delta", "internal_skip_delta", "state_ablation_delta",
         "semantic_grid_mismatch", "semantic_neighbor_entropy", "scanner_full_scan", "primitive_embedding_rank", "usage_entropy", "usage_credit_observations",
+        "feedback_bias_abs", "feedback_staleness", "feedback_count", "feedback_entropy", "feedback_top_share", "feedback_candidate_usage", "category_candidate_usage", "feedback_candidate_coverage", "category_candidate_coverage",
         "single_signed_projection_usage", "single_signed_projection_candidate_count", "single_signed_projection_top_score", "single_signed_projection_signed_score_mean",
         "pair_jl16_usage", "pair_jl16_candidate_count", "pair_jl16_top_score", "pair_jl16_seconds", "pair_jl16_pairs_tested",
         "projection_logit_cap", "projection_logit_clipped_fraction",

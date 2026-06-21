@@ -85,6 +85,7 @@ class PrimitiveMatrix5x5(nn.Module):
         enable_vnext: bool = False,
         num_layers: int = 1,
         enable_scanner_feedback_memory: bool = False,
+        slots: int = 4,
     ) -> None:
         super().__init__()
         self.grid = PRIMITIVE_GRID if enable_vnext else PRIMITIVE_GRID[:5]
@@ -96,6 +97,8 @@ class PrimitiveMatrix5x5(nn.Module):
         self.names = [x.name for x in infos]
         self.name_to_id = {n: i for i, n in enumerate(self.names)}
         self.num_layers = num_layers
+        self.slots = slots
+        self.num_cells = slots * slots
         self.enable_scanner_feedback_memory = enable_scanner_feedback_memory
 
         desc = self._descriptor_matrix(infos)
@@ -106,9 +109,10 @@ class PrimitiveMatrix5x5(nn.Module):
         self.register_buffer("descriptor", desc, persistent=False)
         self.register_buffer("usage_score", torch.zeros(len(self.names)), persistent=False)
         self.register_buffer("usage_observations", torch.zeros(len(self.names)), persistent=False)
-        self.register_buffer("feedback_gain_ema", torch.zeros(num_layers, len(self.names)), persistent=False)
-        self.register_buffer("feedback_regret_ema", torch.zeros(num_layers, len(self.names)), persistent=False)
-        self.register_buffer("feedback_count", torch.zeros(num_layers, len(self.names)), persistent=False)
+        self.register_buffer("feedback_gain_ema", torch.zeros(num_layers, self.num_cells, len(self.names)), persistent=False)
+        self.register_buffer("feedback_regret_ema", torch.zeros(num_layers, self.num_cells, len(self.names)), persistent=False)
+        self.register_buffer("feedback_count", torch.zeros(num_layers, self.num_cells, len(self.names)), persistent=False)
+        self.register_buffer("feedback_age", torch.zeros(num_layers, self.num_cells, len(self.names)), persistent=False)
 
         local_lookup = []
         for idx in range(len(self.names)):
@@ -173,42 +177,68 @@ class PrimitiveMatrix5x5(nn.Module):
                 top = torch.cat([top, unseen[: k - top.numel()]])
         return top.view(*([1] * ids.dim()), -1).expand(*ids.shape, -1)
 
-    def feedback_topk(self, ids: torch.Tensor, k: int, layer_idx: int = 0) -> torch.Tensor:
+    def feedback_topk(self, ids: torch.Tensor, k: int, layer_idx: int = 0, cell_ids: torch.Tensor | None = None) -> torch.Tensor:
         device = ids.device
-        if self.feedback_count[layer_idx].sum() <= 0:
-            top = torch.randperm(self.num_primitives, device=ids.device)[:k]
-        else:
-            seen = self.feedback_count[layer_idx] > 0
-            bias = self.feedback_gain_ema[layer_idx] - 0.5 * self.feedback_regret_ema[layer_idx]
-            ranking = bias.masked_fill(~seen, float("-inf"))
-            top = ranking.topk(k=min(k, int(seen.sum().item()))).indices.to(ids.device)
-            if top.numel() < k:
-                unseen = (~seen).nonzero(as_tuple=False).flatten().to(ids.device)
-                unseen = unseen[torch.randperm(unseen.numel(), device=ids.device)]
-                top = torch.cat([top, unseen[: k - top.numel()]])
-        return top.view(*([1] * ids.dim()), -1).expand(*ids.shape, -1)
+        n = ids.shape[0]
+        k = min(k, self.num_primitives)
+        if cell_ids is None:
+            cell_ids = torch.arange(n, device=device) % self.num_cells
+            
+        gain = self.feedback_gain_ema[layer_idx, cell_ids]
+        regret = self.feedback_regret_ema[layer_idx, cell_ids]
+        bias = torch.clamp(gain - 0.5 * regret, min=-2.0, max=2.0)
+        
+        count = self.feedback_count[layer_idx, cell_ids]
+        seen = count > 0
+        
+        ranking = bias.masked_fill(~seen, float("-inf"))
+        top = ranking.topk(k=k, dim=-1).indices
+        
+        no_measurements = (count.sum(dim=-1) <= 0)
+        if no_measurements.any():
+            rand_ids = torch.stack([torch.randperm(self.num_primitives, device=device)[:k] for _ in range(int(no_measurements.sum().item()))])
+            top[no_measurements] = rand_ids
+            
+        for idx in range(n):
+            row_seen_count = int(seen[idx].sum().item())
+            if row_seen_count < k:
+                unseen = (~seen[idx]).nonzero(as_tuple=False).flatten()
+                perm = torch.randperm(unseen.numel(), device=device)
+                fill_needed = k - row_seen_count
+                top[idx, row_seen_count:] = unseen[perm[:fill_needed]]
+                
+        return top.view(*ids.shape, -1)
 
-    def category_best(self, ids: torch.Tensor, layer_idx: int = 0) -> torch.Tensor:
+    def category_best(self, ids: torch.Tensor, layer_idx: int = 0, cell_ids: torch.Tensor | None = None) -> torch.Tensor:
         device = ids.device
-        bias = self.feedback_gain_ema[layer_idx] - 0.5 * self.feedback_regret_ema[layer_idx]
-        if self.feedback_count[layer_idx].sum() <= 0:
-            bias = self.usage_score
+        n = ids.shape[0]
+        if cell_ids is None:
+            cell_ids = torch.arange(n, device=device) % self.num_cells
+            
+        gain = self.feedback_gain_ema[layer_idx, cell_ids]
+        regret = self.feedback_regret_ema[layer_idx, cell_ids]
+        bias = torch.clamp(gain - 0.5 * regret, min=-2.0, max=2.0)
+        
+        no_measurements = (self.feedback_count[layer_idx, cell_ids].sum(dim=-1) <= 0)
+        if no_measurements.any():
+            bias[no_measurements] = self.usage_score.unsqueeze(0).expand(int(no_measurements.sum().item()), -1).to(bias.dtype)
         
         best_ids = []
         num_rows = len(self.grid)
         for r in range(num_rows):
-            row_slice = bias[r * 5 : r * 5 + 5]
-            best_idx_in_row = row_slice.argmax().item()
+            row_slice = bias[:, r * 5 : r * 5 + 5]
+            best_idx_in_row = row_slice.argmax(dim=-1)
             best_ids.append(r * 5 + best_idx_in_row)
             
-        best_tensor = torch.tensor(best_ids, dtype=torch.long, device=device)
-        return best_tensor.view(*([1] * ids.dim()), -1).expand(*ids.shape, -1)
+        best_tensor = torch.stack(best_ids, dim=-1)
+        return best_tensor.view(*ids.shape, -1)
 
     def update_usage_credit(
         self,
         chosen_ids: torch.Tensor,
         credit: torch.Tensor,
         layer_ids: torch.Tensor | None = None,
+        cell_ids: torch.Tensor | None = None,
         momentum: float = 0.95,
     ) -> None:
         """Update delayed usage ranking from observed task reward.
@@ -235,19 +265,26 @@ class PrimitiveMatrix5x5(nn.Module):
 
             # Scanner feedback memory updates (gain/regret EMAs) - only if explicitly enabled
             if self.enable_scanner_feedback_memory:
+                self.feedback_age.add_(1.0)
                 if layer_ids is None:
                     layers_t = torch.zeros_like(ids)
                 else:
                     layers_t = layer_ids.detach().flatten().to(self.usage_score.device, dtype=torch.long)
                 
-                for l, p_id, val in zip(layers_t.tolist(), ids.tolist(), values.tolist()):
-                    if l < 0 or l >= self.num_layers or p_id < 0 or p_id >= self.num_primitives:
+                if cell_ids is None:
+                    cells_t = torch.zeros_like(ids)
+                else:
+                    cells_t = cell_ids.detach().flatten().to(self.usage_score.device, dtype=torch.long)
+                
+                for l, c, p_id, val in zip(layers_t.tolist(), cells_t.tolist(), ids.tolist(), values.tolist()):
+                    if l < 0 or l >= self.num_layers or c < 0 or c >= self.num_cells or p_id < 0 or p_id >= self.num_primitives:
                         continue
-                    self.feedback_count[l, p_id] += 1
+                    self.feedback_count[l, c, p_id] += 1
+                    self.feedback_age[l, c, p_id] = 0.0
                     if val > 0:
-                        self.feedback_gain_ema[l, p_id] = momentum * self.feedback_gain_ema[l, p_id] + (1.0 - momentum) * val
+                        self.feedback_gain_ema[l, c, p_id] = momentum * self.feedback_gain_ema[l, c, p_id] + (1.0 - momentum) * val
                     elif val < 0:
-                        self.feedback_regret_ema[l, p_id] = momentum * self.feedback_regret_ema[l, p_id] - (1.0 - momentum) * val
+                        self.feedback_regret_ema[l, c, p_id] = momentum * self.feedback_regret_ema[l, c, p_id] - (1.0 - momentum) * val
 
 
     def metrics(self) -> Dict[str, float]:
@@ -259,10 +296,44 @@ class PrimitiveMatrix5x5(nn.Module):
         usage_entropy = 0.0 if self.usage_observations.sum() <= 0 else float(
             (-(usage_prob + 1e-8) * (usage_prob + 1e-8).log()).sum().cpu()
         )
-        return {
+        
+        m = {
             "primitive_embedding_rank": float(cov_rank),
             "primitive_pair_cos_mean": float(off.mean().cpu()),
             "primitive_pair_cos_max": float(off.max().cpu()),
             "usage_entropy": usage_entropy,
             "usage_credit_observations": float(self.usage_observations.sum().cpu()),
         }
+        
+        if self.enable_scanner_feedback_memory:
+            seen = self.feedback_count > 0
+            if seen.any():
+                gain = self.feedback_gain_ema
+                regret = self.feedback_regret_ema
+                bias = torch.clamp(gain - 0.5 * regret, min=-2.0, max=2.0)
+                feedback_bias_abs = float(bias[seen].abs().mean().cpu())
+                feedback_staleness = float(self.feedback_age[seen].mean().cpu())
+                
+                total_counts = self.feedback_count.sum(dim=(0, 1))
+                if total_counts.sum() > 0:
+                    prob = total_counts / total_counts.sum()
+                    feedback_entropy = float((-(prob + 1e-8) * (prob + 1e-8).log()).sum().cpu())
+                    feedback_top_share = float(prob.max().cpu())
+                else:
+                    feedback_entropy = 0.0
+                    feedback_top_share = 0.0
+            else:
+                feedback_bias_abs = 0.0
+                feedback_staleness = 0.0
+                feedback_entropy = 0.0
+                feedback_top_share = 0.0
+                
+            m.update({
+                "feedback_bias_abs": feedback_bias_abs,
+                "feedback_staleness": feedback_staleness,
+                "feedback_count": float(self.feedback_count.sum().cpu()),
+                "feedback_entropy": feedback_entropy,
+                "feedback_top_share": feedback_top_share,
+            })
+            
+        return m
