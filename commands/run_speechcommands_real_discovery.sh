@@ -50,6 +50,21 @@ fi
 if [[ -n "${UTILITY_MMR_MODE:-}" ]]; then
   VNEXT_ARGS+=(--utility-mmr-mode "${UTILITY_MMR_MODE}")
 fi
+if [[ -n "${UTILITY_CHOICE_WARMUP_STEPS:-}" ]]; then
+  VNEXT_ARGS+=(--utility-choice-warmup-steps "${UTILITY_CHOICE_WARMUP_STEPS}")
+fi
+if [[ -n "${MMR_CONTROLLER_WARMUP_STEPS:-}" ]]; then
+  VNEXT_ARGS+=(--mmr-controller-warmup-steps "${MMR_CONTROLLER_WARMUP_STEPS}")
+fi
+if [[ -n "${UTILITY_CHOICE_SCALE:-}" ]]; then
+  VNEXT_ARGS+=(--utility-choice-scale "${UTILITY_CHOICE_SCALE}")
+fi
+if [[ -n "${UTILITY_CHOICE_SCALE_MAX:-}" ]]; then
+  VNEXT_ARGS+=(--utility-choice-scale-max "${UTILITY_CHOICE_SCALE_MAX}")
+fi
+if [[ -n "${UTILITY_MMR_IDENTITY_WEIGHT:-}" ]]; then
+  VNEXT_ARGS+=(--utility-mmr-identity-weight "${UTILITY_MMR_IDENTITY_WEIGHT}")
+fi
 if [[ "${ENABLE_CATEGORY_SCANNER:-0}" == "1" ]]; then
   VNEXT_ARGS+=(--enable-category-scanner)
 fi
@@ -93,6 +108,7 @@ python -m arch_builder.train_audio_frontend \
   --projection-logit-cap "${PROJECTION_LOGIT_CAP:-0.0}" \
   --primitive-top-share-target "${PRIMITIVE_TOP_SHARE_TARGET:-0.60}" \
   --primitive-entropy-floor "${PRIMITIVE_ENTROPY_FLOOR:-0.65}" \
+  --lambda-behavior-diversity "${LAMBDA_BEHAVIOR_DIVERSITY:-0.01}" \
   --target-active-cells "${TARGET_ACTIVE_CELLS:-6}" \
   --train-limit "${TRAIN_LIMIT:-0}" \
   --val-limit "${VAL_LIMIT:-0}" \

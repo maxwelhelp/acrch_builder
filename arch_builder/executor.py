@@ -10,9 +10,10 @@ from .primitive_matrix import PrimitiveMatrix5x5
 class ActionExecutor(nn.Module):
     """Full primitive execution for selected candidates."""
 
-    def __init__(self, dim: int, primitive_matrix: PrimitiveMatrix5x5) -> None:
+    def __init__(self, dim: int, primitive_matrix: PrimitiveMatrix5x5, enable_vnext: bool = False) -> None:
         super().__init__()
         self.dim = dim
+        self.enable_vnext = enable_vnext
         self.names = primitive_matrix.names
         self.name_to_id = primitive_matrix.name_to_id
         p = primitive_matrix.num_primitives
@@ -25,30 +26,31 @@ class ActionExecutor(nn.Module):
         self.ctx = nn.Sequential(nn.Linear(dim * 3, dim), nn.SiLU(), nn.Linear(dim, dim))
         self.gate = nn.Linear(dim * 2, dim)
 
-        # Spectral: DCT Matrix
-        import numpy as np
-        dct_mat = np.zeros((dim, dim))
-        for i in range(dim):
-            for j in range(dim):
-                dct_mat[i, j] = np.cos(np.pi * i * (2 * j + 1) / (2.0 * dim))
-        dct_mat[0, :] *= np.sqrt(1.0 / dim)
-        dct_mat[1:, :] *= np.sqrt(2.0 / dim)
-        self.register_buffer("dct_matrix", torch.tensor(dct_mat, dtype=torch.float32), persistent=False)
+        if enable_vnext:
+            # Spectral: DCT Matrix
+            import numpy as np
+            dct_mat = np.zeros((dim, dim))
+            for i in range(dim):
+                for j in range(dim):
+                    dct_mat[i, j] = np.cos(np.pi * i * (2 * j + 1) / (2.0 * dim))
+            dct_mat[0, :] *= np.sqrt(1.0 / dim)
+            dct_mat[1:, :] *= np.sqrt(2.0 / dim)
+            self.register_buffer("dct_matrix", torch.tensor(dct_mat, dtype=torch.float32), persistent=False)
 
-        # Spectral: FFT filter weight
-        self.fft_filter_weight = nn.Parameter(torch.ones(p, dim // 2 + 1, dtype=torch.float32))
+            # Spectral: FFT filter weight
+            self.fft_filter_weight = nn.Parameter(torch.ones(p, dim // 2 + 1, dtype=torch.float32))
 
-        # Attention-like projections
-        self.q_proj = nn.Parameter(torch.randn(p, dim, dim) * 0.02)
-        self.k_proj = nn.Parameter(torch.randn(p, dim, dim) * 0.02)
-        self.v_proj = nn.Parameter(torch.randn(p, dim, dim) * 0.02)
+            # Attention-like projections
+            self.q_proj = nn.Parameter(torch.randn(p, dim, dim) * 0.02)
+            self.k_proj = nn.Parameter(torch.randn(p, dim, dim) * 0.02)
+            self.v_proj = nn.Parameter(torch.randn(p, dim, dim) * 0.02)
 
-        # Mined Local parameters
-        self.mined_u = nn.Parameter(torch.randn(dim, 4) * 0.02)
-        self.mined_v = nn.Parameter(torch.randn(4, dim) * 0.02)
-        self.mined_diag = nn.Parameter(torch.ones(dim))
-        self.mined_toeplitz_filter = nn.Parameter(torch.randn(1, 1, 5) * 0.02)
-        self.mined_source_matrix = nn.Parameter(torch.randn(dim, dim) * 0.02)
+            # Mined Local parameters
+            self.mined_u = nn.Parameter(torch.randn(dim, 4) * 0.02)
+            self.mined_v = nn.Parameter(torch.randn(4, dim) * 0.02)
+            self.mined_diag = nn.Parameter(torch.ones(dim))
+            self.mined_toeplitz_filter = nn.Parameter(torch.randn(1, 1, 5) * 0.02)
+            self.mined_source_matrix = nn.Parameter(torch.randn(dim, dim) * 0.02)
 
     def _single(self, name: str, src: torch.Tensor, tgt: torch.Tensor, memory: torch.Tensor, pid: torch.Tensor) -> torch.Tensor:
         if name in {"identity", "route", "edge_gate", "write_gate", "output_write"}:
@@ -197,88 +199,89 @@ class ActionExecutor(nn.Module):
         run_prim("replace", lambda s, t, m, pid: t)
         run_prim("disable", lambda s, t, m, pid: torch.zeros_like(s))
 
-        # Spectral Primitives
-        run_prim("dct", lambda s, t, m, pid: s @ self.dct_matrix.t())
-        
-        def run_fft_filter(s, t, m, pid):
-            src_fft = torch.fft.rfft(s.float(), dim=-1)
-            filtered = src_fft * self.fft_filter_weight[pid]
-            return torch.fft.irfft(filtered, n=self.dim, dim=-1).to(s.dtype)
-        run_prim("fft_filter", run_fft_filter)
-        
-        def run_wavelet(s, t, m, pid):
-            even = s[..., 0::2]
-            odd = s[..., 1::2]
-            approx = (even + odd) / 1.41421356
-            detail = (even - odd) / 1.41421356
-            return torch.cat([approx, detail], dim=-1)
-        run_prim("wavelet", run_wavelet)
-        
-        def run_spectral_mix(s, t, m, pid):
-            src_fft = torch.fft.rfft(s.float(), dim=-1)
-            tgt_fft = torch.fft.rfft(t.float(), dim=-1)
-            return torch.fft.irfft(src_fft * torch.sigmoid(tgt_fft.real), n=self.dim, dim=-1).to(s.dtype)
-        run_prim("spectral_mix", run_spectral_mix)
-        
-        def run_spectral_gate(s, t, m, pid):
-            src_fft = torch.fft.rfft(s.float(), dim=-1)
-            energy = src_fft.abs()
-            sg_gate = torch.sigmoid(energy - energy.mean(dim=-1, keepdim=True))
-            return torch.fft.irfft(src_fft * sg_gate, n=self.dim, dim=-1).to(s.dtype)
-        run_prim("spectral_gate", run_spectral_gate)
+        if self.enable_vnext:
+            # Spectral Primitives
+            run_prim("dct", lambda s, t, m, pid: s @ self.dct_matrix.t())
+            
+            def run_fft_filter(s, t, m, pid):
+                src_fft = torch.fft.rfft(s.float(), dim=-1)
+                filtered = src_fft * self.fft_filter_weight[pid]
+                return torch.fft.irfft(filtered, n=self.dim, dim=-1).to(s.dtype)
+            run_prim("fft_filter", run_fft_filter)
+            
+            def run_wavelet(s, t, m, pid):
+                even = s[..., 0::2]
+                odd = s[..., 1::2]
+                approx = (even + odd) / 1.41421356
+                detail = (even - odd) / 1.41421356
+                return torch.cat([approx, detail], dim=-1)
+            run_prim("wavelet", run_wavelet)
+            
+            def run_spectral_mix(s, t, m, pid):
+                src_fft = torch.fft.rfft(s.float(), dim=-1)
+                tgt_fft = torch.fft.rfft(t.float(), dim=-1)
+                return torch.fft.irfft(src_fft * torch.sigmoid(tgt_fft.real), n=self.dim, dim=-1).to(s.dtype)
+            run_prim("spectral_mix", run_spectral_mix)
+            
+            def run_spectral_gate(s, t, m, pid):
+                src_fft = torch.fft.rfft(s.float(), dim=-1)
+                energy = src_fft.abs()
+                sg_gate = torch.sigmoid(energy - energy.mean(dim=-1, keepdim=True))
+                return torch.fft.irfft(src_fft * sg_gate, n=self.dim, dim=-1).to(s.dtype)
+            run_prim("spectral_gate", run_spectral_gate)
 
-        # Attention-like Primitives
-        def run_qkv_gate(s, t, m, pid):
-            q = s @ self.q_proj[pid]
-            k = s @ self.k_proj[pid]
-            v = s @ self.v_proj[pid]
-            return torch.sigmoid((q * k).sum(dim=-1, keepdim=True)) * v
-        run_prim("qkv_gate", run_qkv_gate)
-        
-        def run_cross_attend(s, t, m, pid):
-            q = s @ self.q_proj[pid]
-            k = t @ self.k_proj[pid]
-            v = t @ self.v_proj[pid]
-            attn_cross = torch.tanh((q * k).sum(dim=-1, keepdim=True) / (self.dim ** 0.5))
-            return attn_cross * v
-        run_prim("cross_attend", run_cross_attend)
-        
-        def run_self_attend(s, t, m, pid):
-            q = s @ self.q_proj[pid]
-            k = m @ self.k_proj[pid]
-            v = s @ self.v_proj[pid]
-            attn_self = torch.tanh((q * k).sum(dim=-1, keepdim=True) / (self.dim ** 0.5))
-            return attn_self * v
-        run_prim("self_attend", run_self_attend)
-        
-        def run_key_align(s, t, m, pid):
-            q = s @ self.q_proj[pid]
-            k = t @ self.k_proj[pid]
-            align_sim = F.cosine_similarity(q, k, dim=-1).unsqueeze(-1)
-            return align_sim * s
-        run_prim("key_align", run_key_align)
-        
-        def run_value_mix(s, t, m, pid):
-            q = s @ self.q_proj[pid]
-            k = t @ self.k_proj[pid]
-            weight_vm = torch.sigmoid((q * k).sum(dim=-1, keepdim=True) / (self.dim ** 0.5))
-            return weight_vm * s + (1.0 - weight_vm) * t
-        run_prim("value_mix", run_value_mix)
+            # Attention-like Primitives
+            def run_qkv_gate(s, t, m, pid):
+                q = s @ self.q_proj[pid]
+                k = s @ self.k_proj[pid]
+                v = s @ self.v_proj[pid]
+                return torch.sigmoid((q * k).sum(dim=-1, keepdim=True)) * v
+            run_prim("qkv_gate", run_qkv_gate)
+            
+            def run_cross_attend(s, t, m, pid):
+                q = s @ self.q_proj[pid]
+                k = t @ self.k_proj[pid]
+                v = t @ self.v_proj[pid]
+                attn_cross = torch.tanh((q * k).sum(dim=-1, keepdim=True) / (self.dim ** 0.5))
+                return attn_cross * v
+            run_prim("cross_attend", run_cross_attend)
+            
+            def run_self_attend(s, t, m, pid):
+                q = s @ self.q_proj[pid]
+                k = m @ self.k_proj[pid]
+                v = s @ self.v_proj[pid]
+                attn_self = torch.tanh((q * k).sum(dim=-1, keepdim=True) / (self.dim ** 0.5))
+                return attn_self * v
+            run_prim("self_attend", run_self_attend)
+            
+            def run_key_align(s, t, m, pid):
+                q = s @ self.q_proj[pid]
+                k = t @ self.k_proj[pid]
+                align_sim = F.cosine_similarity(q, k, dim=-1).unsqueeze(-1)
+                return align_sim * s
+            run_prim("key_align", run_key_align)
+            
+            def run_value_mix(s, t, m, pid):
+                q = s @ self.q_proj[pid]
+                k = t @ self.k_proj[pid]
+                weight_vm = torch.sigmoid((q * k).sum(dim=-1, keepdim=True) / (self.dim ** 0.5))
+                return weight_vm * s + (1.0 - weight_vm) * t
+            run_prim("value_mix", run_value_mix)
 
-        # Mined Local Primitives
-        run_prim("svd_atom_k", lambda s, t, m, pid: (s @ self.mined_u) @ self.mined_v)
-        run_prim("diag", lambda s, t, m, pid: s * self.mined_diag)
-        
-        def run_toeplitz(s, t, m, pid):
-            padded_k = F.pad(s.unsqueeze(1), (2, 2), mode="circular")
-            return F.conv1d(padded_k, self.mined_toeplitz_filter).squeeze(1)
-        run_prim("toeplitz", run_toeplitz)
-        
-        def run_block_mean(s, t, m, pid):
-            block_size = self.dim // 4
-            return s.view(-1, 4, block_size).mean(dim=-1, keepdim=True).repeat(1, 1, block_size).view(-1, self.dim)
-        run_prim("block_mean", run_block_mean)
-        
-        run_prim("mined_gate", lambda s, t, m, pid: torch.sigmoid(s @ self.mined_source_matrix) * s)
+            # Mined Local Primitives
+            run_prim("svd_atom_k", lambda s, t, m, pid: (s @ self.mined_u) @ self.mined_v)
+            run_prim("diag", lambda s, t, m, pid: s * self.mined_diag)
+            
+            def run_toeplitz(s, t, m, pid):
+                padded_k = F.pad(s.unsqueeze(1), (2, 2), mode="circular")
+                return F.conv1d(padded_k, self.mined_toeplitz_filter).squeeze(1)
+            run_prim("toeplitz", run_toeplitz)
+            
+            def run_block_mean(s, t, m, pid):
+                block_size = self.dim // 4
+                return s.view(-1, 4, block_size).mean(dim=-1, keepdim=True).repeat(1, 1, block_size).view(-1, self.dim)
+            run_prim("block_mean", run_block_mean)
+            
+            run_prim("mined_gate", lambda s, t, m, pid: torch.sigmoid(s @ self.mined_source_matrix) * s)
 
         return out.view(n, k, -1)

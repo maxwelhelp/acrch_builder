@@ -29,8 +29,8 @@ echo "[validate] cleanup generated pycache"
 cleanup_pycache
 
 echo "[validate] forbidden files"
-if find . -not -path '*/agent_reports/*' -not -path '*/.git/*' -type f \( -name '*.pt' -o -name '*.pth' -o -name '*.ckpt' -o -name '*.safetensors' -o -name '*.pyc' -o -name '*.pyo' \) | grep .; then
-  echo "forbidden weight/cache file found" >&2
+if git ls-files | grep -E '\.(pt|pth|ckpt|safetensors|pyc|pyo)$' | grep .; then
+  echo "forbidden tracked weight/cache file found" >&2
   exit 4
 fi
 

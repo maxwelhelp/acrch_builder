@@ -24,6 +24,18 @@ def _primitive_distribution(candidate_ids: torch.Tensor, choice: torch.Tensor, n
     return out
 
 
+def _behavior_decorrelation_loss(behavior: Optional[torch.Tensor]) -> torch.Tensor:
+    if behavior is None:
+        return torch.zeros(())
+    if behavior.ndim != 3 or behavior.shape[1] < 2:
+        return behavior.new_zeros(())
+    feat = F.normalize(behavior.float(), p=2, dim=-1, eps=1e-6)
+    sim = torch.bmm(feat, feat.transpose(1, 2))
+    k = sim.shape[-1]
+    offdiag = 1.0 - torch.eye(k, dtype=sim.dtype, device=sim.device).unsqueeze(0)
+    return (sim.pow(2) * offdiag).sum(dim=(1, 2)).div(offdiag.sum().clamp_min(1.0)).mean()
+
+
 def batched_mmr_select(
     ucb: torch.Tensor,
     top_ids: torch.Tensor,
@@ -80,6 +92,7 @@ class ActionMatrixLayer(nn.Module):
         top_k: int = 25,
         sim_rank: int = 16,
         state_norm: str = "none",
+        layer_idx: int = 0,
         enable_single_signed_projection: bool = False,
         single_proj_dim: int = 32,
         enable_pair_jl_bilinear: bool = False,
@@ -96,6 +109,11 @@ class ActionMatrixLayer(nn.Module):
         utility_budget: int = 3,
         utility_mmr_beta: float = 0.35,
         utility_mmr_mode: str = "hybrid",
+        utility_choice_warmup_steps: int = 50,
+        mmr_controller_warmup_steps: int = 50,
+        utility_choice_scale: float = 0.05,
+        utility_choice_scale_max: float = 0.20,
+        utility_mmr_identity_weight: float = 0.50,
         enable_scanner_feedback_memory: bool = False,
         enable_mmr_controller: bool = False,
         enable_lazy_executor: bool = False,
@@ -124,6 +142,12 @@ class ActionMatrixLayer(nn.Module):
         self.utility_budget = int(utility_budget)
         self.utility_mmr_beta = float(utility_mmr_beta)
         self.utility_mmr_mode = str(utility_mmr_mode)
+        self.utility_choice_warmup_steps = int(utility_choice_warmup_steps)
+        self.mmr_controller_warmup_steps = int(mmr_controller_warmup_steps)
+        self.utility_choice_scale = float(utility_choice_scale)
+        self.utility_choice_scale_max = float(utility_choice_scale_max)
+        self.utility_mmr_identity_weight = float(utility_mmr_identity_weight)
+        self.vnext_global_step = 0
         self.enable_scanner_feedback_memory = bool(enable_scanner_feedback_memory)
         self.enable_mmr_controller = bool(enable_mmr_controller)
         self.enable_lazy_executor = bool(enable_lazy_executor)
@@ -141,9 +165,10 @@ class ActionMatrixLayer(nn.Module):
             enable_scanner_feedback_memory=self.enable_scanner_feedback_memory,
             enable_category_scanner=self.enable_category_scanner,
             num_primitives=primitive_matrix.num_primitives,
+            layer_idx=layer_idx,
         )
         self.simulator = LowRankSimulator(dim=dim, num_primitives=primitive_matrix.num_primitives, rank=sim_rank, embed_dim=emb_dim)
-        self.executor = ActionExecutor(dim=dim, primitive_matrix=primitive_matrix)
+        self.executor = ActionExecutor(dim=dim, primitive_matrix=primitive_matrix, enable_vnext=enable_vnext)
 
         self.context_logits = nn.Linear(context_dim, top_k)
         self.sim_logits = nn.Linear(dim, 1)
@@ -212,6 +237,14 @@ class ActionMatrixLayer(nn.Module):
 
         self.grad_credit_queue = []
 
+
+    def set_vnext_step(self, step: int) -> None:
+        self.vnext_global_step = int(step)
+
+    def _warmup_progress(self, steps: int) -> float:
+        if not self.training or int(steps) <= 0:
+            return 1.0
+        return max(0.0, min(1.0, float(self.vnext_global_step) / float(max(1, int(steps)))))
 
     def _init_gate_priors(self) -> None:
         with torch.no_grad():
@@ -402,20 +435,35 @@ class ActionMatrixLayer(nn.Module):
             proposal_choice_logits = torch.cat([proposal_choice_logits, *extra_choice], dim=-1)
         k = min(self.top_k, proposal_rank_logits.shape[-1])
         if not full_scan and k >= 4:
-            # Exploration quota: expose one strongest candidate from each
-            # production source, then fill remaining slots globally. This does
-            # not force controller choice or any primitive/layer role.
-            quota_pos = torch.stack(
-                [
-                    proposal_rank_logits.masked_fill(source_ids != source_id, float("-inf")).argmax(dim=-1)
-                    for source_id in range(4)
-                ],
-                dim=-1,
-            )
+            # Dynamic exploration quota across all 7 sources to prevent censoring
+            active_sources = []
+            for source_id in range(7):
+                if (source_ids == source_id).any():
+                    active_sources.append(source_id)
+            
+            quota_limit = min(len(active_sources), k)
+            active_sources = active_sources[:quota_limit]
+            
+            quota_pos_list = []
+            for source_id in active_sources:
+                mask = (source_ids == source_id)
+                row_has_source = mask.any(dim=-1, keepdim=True)
+                logits_masked = proposal_rank_logits.masked_fill(~mask, float("-inf"))
+                best_idx = logits_masked.argmax(dim=-1, keepdim=True)
+                global_best = proposal_rank_logits.argmax(dim=-1, keepdim=True)
+                row_best = torch.where(row_has_source, best_idx, global_best)
+                quota_pos_list.append(row_best.squeeze(-1))
+            
+            if quota_pos_list:
+                quota_pos = torch.stack(quota_pos_list, dim=-1)
+            else:
+                quota_pos = torch.zeros((b * s * s, 0), dtype=torch.long, device=state.device)
+            
             selected = torch.zeros_like(proposal_rank_logits, dtype=torch.bool)
             selected.scatter_(1, quota_pos, True)
-            remaining = proposal_rank_logits.masked_fill(selected, float("-inf")).topk(k=k - 4, dim=-1).indices
-            top_pos = torch.cat([quota_pos, remaining], dim=-1)
+            remaining = proposal_rank_logits.masked_fill(selected, float("-inf")).topk(k=k, dim=-1).indices
+            combined = torch.cat([quota_pos, remaining], dim=-1)
+            top_pos = combined[:, :k]
             top_vals = proposal_choice_logits.gather(1, top_pos)
         else:
             top_pos = proposal_rank_logits.topk(k=k, dim=-1).indices
@@ -451,6 +499,11 @@ class ActionMatrixLayer(nn.Module):
                     "utility_budget": float(self.utility_budget),
                     "utility_mmr_beta": float(self.utility_mmr_beta),
                     "utility_mmr_mode": 1.0 if self.utility_mmr_mode == "hybrid" else 0.0,
+                    "utility_choice_warmup_steps": float(self.utility_choice_warmup_steps),
+                    "mmr_controller_warmup_steps": float(self.mmr_controller_warmup_steps),
+                    "utility_choice_scale": float(self.utility_choice_scale),
+                    "utility_choice_scale_max": float(self.utility_choice_scale_max),
+                    "utility_mmr_identity_weight": float(self.utility_mmr_identity_weight),
                 }
 
         self_delta_active = (
@@ -506,14 +559,23 @@ class ActionMatrixLayer(nn.Module):
                 * torch.sigmoid(self.self_delta_logit_scale)
             ).to(dtype=flat_context.dtype)
 
+        utility_choice_available = (
+            self.enable_utility_critic_choice
+            and utility_score is not None
+            and not disable_sim
+            and not disable_sim_result
+        )
+        utility_choice_progress = self._warmup_progress(self.utility_choice_warmup_steps)
+        mmr_controller_progress = self._warmup_progress(self.mmr_controller_warmup_steps)
+        utility_replaces_legacy = bool(utility_choice_available and utility_choice_progress >= 1.0)
         sim_component = (
             torch.zeros_like(predicted_gain)
-            if disable_sim or disable_sim_result or self.enable_utility_critic_choice
+            if disable_sim or disable_sim_result or utility_replaces_legacy
             else self.sim_logits(sim).squeeze(-1)
         )
         gain_component = (
             torch.zeros_like(predicted_gain)
-            if disable_sim or disable_gain or self.enable_utility_critic_choice
+            if disable_sim or disable_gain or utility_replaces_legacy
             else predicted_gain
         )
 
@@ -547,11 +609,20 @@ class ActionMatrixLayer(nn.Module):
         )
         if self.enable_self_delta_choice and not disable_self_delta:
             choice_logits = choice_logits + self_delta_scale * _ln_logits(self_delta_component)
-        if self.enable_utility_critic_choice and utility_score is not None and not disable_sim and not disable_sim_result:
-            utility_scale = torch.sigmoid(self.utility_logit_scale).to(dtype=choice_logits.dtype)
+        if utility_choice_available:
+            scale_min = float(self.utility_choice_scale)
+            scale_max = float(self.utility_choice_scale_max)
+            schedule_scale = scale_min + utility_choice_progress * (scale_max - scale_min)
+            utility_scale = (schedule_scale * torch.sigmoid(self.utility_logit_scale)).to(dtype=choice_logits.dtype)
             utility_norm = F.layer_norm(utility_score, (utility_score.shape[-1],))
             choice_logits = choice_logits + utility_scale * utility_norm
+            utility_metrics["utility_choice_warmup_progress"] = float(utility_choice_progress)
+            utility_metrics["utility_choice_scale_value"] = float(schedule_scale)
 
+        choice_logits_pre_mmr = choice_logits
+        candidate_log_prob_for_loss = F.log_softmax(choice_logits_pre_mmr, dim=-1)
+        mmr_mask = torch.ones_like(choice_logits, dtype=torch.bool)
+        mmr_active = False
         if self.enable_mmr_controller and utility_score is not None and not disable_sim and not disable_sim_result:
             # vNext contract:
             # - commit during forward uses critic/policy score;
@@ -563,17 +634,26 @@ class ActionMatrixLayer(nn.Module):
                 top_ids=top_ids,
                 pm_emb=self.pm.emb,
                 budget=self.utility_budget,
-                beta=self.utility_mmr_beta,
+                beta=mmr_controller_progress * self.utility_mmr_beta,
                 behavior_feature=utility_behavior,
                 mode=self.utility_mmr_mode,
                 uncertainty=utility_uncertainty,
                 uncertainty_weight=0.35,
-                identity_weight=0.2,
+                identity_weight=self.utility_mmr_identity_weight,
             )
+            mmr_active = bool((not self.training) or mmr_controller_progress >= 1.0)
             with torch.no_grad():
                 for _k, _v in mmr_metrics.items():
                     utility_metrics[_k] = float(_v.detach().cpu())
-            choice_logits = choice_logits.masked_fill(~mmr_mask, float("-inf"))
+                utility_metrics["mmr_controller_active"] = float(mmr_active)
+                utility_metrics["mmr_controller_warmup_progress"] = float(mmr_controller_progress)
+            if mmr_active:
+                choice_logits = choice_logits.masked_fill(~mmr_mask, float("-inf"))
+
+        behavior_div_loss = _behavior_decorrelation_loss(utility_behavior)
+        if utility_behavior is not None:
+            utility_metrics["behavior_div_loss"] = float(behavior_div_loss.detach().cpu())
+            utility_metrics["behavior_decorr_loss"] = float(behavior_div_loss.detach().cpu())
 
         if choice_sampling not in {"auto", "gumbel", "softmax", "uniform"}:
             raise ValueError(f"unknown choice sampling: {choice_sampling!r}")
@@ -597,6 +677,22 @@ class ActionMatrixLayer(nn.Module):
             available = forced.sum(dim=-1, keepdim=True) > 0
             forced = forced / forced.sum(dim=-1, keepdim=True).clamp_min(1.0)
             choice = torch.where(available, forced, choice)
+
+        if self.utility_critic is not None:
+            with torch.no_grad():
+                source_names_for_pres = ("grid", "semantic", "usage", "random", "global", "single_signed_projection", "pair_jl16")
+                for source_id, source_name in enumerate(source_names_for_pres):
+                    pool_pres = (top_source_ids == source_id).any(dim=-1).float().mean()
+                    utility_metrics[f"source_pool_presence_{source_name}"] = float(pool_pres.cpu())
+                    
+                    if "mmr_mask" in locals() and mmr_mask is not None:
+                        mmr_pres = ((top_source_ids == source_id) & mmr_mask).any(dim=-1).float().mean()
+                        utility_metrics[f"source_after_mmr_presence_{source_name}"] = float(mmr_pres.cpu())
+                    else:
+                        utility_metrics[f"source_after_mmr_presence_{source_name}"] = 0.0
+                        
+                    choice_pres = (choice * (top_source_ids == source_id).to(choice.dtype)).sum(dim=-1).mean()
+                    utility_metrics[f"source_after_choice_presence_{source_name}"] = float(choice_pres.cpu())
 
         source_names = ("grid", "semantic", "usage", "random", "global", "single_signed_projection", "pair_jl16")
         if collect_scan_metrics:
@@ -626,7 +722,7 @@ class ActionMatrixLayer(nn.Module):
 
         # primitive_out already computed before choice logits for optional self-delta diagnostics.
         if lazy_active:
-            if self.enable_mmr_controller and utility_score is not None and not disable_sim and not disable_sim_result:
+            if self.enable_mmr_controller and utility_score is not None and not disable_sim and not disable_sim_result and mmr_active:
                 selected_mask = mmr_mask
             else:
                 _, top_b_idx = choice.topk(k=self.utility_budget, dim=-1)
@@ -762,6 +858,9 @@ class ActionMatrixLayer(nn.Module):
             # Losses need the live distribution; reports intentionally use the
             # detached `choice` field above.
             "choice_for_loss": choice,
+            "candidate_log_prob_for_loss": candidate_log_prob_for_loss,
+            "selected_mask_for_loss": mmr_mask.detach(),
+            "behavior_div_loss_for_loss": behavior_div_loss,
             "chosen": chosen.detach(),
             "predicted_gain": predicted_gain.detach(),
             "predicted_gain_for_loss": predicted_gain,
@@ -864,6 +963,11 @@ class ActionMatrixModel(nn.Module):
         utility_budget: int = 3,
         utility_mmr_beta: float = 0.35,
         utility_mmr_mode: str = "hybrid",
+        utility_choice_warmup_steps: int = 50,
+        mmr_controller_warmup_steps: int = 50,
+        utility_choice_scale: float = 0.05,
+        utility_choice_scale_max: float = 0.20,
+        utility_mmr_identity_weight: float = 0.50,
         enable_scanner_feedback_memory: bool = False,
         enable_mmr_controller: bool = False,
         enable_lazy_executor: bool = False,
@@ -882,7 +986,12 @@ class ActionMatrixModel(nn.Module):
         self.state_norm_mode = state_norm
         self.final_read = final_read
         self.slot_embed = nn.Parameter(torch.randn(slots, dim) * slot_embed_scale)
-        self.pm = PrimitiveMatrix5x5(embed_dim=32)
+        self.pm = PrimitiveMatrix5x5(
+            embed_dim=32,
+            enable_vnext=enable_vnext,
+            num_layers=layers,
+            enable_scanner_feedback_memory=enable_scanner_feedback_memory,
+        )
         self.layers = nn.ModuleList([
             ActionMatrixLayer(
                 dim,
@@ -891,6 +1000,7 @@ class ActionMatrixModel(nn.Module):
                 top_k=top_k,
                 sim_rank=sim_rank,
                 state_norm=state_norm,
+                layer_idx=i,
                 enable_single_signed_projection=enable_single_signed_projection,
                 single_proj_dim=single_proj_dim,
                 enable_pair_jl_bilinear=enable_pair_jl_bilinear,
@@ -907,17 +1017,30 @@ class ActionMatrixModel(nn.Module):
                 utility_budget=utility_budget,
                 utility_mmr_beta=utility_mmr_beta,
                 utility_mmr_mode=utility_mmr_mode,
+                utility_choice_warmup_steps=utility_choice_warmup_steps,
+                mmr_controller_warmup_steps=mmr_controller_warmup_steps,
+                utility_choice_scale=utility_choice_scale,
+                utility_choice_scale_max=utility_choice_scale_max,
+                utility_mmr_identity_weight=utility_mmr_identity_weight,
                 enable_scanner_feedback_memory=enable_scanner_feedback_memory,
                 enable_mmr_controller=enable_mmr_controller,
                 enable_lazy_executor=enable_lazy_executor,
                 enable_category_scanner=enable_category_scanner,
                 enable_auto_mined_atoms=enable_auto_mined_atoms,
             )
-            for _ in range(layers)
+            for i in range(layers)
         ])
         self.input_norm = nn.LayerNorm(dim) if input_norm == "layernorm" else nn.Identity()
         self.layer_read_logits = nn.Parameter(torch.zeros(layers))
         self.classifier = nn.Linear(dim, classes)
+        self.vnext_global_step = 0
+
+    def set_vnext_step(self, step: int) -> None:
+        self.vnext_global_step = int(step)
+        for layer in self.layers:
+            if hasattr(layer, "set_vnext_step"):
+                layer.set_vnext_step(step)
+
     def _merge_outputs(self, outputs: list[torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
         stack = torch.stack(outputs, dim=0)  # [L,B,D]
         if self.final_read == "last":

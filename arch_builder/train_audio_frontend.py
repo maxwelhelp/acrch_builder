@@ -70,6 +70,60 @@ UTILITY_CRITIC_METRICS = (
     "hybrid_mmr_similarity",
     "utility_overhead_seconds",
     "choice_without_utility_delta",
+    "mmr_selected_count",
+    "mmr_selected_similarity",
+    "mmr_pre_similarity_topk",
+    "mmr_post_similarity_selected",
+    "behavior_feature_pair_sim_mean",
+    "behavior_feature_pair_sim_std",
+    "behavior_feature_pair_sim_min",
+    "behavior_feature_pair_sim_max",
+    "mmr_selected_utility_mean",
+    "mmr_utility_drop_vs_topk",
+    "mmr_controller_active",
+    "mmr_controller_warmup_progress",
+    "utility_choice_warmup_progress",
+    "utility_choice_scale_value",
+    "utility_mmr_identity_weight",
+    "behavior_div_loss",
+    "vnext_policy_loss",
+    "vnext_policy_items",
+    "grad_norm_scanner",
+    "grad_norm_controller",
+    "grad_norm_utility_critic",
+    "grad_norm_executor",
+    "behavior_pair_sim_before",
+    "behavior_pair_sim_after",
+    "behavior_decorr_loss",
+    "utility_target_mean",
+    "utility_target_std",
+    "utility_target_snr",
+    "utility_corr_items",
+    "positive_gain_candidate_recall@P",
+    "random_credit_count",
+    "offpool_credit_count",
+    "unchosen_credit_count",
+    "source_pool_presence_grid",
+    "source_after_mmr_presence_grid",
+    "source_after_choice_presence_grid",
+    "source_pool_presence_semantic",
+    "source_after_mmr_presence_semantic",
+    "source_after_choice_presence_semantic",
+    "source_pool_presence_usage",
+    "source_after_mmr_presence_usage",
+    "source_after_choice_presence_usage",
+    "source_pool_presence_random",
+    "source_after_mmr_presence_random",
+    "source_after_choice_presence_random",
+    "source_pool_presence_global",
+    "source_after_mmr_presence_global",
+    "source_after_choice_presence_global",
+    "source_pool_presence_single_signed_projection",
+    "source_after_mmr_presence_single_signed_projection",
+    "source_after_choice_presence_single_signed_projection",
+    "source_pool_presence_pair_jl16",
+    "source_after_mmr_presence_pair_jl16",
+    "source_after_choice_presence_pair_jl16",
 )
 
 
@@ -133,6 +187,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--lambda-credit-policy", type=float, default=0.20)
     ap.add_argument("--lambda-credit-simulator", type=float, default=0.10)
     ap.add_argument("--lambda-discovery-health", type=float, default=1.0)
+    ap.add_argument("--lambda-behavior-diversity", type=float, default=0.01)
     ap.add_argument("--target-active-cells", type=int, default=3)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--log-every", type=int, default=20)
@@ -155,6 +210,11 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--utility-budget", type=int, default=3)
     ap.add_argument("--utility-mmr-beta", type=float, default=0.35)
     ap.add_argument("--utility-mmr-mode", default="hybrid")
+    ap.add_argument("--utility-choice-warmup-steps", type=int, default=50)
+    ap.add_argument("--mmr-controller-warmup-steps", type=int, default=50)
+    ap.add_argument("--utility-choice-scale", type=float, default=0.05)
+    ap.add_argument("--utility-choice-scale-max", type=float, default=0.20)
+    ap.add_argument("--utility-mmr-identity-weight", type=float, default=0.50)
     ap.add_argument("--enable-scanner-feedback-memory", action="store_true")
     ap.add_argument("--enable-mmr-controller", action="store_true")
     ap.add_argument("--enable-lazy-executor", action="store_true")
@@ -382,6 +442,46 @@ def collect_ablations(model: AudioMatrixClassifier, task, batch_size: int, devic
     return out
 
 
+def _behavior_diversity_loss(trace: Dict[str, object], device: str | torch.device) -> torch.Tensor:
+    losses = []
+    for layer in trace.get("layers", []):
+        loss = layer.get("behavior_div_loss_for_loss")
+        if hasattr(loss, "to"):
+            losses.append(loss.to(device))
+    if not losses:
+        return torch.zeros((), device=device)
+    return torch.stack(losses).mean()
+
+
+def _grad_norms(model: AudioMatrixClassifier) -> Dict[str, float]:
+    groups = {
+        "scanner": 0.0,
+        "controller": 0.0,
+        "utility_critic": 0.0,
+        "executor": 0.0,
+    }
+    controller_terms = (
+        "context_logits", "primitive_pair_bias", "prev_action_proj",
+        "prev_active_proj", "prev_write_proj", "listen_gate", "mode_head",
+        "edge_gate", "write_gate", "phase_gate", "edge_op", "split_head",
+        "child_gate", "merge_gate", "slot_alive_head", "output_gate",
+        "cell_output_gate", "utility_logit_scale", "slot_embed",
+    )
+    for name, param in model.named_parameters():
+        if param.grad is None:
+            continue
+        value = float(param.grad.detach().float().pow(2).sum().cpu())
+        if ".scanner." in name:
+            groups["scanner"] += value
+        if ".utility_critic." in name:
+            groups["utility_critic"] += value
+        if ".executor." in name:
+            groups["executor"] += value
+        if any(term in name for term in controller_terms):
+            groups["controller"] += value
+    return {f"grad_norm_{key}": value ** 0.5 for key, value in groups.items()}
+
+
 def _next_batch(iterator, loader):
     try:
         return next(iterator), iterator
@@ -413,6 +513,19 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
     global_step = 0
     learned_controller = args.controller_baseline == "learned"
     sampling = "uniform" if args.controller_baseline == "random" else "softmax"
+
+    critic_opt = None
+    critic_params_list = []
+    if args.enable_utility_critic_probe and not args.enable_vnext:
+        critic_params_list = [p for n, p in model.named_parameters() if "utility_critic" in n or "utility_logit_scale" in n]
+        if critic_params_list:
+            critic_opt = torch.optim.AdamW(critic_params_list, lr=args.lr, weight_decay=args.weight_decay)
+    
+    if not args.enable_vnext:
+        main_params = [p for n, p in model.named_parameters() if "utility_critic" not in n and "utility_logit_scale" not in n]
+    else:
+        main_params = list(model.parameters())
+
     for epoch in range(1, args.epochs + 1):
         epoch_start = time.perf_counter()
         model.train()
@@ -423,9 +536,13 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
             global_step += 1
             raw_batch, train_iter = _next_batch(train_iter, train_loader)
             batch = _move_batch(raw_batch, device)
+            if hasattr(model.backbone, "set_vnext_step"):
+                model.backbone.set_vnext_step(global_step)
             if learned_controller:
                 credit.advance(model.backbone.pm)
             opt.zero_grad(set_to_none=True)
+            if critic_opt is not None:
+                critic_opt.zero_grad(set_to_none=True)
             with torch.amp.autocast(device_type="cuda", dtype=dtype, enabled=device.startswith("cuda") and dtype != torch.float32):
                 features = model.frontend(_batch_x(batch))
                 logits, trace = model.backbone(
@@ -438,6 +555,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 ce = F.cross_entropy(logits, _batch_y(batch))
                 if learned_controller:
                     policy_loss, simulator_loss, align_metrics = credit.alignment_losses(trace)
+                    behavior_div_loss = _behavior_diversity_loss(trace, ce.device)
                     health_loss, health_metrics = generic_discovery_health_loss(
                         trace,
                         slots=model.backbone.slots,
@@ -480,10 +598,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                                 nll = 0.5 * torch.log(pred_var.clamp_min(1e-6)) + 0.5 * (pred_util - scaled_target).pow(2) / pred_var.clamp_min(1e-6)
                                 grad_nlls.append(nll.mean())
                                 
-                                rank_loss_list = []
-                                for cell_idx in range(scaled_target.shape[0]):
-                                    rank_loss_list.append(pairwise_ranking_loss(pred_util[cell_idx], scaled_target[cell_idx]))
-                                rank_loss = torch.stack(rank_loss_list).mean()
+                                rank_loss = pairwise_ranking_loss(pred_util, scaled_target)
                                 grad_ranks.append(rank_loss)
                     
                     if grad_nlls:
@@ -503,17 +618,53 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                     align_metrics = {"credit_alignment_items": 0.0, "sim_pred_real_corr": 0.0}
                     health_metrics = {"active_cells": 0.0, "primitive_top_share": 0.0, "primitive_entropy": 0.0, "choice_entropy": 0.0}
                     grad_metrics = {"grad_credit_nll": 0.0, "grad_credit_rank": 0.0}
-                loss = (
-                    ce
-                    + args.lambda_credit_policy * policy_loss
-                    + args.lambda_credit_simulator * (simulator_loss + grad_credit_loss)
-                    + args.lambda_discovery_health * health_loss
-                )
-            scaler.scale(loss).backward()
-            scaler.unscale_(opt)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            scaler.step(opt)
-            scaler.update()
+                    behavior_div_loss = torch.zeros((), device=ce.device)
+                grad_norm_metrics = {"grad_norm_scanner": 0.0, "grad_norm_controller": 0.0, "grad_norm_utility_critic": 0.0, "grad_norm_executor": 0.0}
+                import os
+                enable_decorr = int(os.environ.get("ENABLE_BEHAVIOR_DECORR_LOSS", "1")) == 1
+                decorr_scale = float(os.environ.get("BEHAVIOR_DECORR_SCALE", str(args.lambda_behavior_diversity))) if enable_decorr else 0.0
+                if args.enable_vnext:
+                    loss = (
+                        ce
+                        + args.lambda_credit_policy * policy_loss
+                        + args.lambda_credit_simulator * (simulator_loss + grad_credit_loss)
+                        + args.lambda_discovery_health * health_loss
+                        + decorr_scale * behavior_div_loss
+                    )
+                else:
+                    loss = (
+                        ce
+                        + args.lambda_credit_policy * policy_loss
+                        + args.lambda_credit_simulator * simulator_loss
+                        + args.lambda_discovery_health * health_loss
+                        + decorr_scale * behavior_div_loss
+                    )
+            
+            if args.enable_vnext:
+                scaler.scale(loss).backward()
+                scaler.unscale_(opt)
+                grad_norm_metrics = _grad_norms(model)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                scaler.step(opt)
+                scaler.update()
+            else:
+                scaler.scale(loss).backward()
+                scaler.unscale_(opt)
+                grad_norm_metrics = _grad_norms(model)
+                torch.nn.utils.clip_grad_norm_(main_params, 1.0)
+                scaler.step(opt)
+                scaler.update()
+
+                if critic_opt is not None and grad_nlls:
+                    if scaler.is_enabled():
+                        scaler.scale(grad_credit_loss).backward()
+                        scaler.unscale_(critic_opt)
+                        torch.nn.utils.clip_grad_norm_(critic_params_list, 1.0)
+                        scaler.step(critic_opt)
+                    else:
+                        grad_credit_loss.backward()
+                        torch.nn.utils.clip_grad_norm_(critic_params_list, 1.0)
+                        critic_opt.step()
 
             if learned_controller and global_step % max(1, args.credit_interval) == 0:
                 credit_raw, train_iter = _next_batch(train_iter, train_loader)
@@ -545,11 +696,13 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 "credit_policy_loss": float(policy_loss.detach().cpu()),
                 "credit_simulator_loss": float((simulator_loss + grad_credit_loss).detach().cpu()),
                 "discovery_health_loss": float(health_loss.detach().cpu()),
+                "behavior_div_loss": float(behavior_div_loss.detach().cpu()),
                 **align_metrics,
                 **health_metrics,
                 **credit.metrics(),
                 **projection_diag,
                 **grad_metrics,
+                **grad_norm_metrics,
             }
             if args.log_every > 0 and global_step % args.log_every == 0:
                 print(
@@ -792,6 +945,22 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         "utility_overhead_seconds": float(deploy.get("utility_overhead_seconds", (discovery_metrics or {}).get("utility_overhead_seconds", 0.0))),
         "choice_without_utility_delta": float(deploy.get("choice_without_utility_delta", (discovery_metrics or {}).get("choice_without_utility_delta", 0.0))),
     }
+    for _metric_key in UTILITY_CRITIC_METRICS:
+        if _metric_key not in report["comparison_metrics"]:
+            report["comparison_metrics"][_metric_key] = float(
+                deploy.get(_metric_key, (discovery_metrics or {}).get(_metric_key, 0.0))
+            )
+    for _metric_key in (
+        "grad_credit_nll", "grad_credit_rank", "credit_total_measurements",
+        "credit_items", "primitive_entropy", "vnext_policy_loss",
+        "vnext_policy_items", "grad_norm_scanner", "grad_norm_controller",
+        "grad_norm_utility_critic", "grad_norm_executor", "behavior_div_loss",
+    ):
+        if _metric_key not in report["comparison_metrics"]:
+            report["comparison_metrics"][_metric_key] = float(
+                deploy.get(_metric_key, (discovery_metrics or {}).get(_metric_key, 0.0))
+            )
+
     report["checks"] = {
         "deploy_above_random": deploy["acc"] >= chance + (0.02 if args.discovery else 0.0),
         "honesty_retained": report["honesty_score"] >= args.honesty_floor,
@@ -824,6 +993,7 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
                 <= args.primitive_top_share_target
             ),
             "active_path_alive": (discovery_metrics or {}).get("active_cells", 0.0) > 0,
+            "utility_corr_items_valid": (discovery_metrics or {}).get("utility_corr_items", 0.0) >= 4,
         })
     local_ok = all(report["checks"].values())
     report["status"] = "SMOKE_PASS" if args.discovery and local_ok else ("SMOKE_FAIL" if args.discovery else ("PASS" if local_ok else "FAIL"))
@@ -864,6 +1034,11 @@ def train_variant(args) -> Dict[str, object]:
         utility_budget=args.utility_budget,
         utility_mmr_beta=args.utility_mmr_beta,
         utility_mmr_mode=args.utility_mmr_mode,
+        utility_choice_warmup_steps=args.utility_choice_warmup_steps,
+        mmr_controller_warmup_steps=args.mmr_controller_warmup_steps,
+        utility_choice_scale=args.utility_choice_scale,
+        utility_choice_scale_max=args.utility_choice_scale_max,
+        utility_mmr_identity_weight=args.utility_mmr_identity_weight,
         enable_scanner_feedback_memory=args.enable_scanner_feedback_memory,
         enable_mmr_controller=args.enable_mmr_controller,
         enable_lazy_executor=args.enable_lazy_executor,
@@ -882,7 +1057,11 @@ def train_variant(args) -> Dict[str, object]:
             # selection/controller state is frozen.
             for parameter in layer.executor.parameters():
                 parameter.requires_grad_(True)
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    if not args.enable_vnext:
+        main_params = [p for n, p in model.named_parameters() if "utility_critic" not in n and "utility_logit_scale" not in n]
+    else:
+        main_params = list(model.parameters())
+    opt = torch.optim.AdamW(main_params, lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=(device.startswith("cuda") and args.amp == "fp16"))
     dtype = amp_dtype(args.amp)
 

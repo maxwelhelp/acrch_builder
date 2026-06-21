@@ -85,6 +85,7 @@ class CounterfactualTarget:
     cell: int
     primitive: int
     force: bool = False
+    random_exploration: bool = False
 
 
 @dataclass
@@ -120,22 +121,38 @@ def spearman_corr(x, y):
 
 
 def pairwise_ranking_loss(pred_utility: torch.Tensor, target_scores: Sequence[float] | torch.Tensor) -> torch.Tensor:
-    """Compute pairwise margin ranking loss to align predicted utility order with targets."""
-    if len(target_scores) < 2:
-        return torch.zeros((), device=pred_utility.device)
-    loss_sum = torch.zeros((), device=pred_utility.device)
-    pair_count = 0
-    m = len(target_scores)
-    for i in range(m):
-        for j in range(m):
-            diff = float(target_scores[i]) - float(target_scores[j])
-            if diff > 1e-5:
-                margin = min(1.0, max(0.01, diff))
-                loss_sum = loss_sum + F.relu(margin - (pred_utility[i] - pred_utility[j]))
-                pair_count += 1
-    if pair_count > 0:
-        return loss_sum / pair_count
-    return torch.zeros((), device=pred_utility.device)
+    """Compute pairwise margin ranking loss to align predicted utility order with targets.
+    Supports both 1D [P] and 2D [B, P] inputs.
+    """
+    if not isinstance(target_scores, torch.Tensor):
+        targets = torch.tensor(target_scores, dtype=pred_utility.dtype, device=pred_utility.device)
+    else:
+        targets = target_scores.to(dtype=pred_utility.dtype, device=pred_utility.device)
+    if targets.ndim == 1:
+        if len(targets) < 2:
+            return torch.zeros((), device=pred_utility.device)
+        target_diff = targets.unsqueeze(1) - targets.unsqueeze(0)
+        mask = target_diff > 1e-5
+        if not mask.any():
+            return torch.zeros((), device=pred_utility.device)
+        margin = target_diff.clamp(0.01, 1.0)
+        pred_diff = pred_utility.unsqueeze(1) - pred_utility.unsqueeze(0)
+        loss = F.relu(margin - pred_diff)
+        return loss[mask].sum() / mask.sum().clamp_min(1.0)
+    else:
+        target_diff = targets.unsqueeze(2) - targets.unsqueeze(1)
+        mask = target_diff > 1e-5
+        if not mask.any():
+            return torch.zeros((), device=pred_utility.device)
+        margin = target_diff.clamp(0.01, 1.0)
+        pred_diff = pred_utility.unsqueeze(2) - pred_utility.unsqueeze(1)
+        loss = F.relu(margin - pred_diff)
+        denom = mask.sum(dim=(1, 2)).clamp_min(1.0)
+        element_losses = (loss * mask).sum(dim=(1, 2)) / denom
+        has_pairs = mask.any(dim=(1, 2))
+        if not has_pairs.any():
+            return torch.zeros((), device=pred_utility.device)
+        return element_losses[has_pairs].mean()
 
 
 def mmr_select_pool(items, pm_emb, b=3, beta=0.35):
@@ -264,15 +281,25 @@ class BoundedCounterfactualCredit:
         single_count = self.budget - pair_count
         random_count = min(single_count, max(1, int(round(single_count * self.random_fraction))))
         high_count = max(1, single_count - random_count)
-        selected = [target for _, target in scored[:high_count]]
         remaining = [target for _, target in scored[high_count:]]
+        selected_main = [target for _, target in scored[:high_count]]
+        selected_rand = []
         if remaining and random_count:
             order = torch.randperm(len(remaining))[:random_count].tolist()
-            selected.extend(remaining[i] for i in order)
+            for i in order:
+                t = remaining[i]
+                t_rand = CounterfactualTarget(
+                    layer=t.layer,
+                    cell=t.cell,
+                    primitive=t.primitive,
+                    force=t.force,
+                    random_exploration=True
+                )
+                selected_rand.append(t_rand)
             self.last_random_targets = len(order)
         else:
             self.last_random_targets = 0
-        selected = selected[:single_count]
+        selected = (selected_main + selected_rand)[:single_count]
         alt_selected: List[CounterfactualTarget] = []
         depth = 0
         while len(alt_selected) < self.alternative_budget and depth < 2:
@@ -293,7 +320,7 @@ class BoundedCounterfactualCredit:
         ready, self.pending = self.pending, []
         if not ready:
             return 0
-        ids, gains = [], []
+        ids, gains, layer_ids = [], [], []
         for record in ready:
             record.applied_step = self.step
             share = record.gain / max(1, len(record.targets))
@@ -305,10 +332,12 @@ class BoundedCounterfactualCredit:
                 self.age[idx] = 0.0
                 ids.append(target.primitive)
                 gains.append(share)
+                layer_ids.append(target.layer)
         if primitive_matrix is not None and ids:
             primitive_matrix.update_usage_credit(
                 torch.tensor(ids, device=primitive_matrix.usage_score.device),
                 torch.tensor(gains, device=primitive_matrix.usage_score.device),
+                layer_ids=torch.tensor(layer_ids, device=primitive_matrix.usage_score.device),
             )
         self.active = ready
         return len(ready)
@@ -337,20 +366,46 @@ class BoundedCounterfactualCredit:
         # We need pm_emb for similarity.
         pm_emb = None
         
+        cell_single_gains = defaultdict(list)
+        for record in self.active:
+            if len(record.targets) == 1:
+                target = record.targets[0]
+                cell_single_gains[(target.layer, target.cell)].append(record.gain)
+                
+        cell_mean_gain = {}
+        for cell_key, gains_list in cell_single_gains.items():
+            cell_mean_gain[cell_key] = sum(gains_list) / len(gains_list) if gains_list else 0.0
+
         pools = defaultdict(list)
         cell_targets = defaultdict(list)
-        utility_predicted = []
+        utility_predicted_single = []
+        utility_targets_single = []
+        sim_predicted_single = []
+        
         proposal_scores = []
         sim_predicted = []
         measured_gains = []
+        utility_predicted = []
 
         policy_losses, simulator_losses = [], []
+        vnext_policy_losses = []
+        vnext_policy_items = 0
         predicted, measured = [], []
+        
+        random_credit_count = 0.0
+        offpool_credit_count = 0.0
+        
         e = self.slots * self.slots
         for record in self.active:
+            is_single = (len(record.targets) == 1)
             share = float(record.gain) / max(1, len(record.targets))
             advantage = max(-5.0, min(5.0, share / max(self.gain_scale, 1e-6)))
             for target in record.targets:
+                if target.random_exploration:
+                    random_credit_count += 1.0
+                if target.force:
+                    offpool_credit_count += 1.0
+                    
                 layer = trace["layers"][target.layer]
                 cand = layer["candidate_ids"].view(-1, e, layer["candidate_ids"].shape[-1])[:, target.cell]
                 choice = layer["choice_for_loss"].view(-1, e, layer["choice_for_loss"].shape[-1])[:, target.cell]
@@ -365,6 +420,12 @@ class BoundedCounterfactualCredit:
                     pm_emb = layer["pm_emb"]
                 
                 mass = (choice * mask).sum(dim=-1)[present].clamp(1e-6, 1.0 - 1e-6)
+                if "candidate_log_prob_for_loss" in layer:
+                    cand_log_prob = layer["candidate_log_prob_for_loss"].view(-1, e, layer["candidate_log_prob_for_loss"].shape[-1])[:, target.cell]
+                    target_log_prob = (cand_log_prob * mask).sum(dim=-1)[present]
+                    adv = target_log_prob.new_full(target_log_prob.shape, float(advantage))
+                    vnext_policy_losses.append(-(adv.detach() * target_log_prob).mean())
+                    vnext_policy_items += int(present.float().sum().detach().cpu())
                 if advantage >= 0:
                     policy_losses.append(-advantage * mass.log().mean())
                 else:
@@ -382,7 +443,18 @@ class BoundedCounterfactualCredit:
                 predicted.append(float(pred_value.detach().mean().cpu()))
                 measured.append(share)
                 
-                # Utility critic NLL loss & diagnostic gathering
+                # proposal scores
+                proposal_score_val = 0.0
+                if "scanner_anchor_logits_for_loss" in layer:
+                    anchor = layer["scanner_anchor_logits_for_loss"].view(-1, e, self.primitives)[:, target.cell]
+                    proposal_score_val = float(anchor[:, target.primitive].mean().cpu())
+                proposal_scores.append(proposal_score_val)
+                
+                sim_val = float(pred_value.detach().mean().cpu())
+                sim_predicted.append(sim_val)
+                measured_gains.append(share)
+                
+                ut_val = 0.0
                 if "utility_for_loss" in layer:
                     utility_critic_enabled = 1.0
                     utility_metrics_dict = layer.get("utility_metrics", {})
@@ -399,35 +471,27 @@ class BoundedCounterfactualCredit:
                     uncertainty_val = layer["uncertainty_for_loss"].view(-1, e, layer["uncertainty_for_loss"].shape[-1])[:, target.cell]
                     pred_utility = (utility_val * mask).sum(dim=-1)[present]
                     pred_var = (uncertainty_val * mask).sum(dim=-1)[present]
-                    # NLL loss
-                    nll = 0.5 * torch.log(pred_var.clamp_min(1e-6)) + 0.5 * (pred_utility - share).pow(2) / pred_var.clamp_min(1e-6)
-                    simulator_losses.append(nll.mean())
                     
-                    cell_targets[(target.layer, target.cell)].append((pred_utility.mean(), share))
+                    ut_val = float(pred_utility.mean().cpu())
                     
-                    ut_val = float((utility_val * mask).sum(dim=-1)[present].mean().cpu())
-                    utility_predicted.append(ut_val)
-                else:
-                    utility_predicted.append(0.0)
-
-                # proposal scores
-                proposal_score_val = 0.0
-                if "scanner_anchor_logits_for_loss" in layer:
-                    anchor = layer["scanner_anchor_logits_for_loss"].view(-1, e, self.primitives)[:, target.cell]
-                    proposal_score_val = float(anchor[:, target.primitive].mean().cpu())
-                    proposal_scores.append(proposal_score_val)
-                else:
-                    proposal_scores.append(0.0)
+                    if is_single:
+                        cell_mean = cell_mean_gain.get((target.layer, target.cell), 0.0)
+                        utility_target_val = record.gain - cell_mean
+                        nll = 0.5 * torch.log(pred_var.clamp_min(1e-6)) + 0.5 * (pred_utility - utility_target_val).pow(2) / pred_var.clamp_min(1e-6)
+                        simulator_losses.append(nll.mean())
+                        
+                        cell_targets[(target.layer, target.cell)].append((pred_utility.mean(), utility_target_val))
+                        utility_predicted_single.append(ut_val)
+                        utility_targets_single.append(utility_target_val)
+                        sim_predicted_single.append(sim_val)
                 
-                sim_val = float(pred_value.detach().mean().cpu())
-                sim_predicted.append(sim_val)
-                measured_gains.append(share)
+                utility_predicted.append(ut_val)
 
                 pools[(target.layer, target.cell)].append({
                     "primitive": target.primitive,
                     "proposal": proposal_score_val,
                     "simulator": sim_val,
-                    "utility": utility_predicted[-1] if utility_predicted else 0.0,
+                    "utility": ut_val,
                     "measured": share
                 })
 
@@ -503,6 +567,10 @@ class BoundedCounterfactualCredit:
         effect_mmr_similarity = mean_or_zero(effect_sims)
         hybrid_mmr_similarity = mean_or_zero(hybrid_sims)
 
+        vnext_policy_loss_value = torch.stack(vnext_policy_losses).mean() if vnext_policy_losses else z
+        if vnext_policy_losses:
+            policy_losses = [vnext_policy_loss_value]
+
         cf_rank_losses = []
         for cell_key, items in cell_targets.items():
             if len(items) >= 2:
@@ -512,11 +580,42 @@ class BoundedCounterfactualCredit:
         if cf_rank_losses:
             simulator_losses.append(torch.stack(cf_rank_losses).mean())
 
+        # Compute stats for utility targets
+        if utility_targets_single:
+            uts_t = torch.tensor(utility_targets_single, dtype=torch.float32)
+            utility_target_mean = float(uts_t.mean())
+            utility_target_std = float(uts_t.std()) if len(utility_targets_single) >= 2 else 0.0
+            utility_target_snr = float(uts_t.abs().mean() / (uts_t.std() + 1e-6)) if len(utility_targets_single) >= 2 else 0.0
+            utility_corr_items = float(len(utility_targets_single))
+        else:
+            utility_target_mean = 0.0
+            utility_target_std = 0.0
+            utility_target_snr = 0.0
+            utility_corr_items = 0.0
+
+        positive_gain_targets = 0
+        positive_gain_present = 0
+        for record in self.active:
+            if len(record.targets) == 1:
+                target = record.targets[0]
+                cell_mean = cell_mean_gain.get((target.layer, target.cell), 0.0)
+                utility_target_val = record.gain - cell_mean
+                if utility_target_val > 0:
+                    positive_gain_targets += 1
+                    layer = trace["layers"][target.layer]
+                    cand = layer["candidate_ids"].view(-1, e, layer["candidate_ids"].shape[-1])[:, target.cell]
+                    mask = (cand == target.primitive)
+                    if mask.any():
+                        positive_gain_present += 1
+        positive_gain_recall = float(positive_gain_present) / max(1, positive_gain_targets) if positive_gain_targets > 0 else 1.0
+
         return (
-            torch.stack(policy_losses).mean(),
+            torch.stack(policy_losses).mean() if policy_losses else z,
             torch.stack(simulator_losses).mean() if simulator_losses else z,
             {
                 "credit_alignment_items": float(len(policy_losses)),
+                "vnext_policy_loss": float(vnext_policy_loss_value.detach().cpu()),
+                "vnext_policy_items": float(vnext_policy_items),
                 "sim_pred_real_corr": corr,
                 "utility_critic_enabled": float(utility_critic_enabled),
                 "utility_choice_enabled": float(utility_choice_enabled),
@@ -541,6 +640,14 @@ class BoundedCounterfactualCredit:
                 "hybrid_mmr_similarity": float(hybrid_mmr_similarity),
                 "utility_overhead_seconds": float(utility_overhead_seconds),
                 "choice_without_utility_delta": 0.0,
+                "utility_target_mean": utility_target_mean,
+                "utility_target_std": utility_target_std,
+                "utility_target_snr": utility_target_snr,
+                "utility_corr_items": utility_corr_items,
+                "positive_gain_candidate_recall@P": positive_gain_recall,
+                "random_credit_count": random_credit_count,
+                "offpool_credit_count": offpool_credit_count,
+                "unchosen_credit_count": offpool_credit_count,
             },
         )
 

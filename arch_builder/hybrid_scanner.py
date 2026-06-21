@@ -26,8 +26,10 @@ class HybridScanner(nn.Module):
         enable_scanner_feedback_memory: bool = False,
         enable_category_scanner: bool = False,
         num_primitives: int = 25,
+        layer_idx: int = 0,
     ) -> None:
         super().__init__()
+        self.layer_idx = layer_idx
         self.local_k = local_k
         self.semantic_k = semantic_k
         self.usage_k = usage_k
@@ -119,13 +121,13 @@ class HybridScanner(nn.Module):
             ]
             
             if self.feedback_source_type is not None:
-                feedback = primitive_matrix.feedback_topk(anchor_ids, k=3)
+                feedback = primitive_matrix.feedback_topk(anchor_ids, k=3, layer_idx=self.layer_idx)
                 cand_list.append(feedback)
                 src_list.append(torch.full_like(feedback, 4))
                 emb_list.append(primitive_matrix.emb[feedback] + self.feedback_source_type(torch.zeros_like(feedback)))
                 
             if self.category_source_type is not None:
-                category = primitive_matrix.category_best(anchor_ids)
+                category = primitive_matrix.category_best(anchor_ids, layer_idx=self.layer_idx)
                 cand_list.append(category)
                 src_list.append(torch.full_like(category, 7))
                 emb_list.append(primitive_matrix.emb[category] + self.category_source_type(torch.zeros_like(category)))
