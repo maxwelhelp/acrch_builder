@@ -12,6 +12,7 @@ from .simulator import LowRankSimulator
 from .executor import ActionExecutor
 from .self_delta_candidate_field import SelfDeltaCandidateField
 from .utility_critic import UtilityCritic
+from .vnext_controller import batched_mmr_select as vnext_mmr_select
 
 def _ln_logits(x: torch.Tensor) -> torch.Tensor:
     return F.layer_norm(x, x.shape[-1:])
@@ -426,19 +427,24 @@ class ActionMatrixLayer(nn.Module):
 
         utility_score = None
         utility_uncertainty = None
+        utility_behavior = None
         utility_metrics = {}
         if self.utility_critic is not None:
+            # Inference-safe head/context vector: target slot address.
+            # This is not label leakage. Future variants may add readout/query context.
             flat_target_address = target_address.reshape(b * s * s, d)
             top_prim_emb = self.pm.emb.to(device=flat_context.device, dtype=flat_context.dtype)[top_ids]
-            utility_score, utility_uncertainty = self.utility_critic(
+            utility_score, utility_uncertainty, utility_behavior = self.utility_critic(
                 flat_context,
                 top_prim_emb,
-                flat_target_address
+                flat_target_address,
+                return_behavior=True,
             )
             with torch.no_grad():
                 utility_metrics = {
                     "utility_score_mean": float(utility_score.mean().cpu()),
                     "utility_score_std": float(utility_score.std().cpu()),
+                    "utility_behavior_norm": float(utility_behavior.norm(dim=-1).mean().cpu()),
                     "utility_critic_enabled": 1.0,
                     "utility_choice_enabled": float(self.enable_utility_critic_choice),
                     "utility_pool_size": float(self.utility_pool_size),
@@ -547,17 +553,26 @@ class ActionMatrixLayer(nn.Module):
             choice_logits = choice_logits + utility_scale * utility_norm
 
         if self.enable_mmr_controller and utility_score is not None and not disable_sim and not disable_sim_result:
-            # ucb = utility_score + beta * uncertainty
-            ucb = utility_score
-            if utility_uncertainty is not None:
-                ucb = ucb + 0.35 * utility_uncertainty
-            mmr_mask = batched_mmr_select(
-                ucb=ucb,
+            # vNext contract:
+            # - commit during forward uses critic/policy score;
+            # - measured_gain trains later;
+            # - MMR similarity uses cheap learned behavior_feature, so Lazy Executor
+            #   does not need true executor effects for every candidate.
+            mmr_mask, mmr_metrics = vnext_mmr_select(
+                utility=utility_score,
                 top_ids=top_ids,
                 pm_emb=self.pm.emb,
                 budget=self.utility_budget,
                 beta=self.utility_mmr_beta,
+                behavior_feature=utility_behavior,
+                mode=self.utility_mmr_mode,
+                uncertainty=utility_uncertainty,
+                uncertainty_weight=0.35,
+                identity_weight=0.2,
             )
+            with torch.no_grad():
+                for _k, _v in mmr_metrics.items():
+                    utility_metrics[_k] = float(_v.detach().cpu())
             choice_logits = choice_logits.masked_fill(~mmr_mask, float("-inf"))
 
         if choice_sampling not in {"auto", "gumbel", "softmax", "uniform"}:
