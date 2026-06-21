@@ -23,6 +23,7 @@ class HybridScanner(nn.Module):
         random_k: int = 1,
         single_proj_dim: int = 32,
         pair_jl_dim: int = 16,
+        enable_scanner_feedback_memory: bool = False,
     ) -> None:
         super().__init__()
         self.local_k = local_k
@@ -48,6 +49,12 @@ class HybridScanner(nn.Module):
             single_proj_dim=single_proj_dim,
             pair_proj_dim=pair_jl_dim,
         )
+        self.feedback_source_type = None
+        if enable_scanner_feedback_memory:
+            cpu_rng = torch.random.get_rng_state()
+            self.feedback_source_type = nn.Embedding(1, prim_embed_dim)
+            torch.random.set_rng_state(cpu_rng)
+
 
     def projection_proposals(
         self,
@@ -87,19 +94,37 @@ class HybridScanner(nn.Module):
                 primitive_matrix.num_primitives, device=device
             ).view(1, -1).expand(n, -1)
             source_ids = torch.full_like(candidate_ids, 4)
+            cand_emb = primitive_matrix.emb[candidate_ids] + self.source_type(source_ids)
         else:
-            candidate_ids = torch.cat([local, semantic, usage, random], dim=-1)
-            source_ids = torch.cat(
-                [
-                    torch.zeros_like(local),
-                    torch.ones_like(semantic),
-                    torch.full_like(usage, 2),
-                    torch.full_like(random, 3),
-                ],
-                dim=-1,
-            )
+            if self.feedback_source_type is not None:
+                feedback = primitive_matrix.feedback_topk(anchor_ids, k=3)
+                candidate_ids = torch.cat([local, semantic, usage, random, feedback], dim=-1)
+                source_ids = torch.cat(
+                    [
+                        torch.zeros_like(local),
+                        torch.ones_like(semantic),
+                        torch.full_like(usage, 2),
+                        torch.full_like(random, 3),
+                        torch.full_like(feedback, 4),
+                    ],
+                    dim=-1,
+                )
+                base_emb = primitive_matrix.emb[candidate_ids[:, :-3]] + self.source_type(source_ids[:, :-3])
+                feed_emb = primitive_matrix.emb[candidate_ids[:, -3:]] + self.feedback_source_type(torch.zeros_like(feedback))
+                cand_emb = torch.cat([base_emb, feed_emb], dim=1)
+            else:
+                candidate_ids = torch.cat([local, semantic, usage, random], dim=-1)
+                source_ids = torch.cat(
+                    [
+                        torch.zeros_like(local),
+                        torch.ones_like(semantic),
+                        torch.full_like(usage, 2),
+                        torch.full_like(random, 3),
+                    ],
+                    dim=-1,
+                )
+                cand_emb = primitive_matrix.emb[candidate_ids] + self.source_type(source_ids)
 
-        cand_emb = primitive_matrix.emb[candidate_ids] + self.source_type(source_ids)
         ctx = self.context_proj(context).unsqueeze(1).expand_as(cand_emb)
         mem = self.memory_proj(memory).unsqueeze(1).expand_as(cand_emb)
         if prev_action_emb is None:

@@ -79,6 +79,10 @@ class PrimitiveMatrix5x5(nn.Module):
         self.register_buffer("descriptor", desc, persistent=False)
         self.register_buffer("usage_score", torch.zeros(len(self.names)), persistent=False)
         self.register_buffer("usage_observations", torch.zeros(len(self.names)), persistent=False)
+        self.register_buffer("feedback_gain_ema", torch.zeros(len(self.names)), persistent=False)
+        self.register_buffer("feedback_regret_ema", torch.zeros(len(self.names)), persistent=False)
+        self.register_buffer("feedback_count", torch.zeros(len(self.names)), persistent=False)
+
         local_lookup = []
         for idx in range(len(self.names)):
             r, c = self.infos[idx].row, self.infos[idx].col
@@ -142,6 +146,21 @@ class PrimitiveMatrix5x5(nn.Module):
                 top = torch.cat([top, unseen[: k - top.numel()]])
         return top.view(*([1] * ids.dim()), -1).expand(*ids.shape, -1)
 
+    def feedback_topk(self, ids: torch.Tensor, k: int = 3) -> torch.Tensor:
+        k = min(k, self.num_primitives)
+        if self.feedback_count.sum() <= 0:
+            top = torch.randperm(self.num_primitives, device=ids.device)[:k]
+        else:
+            seen = self.feedback_count > 0
+            bias = self.feedback_gain_ema - 0.5 * self.feedback_regret_ema
+            ranking = bias.masked_fill(~seen, float("-inf"))
+            top = ranking.topk(k=min(k, int(seen.sum().item()))).indices.to(ids.device)
+            if top.numel() < k:
+                unseen = (~seen).nonzero(as_tuple=False).flatten().to(ids.device)
+                unseen = unseen[torch.randperm(unseen.numel(), device=ids.device)]
+                top = torch.cat([top, unseen[: k - top.numel()]])
+        return top.view(*([1] * ids.dim()), -1).expand(*ids.shape, -1)
+
     def update_usage_credit(
         self,
         chosen_ids: torch.Tensor,
@@ -169,6 +188,37 @@ class PrimitiveMatrix5x5(nn.Module):
                 momentum * self.usage_score[observed] + (1.0 - momentum) * quality[observed]
             )
             self.usage_observations.add_(counts)
+
+            # Scanner feedback memory updates (gain/regret EMAs)
+            pos_mask = values > 0
+            neg_mask = values < 0
+
+            # Positive gains
+            pos_ids = ids[pos_mask]
+            pos_vals = values[pos_mask]
+            if pos_ids.numel() > 0:
+                pos_counts = torch.bincount(pos_ids, minlength=self.num_primitives).to(self.feedback_gain_ema.dtype)
+                pos_sums = torch.zeros_like(self.feedback_gain_ema).scatter_add_(0, pos_ids, pos_vals)
+                pos_obs = pos_counts > 0
+                pos_quality = pos_sums / pos_counts.clamp_min(1.0)
+                self.feedback_gain_ema[pos_obs] = (
+                    momentum * self.feedback_gain_ema[pos_obs] + (1.0 - momentum) * pos_quality[pos_obs]
+                )
+
+            # Negative gains (regrets)
+            neg_ids = ids[neg_mask]
+            neg_vals = -values[neg_mask]
+            if neg_ids.numel() > 0:
+                neg_counts = torch.bincount(neg_ids, minlength=self.num_primitives).to(self.feedback_regret_ema.dtype)
+                neg_sums = torch.zeros_like(self.feedback_regret_ema).scatter_add_(0, neg_ids, neg_vals)
+                neg_obs = neg_counts > 0
+                neg_quality = neg_sums / neg_counts.clamp_min(1.0)
+                self.feedback_regret_ema[neg_obs] = (
+                    momentum * self.feedback_regret_ema[neg_obs] + (1.0 - momentum) * neg_quality[neg_obs]
+                )
+
+            self.feedback_count.add_(counts)
+
 
     def metrics(self) -> Dict[str, float]:
         emb = F.normalize(self.emb.detach(), dim=-1)

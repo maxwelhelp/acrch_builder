@@ -23,6 +23,47 @@ def _primitive_distribution(candidate_ids: torch.Tensor, choice: torch.Tensor, n
     return out
 
 
+def batched_mmr_select(
+    ucb: torch.Tensor,
+    top_ids: torch.Tensor,
+    pm_emb: torch.Tensor,
+    budget: int,
+    beta: float,
+) -> torch.Tensor:
+    device = ucb.device
+    N, K = ucb.shape
+    ucb_min = ucb.min(dim=-1, keepdim=True).values
+    ucb_max = ucb.max(dim=-1, keepdim=True).values
+    ucb_span = (ucb_max - ucb_min).clamp_min(1e-6)
+    ucb_norm = (ucb - ucb_min) / ucb_span
+
+    norm_emb = F.normalize(pm_emb, p=2, dim=-1)
+    cand_emb = norm_emb[top_ids]
+    sim_matrix = torch.bmm(cand_emb, cand_emb.transpose(1, 2))
+
+    selected_mask = torch.zeros((N, K), dtype=torch.bool, device=device)
+    max_sim = torch.zeros((N, K), device=device)
+
+    for step in range(min(budget, K)):
+        if step == 0:
+            scores = (1.0 - beta) * ucb_norm
+        else:
+            scores = (1.0 - beta) * ucb_norm - beta * max_sim
+
+        scores = scores.masked_fill(selected_mask, float("-inf"))
+        best_indices = scores.argmax(dim=-1, keepdim=True)
+        selected_mask.scatter_(1, best_indices, True)
+
+        new_sims = sim_matrix.gather(2, best_indices.unsqueeze(-1).expand(-1, K, -1)).squeeze(-1)
+        if step == 0:
+            max_sim = new_sims
+        else:
+            max_sim = torch.max(max_sim, new_sims)
+
+    return selected_mask
+
+
+
 class ActionMatrixLayer(nn.Module):
     """One sequential ActionMatrix layer.
 
@@ -96,6 +137,7 @@ class ActionMatrixLayer(nn.Module):
             prim_embed_dim=emb_dim,
             single_proj_dim=single_proj_dim,
             pair_jl_dim=pair_jl_dim,
+            enable_scanner_feedback_memory=self.enable_scanner_feedback_memory,
         )
         self.simulator = LowRankSimulator(dim=dim, num_primitives=primitive_matrix.num_primitives, rank=sim_rank, embed_dim=emb_dim)
         self.executor = ActionExecutor(dim=dim, primitive_matrix=primitive_matrix)
@@ -156,6 +198,15 @@ class ActionMatrixLayer(nn.Module):
             )
             self.utility_logit_scale = nn.Parameter(torch.tensor(-6.0))
             torch.random.set_rng_state(cpu_rng)
+
+        self.slot_output_weight = None
+        self.collector_weight = None
+        if self.enable_vnext:
+            cpu_rng = torch.random.get_rng_state()
+            self.slot_output_weight = nn.Parameter(torch.tensor(0.10))
+            self.collector_weight = nn.Parameter(torch.tensor(0.02))
+            torch.random.set_rng_state(cpu_rng)
+
 
     def _init_gate_priors(self) -> None:
         with torch.no_grad():
@@ -392,21 +443,25 @@ class ActionMatrixLayer(nn.Module):
                     "utility_mmr_mode": 1.0 if self.utility_mmr_mode == "hybrid" else 0.0,
                 }
 
-        if all_primitive_effects is None:
-            primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
-        else:
-            primitive_out = all_primitive_effects.gather(
-                1, top_ids.unsqueeze(-1).expand(-1, -1, d)
-            )
-
-        self_delta_component = torch.zeros_like(predicted_gain)
-        self_delta_metrics = {}
-        self_delta_scale = torch.zeros((), device=flat_context.device, dtype=flat_context.dtype)
-
         self_delta_active = (
             self.self_delta_field is not None
             and (self.enable_self_delta_probe or self.enable_self_delta_choice)
         )
+        lazy_active = self.enable_lazy_executor and not (self_delta_active and self.enable_self_delta_choice)
+
+        if not lazy_active:
+            if all_primitive_effects is None:
+                primitive_out = self.executor(flat_src, flat_tgt, flat_mem, top_ids)
+            else:
+                primitive_out = all_primitive_effects.gather(
+                    1, top_ids.unsqueeze(-1).expand(-1, -1, d)
+                )
+        else:
+            primitive_out = None
+
+        self_delta_component = torch.zeros_like(predicted_gain)
+        self_delta_metrics = {}
+        self_delta_scale = torch.zeros((), device=flat_context.device, dtype=flat_context.dtype)
 
         if self_delta_active and not disable_self_delta:
             top_prim_emb = self.pm.emb.to(
@@ -414,18 +469,20 @@ class ActionMatrixLayer(nn.Module):
                 dtype=flat_context.dtype,
             )[top_ids]
 
-            self_delta_component, self_delta_metrics = self.self_delta_field(
-                flat_context=flat_context,
-                flat_src=flat_src,
-                flat_tgt=flat_tgt,
-                top_prim_emb=top_prim_emb,
-                sim=sim,
-                actual=primitive_out,
-                detach_actual=True,
-            )
+            if not lazy_active:
+                self_delta_component, self_delta_metrics = self.self_delta_field(
+                    flat_context=flat_context,
+                    flat_src=flat_src,
+                    flat_tgt=flat_tgt,
+                    top_prim_emb=top_prim_emb,
+                    sim=sim,
+                    actual=primitive_out,
+                    detach_actual=True,
+                )
 
-            if zero_self_delta:
-                self_delta_component = torch.zeros_like(self_delta_component)
+                if zero_self_delta:
+                    self_delta_component = torch.zeros_like(self_delta_component)
+
 
             if shuffle_self_delta and self_delta_component.shape[0] > 1:
                 perm = torch.randperm(
@@ -441,14 +498,15 @@ class ActionMatrixLayer(nn.Module):
 
         sim_component = (
             torch.zeros_like(predicted_gain)
-            if disable_sim or disable_sim_result
+            if disable_sim or disable_sim_result or self.enable_utility_critic_choice
             else self.sim_logits(sim).squeeze(-1)
         )
         gain_component = (
             torch.zeros_like(predicted_gain)
-            if disable_sim or disable_gain
+            if disable_sim or disable_gain or self.enable_utility_critic_choice
             else predicted_gain
         )
+
 
         context_component = self.context_logits(flat_context)[:, :k]
         primitive_pair = self.primitive_pair_bias.to(
@@ -483,6 +541,21 @@ class ActionMatrixLayer(nn.Module):
             utility_scale = torch.sigmoid(self.utility_logit_scale).to(dtype=choice_logits.dtype)
             utility_norm = F.layer_norm(utility_score, (utility_score.shape[-1],))
             choice_logits = choice_logits + utility_scale * utility_norm
+
+        if self.enable_mmr_controller and utility_score is not None:
+            # ucb = utility_score + beta * uncertainty
+            ucb = utility_score
+            if utility_uncertainty is not None:
+                ucb = ucb + 0.35 * utility_uncertainty
+            mmr_mask = batched_mmr_select(
+                ucb=ucb,
+                top_ids=top_ids,
+                pm_emb=self.pm.emb,
+                budget=self.utility_budget,
+                beta=self.utility_mmr_beta,
+            )
+            choice_logits = choice_logits.masked_fill(~mmr_mask, float("-inf"))
+
         if choice_sampling not in {"auto", "gumbel", "softmax", "uniform"}:
             raise ValueError(f"unknown choice sampling: {choice_sampling!r}")
         use_gumbel = self.training and choice_sampling in {"auto", "gumbel"}
@@ -533,7 +606,46 @@ class ActionMatrixLayer(nn.Module):
                 )
 
         # primitive_out already computed before choice logits for optional self-delta diagnostics.
-        transformed = (choice.unsqueeze(-1) * primitive_out).sum(dim=1)
+        if lazy_active:
+            if self.enable_mmr_controller and utility_score is not None:
+                selected_mask = mmr_mask
+            else:
+                _, top_b_idx = choice.topk(k=self.utility_budget, dim=-1)
+                selected_mask = torch.zeros_like(choice, dtype=torch.bool).scatter_(1, top_b_idx, True)
+
+            selected_pos = selected_mask.nonzero(as_tuple=False)[:, 1].reshape(b * s * s, self.utility_budget)
+            lazy_top_ids = top_ids.gather(1, selected_pos)
+
+            if all_primitive_effects is None:
+                lazy_primitive_out = self.executor(flat_src, flat_tgt, flat_mem, lazy_top_ids)
+            else:
+                lazy_primitive_out = all_primitive_effects.gather(
+                    1, lazy_top_ids.unsqueeze(-1).expand(-1, -1, d)
+                )
+
+            lazy_choice = choice.gather(1, selected_pos)
+            lazy_choice = lazy_choice / lazy_choice.sum(dim=-1, keepdim=True).clamp_min(1e-8)
+            transformed = (lazy_choice.unsqueeze(-1) * lazy_primitive_out).sum(dim=1)
+
+            if self_delta_active and not disable_self_delta:
+                lazy_top_prim_emb = top_prim_emb.gather(1, selected_pos.unsqueeze(-1).expand(-1, -1, top_prim_emb.shape[-1]))
+                lazy_sim = sim.gather(1, selected_pos.unsqueeze(-1).expand(-1, -1, sim.shape[-1]))
+                self_delta_score, self_delta_metrics = self.self_delta_field(
+                    flat_context=flat_context,
+                    flat_src=flat_src,
+                    flat_tgt=flat_tgt,
+                    top_prim_emb=lazy_top_prim_emb,
+                    sim=lazy_sim,
+                    actual=lazy_primitive_out,
+                    detach_actual=True,
+                )
+                self_delta_component = torch.zeros_like(predicted_gain)
+                self_delta_component.scatter_(1, selected_pos, self_delta_score)
+                if zero_self_delta:
+                    self_delta_component = torch.zeros_like(self_delta_component)
+        else:
+            transformed = (choice.unsqueeze(-1) * primitive_out).sum(dim=1)
+
 
         pair_edge = self._flat_pair_bias(self.edge_pair_bias, b, flat_context.dtype, flat_context.device)
         pair_write = self._flat_pair_bias(self.write_pair_bias, b, flat_context.dtype, flat_context.device)
@@ -579,7 +691,11 @@ class ActionMatrixLayer(nn.Module):
         ).sum(dim=1) / (slot_output_gate * torch.sigmoid(slot_alive_logits)).sum(dim=1, keepdim=True).clamp_min(1e-5)
 
         collector_mass = slot_output_gate * merge_gate
-        output_state = output_tape_state + 0.10 * slot_output_state + 0.02 * (collector_mass.unsqueeze(-1) * next_state).sum(dim=1)
+        if self.enable_vnext and self.slot_output_weight is not None:
+            output_state = output_tape_state + self.slot_output_weight * slot_output_state + self.collector_weight * (collector_mass.unsqueeze(-1) * next_state).sum(dim=1)
+        else:
+            output_state = output_tape_state + 0.10 * slot_output_state + 0.02 * (collector_mass.unsqueeze(-1) * next_state).sum(dim=1)
+
 
         chosen = top_ids.gather(1, choice.argmax(dim=-1, keepdim=True)).squeeze(1)
 
