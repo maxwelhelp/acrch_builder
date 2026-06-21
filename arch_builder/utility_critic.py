@@ -28,7 +28,11 @@ class UtilityCritic(nn.Module):
         )
         self.utility_head = nn.Linear(hidden, 1)
         self.log_uncertainty_head = nn.Linear(hidden, 1)
-        self.behavior_head = nn.Linear(hidden, self.behavior_dim)
+        self.behavior_head = nn.Sequential(
+            nn.Linear(hidden, hidden),
+            nn.SiLU(),
+            nn.Linear(hidden, self.behavior_dim),
+        )
 
     def score_with_features(
         self,
@@ -43,7 +47,11 @@ class UtilityCritic(nn.Module):
         h = self.trunk(x)
         utility = self.utility_head(h).squeeze(-1)
         uncertainty = F.softplus(self.log_uncertainty_head(h).squeeze(-1))
-        behavior = F.normalize(self.behavior_head(h), p=2, dim=-1, eps=1e-6)
+        raw_behavior = self.behavior_head(h)
+        # Center behavior features across the candidates of each cell (dim=1)
+        mean_behavior = raw_behavior.mean(dim=1, keepdim=True)
+        centered_behavior = raw_behavior - mean_behavior
+        behavior = F.normalize(centered_behavior, p=2, dim=-1, eps=1e-6)
         return utility, uncertainty, behavior
 
     def forward(

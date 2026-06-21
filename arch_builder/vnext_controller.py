@@ -69,14 +69,22 @@ def candidate_similarity_parts(
     cand_emb = norm_emb[top_ids]
     identity_sim = torch.bmm(cand_emb, cand_emb.transpose(1, 2)).clamp(-1.0, 1.0)
 
+    mean_eff_sim = 1.0
     if behavior_feature is None:
         effect_sim = identity_sim
     else:
         behavior = F.normalize(behavior_feature.float(), p=2, dim=-1, eps=1e-6)
         effect_sim = torch.bmm(behavior, behavior.transpose(1, 2)).clamp(-1.0, 1.0)
+        with torch.no_grad():
+            offdiag_eff = _offdiag_values(effect_sim)
+            mean_eff_sim = float(offdiag_eff.mean().cpu()) if offdiag_eff.numel() > 0 else 0.0
 
+    fallback = False
     if mode == "identity":
         sim = identity_sim
+    elif mean_eff_sim > 0.95:
+        sim = identity_sim
+        fallback = True
     elif mode == "effect":
         sim = effect_sim
     elif mode == "hybrid":
@@ -84,7 +92,7 @@ def candidate_similarity_parts(
         sim = w * identity_sim + (1.0 - w) * effect_sim
     else:
         raise ValueError(f"unknown MMR mode: {mode!r}")
-    return sim.clamp(-1.0, 1.0), {"identity": identity_sim, "effect": effect_sim}
+    return sim.clamp(-1.0, 1.0), {"identity": identity_sim, "effect": effect_sim, "mean_eff_sim": mean_eff_sim, "fallback": fallback}
 
 
 def candidate_similarity(
@@ -184,6 +192,8 @@ def batched_mmr_select(
             "mmr_utility_drop_vs_topk": (topk_utility - selected_utility).mean().detach(),
             "mmr_beta": torch.tensor(beta, device=device),
             "mmr_identity_weight": torch.tensor(float(identity_weight), device=device),
+            "mmr_fallback_identity": torch.tensor(float(parts.get("fallback", False)), device=device),
+            "behavior_mean_similarity": torch.tensor(float(parts.get("mean_eff_sim", 1.0)), device=device),
             "behavior_pair_sim_before": _selected_offdiag_mean(effect_sim, topk_mask).detach(),
             "behavior_pair_sim_after": _selected_offdiag_mean(effect_sim, selected_mask).detach(),
             **{k: v.detach() for k, v in _offdiag_stats(effect_sim, "behavior_feature_pair_sim").items()},

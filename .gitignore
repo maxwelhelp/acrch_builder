@@ -10,3 +10,5 @@ runs/
 .cache/
 .env
 .venv/
+.mcp_state/
+.mcp_tmp/

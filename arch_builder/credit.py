@@ -245,6 +245,9 @@ class BoundedCounterfactualCredit:
         self.gain_scale = 1e-3
         self.last_random_targets = 0
         self.last_alternative_targets: List[CounterfactualTarget] = []
+        self.rolling_predicted_single: List[float] = []
+        self.rolling_targets_single: List[float] = []
+        self.rolling_sim_predicted_single: List[float] = []
 
     def _targets_from_trace(self, trace: Dict[str, object]) -> List[CounterfactualTarget]:
         scored: List[Tuple[float, CounterfactualTarget]] = []
@@ -504,13 +507,21 @@ class BoundedCounterfactualCredit:
             if p.std(unbiased=False) > 1e-8 and m.std(unbiased=False) > 1e-8:
                 corr = float(torch.corrcoef(torch.stack([p, m]))[0, 1])
 
-        # Pearson correlations
-        utility_gain_corr = pearson_corr(utility_predicted, measured_gains)
-        current_predicted_gain_corr = pearson_corr(sim_predicted, measured_gains)
+        # Pearson correlations on rolling buffer of single-intervention records
+        self.rolling_predicted_single.extend(utility_predicted_single)
+        self.rolling_targets_single.extend(utility_targets_single)
+        self.rolling_sim_predicted_single.extend(sim_predicted_single)
+
+        self.rolling_predicted_single = self.rolling_predicted_single[-128:]
+        self.rolling_targets_single = self.rolling_targets_single[-128:]
+        self.rolling_sim_predicted_single = self.rolling_sim_predicted_single[-128:]
+
+        utility_gain_corr = pearson_corr(self.rolling_predicted_single, self.rolling_targets_single)
+        current_predicted_gain_corr = pearson_corr(self.rolling_sim_predicted_single, self.rolling_targets_single)
         utility_vs_current_gain_corr_delta = utility_gain_corr - current_predicted_gain_corr
         
-        # Spearman correlation
-        utility_gain_spearman = spearman_corr(utility_predicted, measured_gains)
+        # Spearman correlation on rolling buffer
+        utility_gain_spearman = spearman_corr(self.rolling_predicted_single, self.rolling_targets_single)
         
         # Group metrics on pools
         proposal_top1_gains = []
@@ -586,12 +597,12 @@ class BoundedCounterfactualCredit:
             utility_target_mean = float(uts_t.mean())
             utility_target_std = float(uts_t.std()) if len(utility_targets_single) >= 2 else 0.0
             utility_target_snr = float(uts_t.abs().mean() / (uts_t.std() + 1e-6)) if len(utility_targets_single) >= 2 else 0.0
-            utility_corr_items = float(len(utility_targets_single))
+            utility_corr_items = float(len(self.rolling_targets_single))
         else:
             utility_target_mean = 0.0
             utility_target_std = 0.0
             utility_target_snr = 0.0
-            utility_corr_items = 0.0
+            utility_corr_items = float(len(self.rolling_targets_single))
 
         positive_gain_targets = 0
         positive_gain_present = 0
