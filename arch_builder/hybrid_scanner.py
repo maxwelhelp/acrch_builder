@@ -27,6 +27,7 @@ class HybridScanner(nn.Module):
         enable_category_scanner: bool = False,
         num_primitives: int = 25,
         layer_idx: int = 0,
+        category_k: int = 1,
     ) -> None:
         super().__init__()
         self.layer_idx = layer_idx
@@ -34,6 +35,7 @@ class HybridScanner(nn.Module):
         self.semantic_k = semantic_k
         self.usage_k = usage_k
         self.random_k = random_k
+        self.category_k = category_k
         # Four production proposal sources plus an explicit debug full-scan
         # source. The latter is used only when top_k covers the whole matrix.
         self.source_type = nn.Embedding(5, prim_embed_dim)
@@ -128,7 +130,7 @@ class HybridScanner(nn.Module):
                 emb_list.append(primitive_matrix.emb[feedback] + self.feedback_source_type(torch.zeros_like(feedback)))
                 
             if self.category_source_type is not None:
-                category = primitive_matrix.category_best(anchor_ids, layer_idx=self.layer_idx, cell_ids=cell_ids)
+                category = primitive_matrix.category_topk(anchor_ids, k=self.category_k, layer_idx=self.layer_idx, cell_ids=cell_ids)
                 cand_list.append(category)
                 src_list.append(torch.full_like(category, 7))
                 emb_list.append(primitive_matrix.emb[category] + self.category_source_type(torch.zeros_like(category)))

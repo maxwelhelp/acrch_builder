@@ -1265,6 +1265,7 @@ def train(args) -> None:
         utility_budget_start=args.utility_budget_start,
         utility_budget_end=args.utility_budget_end,
         utility_budget_warmup_steps=args.utility_budget_warmup_steps,
+        utility_category_k=args.utility_category_k,
     ).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=(device.startswith("cuda") and args.amp == "fp16"))
@@ -1534,6 +1535,7 @@ def parser():
     p.add_argument("--utility-budget-start", type=int, default=3)
     p.add_argument("--utility-budget-end", type=int, default=3)
     p.add_argument("--utility-budget-warmup-steps", type=int, default=0)
+    p.add_argument("--utility-category-k", type=int, default=1)
     return p
 
 

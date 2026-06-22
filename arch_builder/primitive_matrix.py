@@ -233,6 +233,31 @@ class PrimitiveMatrix5x5(nn.Module):
         best_tensor = torch.stack(best_ids, dim=-1)
         return best_tensor.view(*ids.shape, -1)
 
+    def category_topk(self, ids: torch.Tensor, k: int, layer_idx: int = 0, cell_ids: torch.Tensor | None = None) -> torch.Tensor:
+        device = ids.device
+        n = ids.shape[0]
+        if cell_ids is None:
+            cell_ids = torch.arange(n, device=device) % self.num_cells
+            
+        gain = self.feedback_gain_ema[layer_idx, cell_ids]
+        regret = self.feedback_regret_ema[layer_idx, cell_ids]
+        bias = torch.clamp(gain - 0.5 * regret, min=-2.0, max=2.0)
+        
+        no_measurements = (self.feedback_count[layer_idx, cell_ids].sum(dim=-1) <= 0)
+        if no_measurements.any():
+            bias[no_measurements] = self.usage_score.unsqueeze(0).expand(int(no_measurements.sum().item()), -1).to(bias.dtype)
+        
+        k_val = min(k, 5)
+        top_ids = []
+        num_rows = len(self.grid)
+        for r in range(num_rows):
+            row_slice = bias[:, r * 5 : r * 5 + 5]
+            best_indices = row_slice.topk(k=k_val, dim=-1).indices
+            top_ids.append(r * 5 + best_indices)
+            
+        best_tensor = torch.cat(top_ids, dim=-1)
+        return best_tensor.view(*ids.shape, -1)
+
     def update_usage_credit(
         self,
         chosen_ids: torch.Tensor,

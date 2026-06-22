@@ -125,6 +125,7 @@ class ActionMatrixLayer(nn.Module):
         utility_budget_start: int = 3,
         utility_budget_end: int = 3,
         utility_budget_warmup_steps: int = 0,
+        utility_category_k: int = 1,
     ) -> None:
         super().__init__()
         if state_norm not in {"none", "layernorm"}:
@@ -165,6 +166,7 @@ class ActionMatrixLayer(nn.Module):
         self.utility_budget_start = int(utility_budget_start)
         self.utility_budget_end = int(utility_budget_end)
         self.utility_budget_warmup_steps = int(utility_budget_warmup_steps)
+        self.utility_category_k = int(utility_category_k)
 
         context_dim = dim * 5
         emb_dim = primitive_matrix.emb.shape[-1]
@@ -178,6 +180,7 @@ class ActionMatrixLayer(nn.Module):
             enable_category_scanner=self.enable_category_scanner,
             num_primitives=primitive_matrix.num_primitives,
             layer_idx=layer_idx,
+            category_k=self.utility_category_k,
         )
         self.simulator = LowRankSimulator(dim=dim, num_primitives=primitive_matrix.num_primitives, rank=sim_rank, embed_dim=emb_dim)
         self.executor = ActionExecutor(dim=dim, primitive_matrix=primitive_matrix, enable_vnext=enable_vnext)
@@ -1072,6 +1075,7 @@ class ActionMatrixModel(nn.Module):
         utility_budget_start: int = 3,
         utility_budget_end: int = 3,
         utility_budget_warmup_steps: int = 0,
+        utility_category_k: int = 1,
     ) -> None:
         super().__init__()
         if input_norm not in {"none", "layernorm"}:
@@ -1133,6 +1137,7 @@ class ActionMatrixModel(nn.Module):
                 utility_budget_start=utility_budget_start,
                 utility_budget_end=utility_budget_end,
                 utility_budget_warmup_steps=utility_budget_warmup_steps,
+                utility_category_k=utility_category_k,
             )
             for i in range(layers)
         ])

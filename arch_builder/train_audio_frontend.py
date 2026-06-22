@@ -244,6 +244,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--utility-budget-start", type=int, default=3)
     ap.add_argument("--utility-budget-end", type=int, default=3)
     ap.add_argument("--utility-budget-warmup-steps", type=int, default=0)
+    ap.add_argument("--utility-category-k", type=int, default=1)
     return ap
 
 
@@ -1156,6 +1157,7 @@ def train_variant(args) -> Dict[str, object]:
         utility_budget_start=args.utility_budget_start,
         utility_budget_end=args.utility_budget_end,
         utility_budget_warmup_steps=args.utility_budget_warmup_steps,
+        utility_category_k=args.utility_category_k,
     ).to(device)
     model.choice_sampling = "uniform" if args.controller_baseline == "random" else "auto"
     if args.controller_baseline in {"frozen", "random"}:

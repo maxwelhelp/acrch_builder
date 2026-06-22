@@ -280,6 +280,7 @@ class AudioMatrixClassifier(nn.Module):
         utility_budget_start: int = 3,
         utility_budget_end: int = 3,
         utility_budget_warmup_steps: int = 0,
+        utility_category_k: int = 1,
     ) -> None:
         super().__init__()
         self.frontend = frontend
@@ -326,6 +327,7 @@ class AudioMatrixClassifier(nn.Module):
             utility_budget_start=utility_budget_start,
             utility_budget_end=utility_budget_end,
             utility_budget_warmup_steps=utility_budget_warmup_steps,
+            utility_category_k=utility_category_k,
         )
         # Generic multiclass readout: no layer roles or task-specific operators.
         self.backbone.classifier = nn.Sequential(
