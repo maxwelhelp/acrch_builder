@@ -27,7 +27,7 @@ def make_parser():
     p = frontend_parser()
     p.add_argument("--profile-light", action="store_true", help="Use perf_counter with GPU sync")
     p.add_argument("--profile-torch", action="store_true", help="Use torch.profiler")
-    p.add_argument("--profile-steps", type=int, default=20, help="Number of profiling steps")
+    p.add_argument("--profile-steps", type=int, default=60, help="Number of profiling steps")
     p.add_argument("--credit-mode", type=str, default="counterfactual", choices=["counterfactual", "grad_trace", "hybrid_fast"])
     p.add_argument("--diag-every", type=int, default=1)
     return p
@@ -88,6 +88,7 @@ def main():
         utility_budget_end=args.utility_budget_end,
         utility_budget_warmup_steps=args.utility_budget_warmup_steps,
         utility_category_k=args.utility_category_k,
+        fast_train_backward=args.fast_train_backward,
     ).to(device)
     
     model.train()
@@ -297,6 +298,17 @@ def main():
     gpu_mem_allocated = torch.cuda.memory_allocated(device) / (1024 ** 2) if device.startswith("cuda") else 0.0
     gpu_mem_reserved = torch.cuda.memory_reserved(device) / (1024 ** 2) if device.startswith("cuda") else 0.0
     
+    # Collect executor backward time from hooks
+    exec_back_time = 0.0
+    for layer in model.backbone.layers:
+        if hasattr(layer.executor, "collect_backward_time"):
+            exec_back_time += layer.executor.collect_backward_time()
+            
+    cf_calls = sum(1 for step in range(steps) if (step + 1) % max(1, args.credit_interval) == 0)
+    cf_total = timings.get("counterfactual_seconds", 0.0)
+    cf_per_call = cf_total / max(1, cf_calls)
+    cf_overhead_pct = (cf_total / total_duration) * 100
+
     print("\n=== PROFILING RESULTS ===")
     print(f"Total steps: {steps}")
     print(f"Total time: {total_duration:.4f} s")
@@ -304,6 +316,11 @@ def main():
     print(f"Step latency: {total_duration / steps * 1000:.2f} ms/step")
     print(f"GPU Mem Allocated: {gpu_mem_allocated:.2f} MB")
     print(f"GPU Mem Reserved: {gpu_mem_reserved:.2f} MB")
+    print(f"Counterfactual Calls: {cf_calls}")
+    print(f"Counterfactual Total: {cf_total:.4f} s")
+    print(f"Counterfactual Per Call: {cf_per_call * 1000:.2f} ms/call")
+    print(f"Counterfactual Overhead: {cf_overhead_pct:.2f}%")
+    print(f"Executor Backward Time (hooked): {exec_back_time:.4f} s")
     print("\nBreakdown (seconds):")
     
     # Print metrics

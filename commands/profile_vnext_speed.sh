@@ -71,6 +71,9 @@ fi
 if [[ "${ENABLE_AUTO_MINED_ATOMS:-0}" == "1" ]]; then
   VNEXT_ARGS+=(--enable-auto-mined-atoms)
 fi
+if [[ "${FAST_TRAIN_BACKWARD:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--fast-train-backward)
+fi
 
 PYTHONPATH=. python tools/project_probe/profile_vnext_speed.py \
   --dataset synthetic \

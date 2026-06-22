@@ -126,10 +126,12 @@ class ActionMatrixLayer(nn.Module):
         utility_budget_end: int = 3,
         utility_budget_warmup_steps: int = 0,
         utility_category_k: int = 1,
+        fast_train_backward: bool = False,
     ) -> None:
         super().__init__()
         if state_norm not in {"none", "layernorm"}:
             raise ValueError(f"state_norm must be none or layernorm, got {state_norm}")
+        self.fast_train_backward = bool(fast_train_backward)
         self.dim = dim
         self.slots = slots
         self.top_k = top_k
@@ -562,6 +564,18 @@ class ActionMatrixLayer(nn.Module):
                 flat_target_address,
                 return_behavior=True,
             )
+            # Keep original tensors with gradients for trace (so credit step training works)
+            utility_score_orig = utility_score
+            utility_uncertainty_orig = utility_uncertainty
+            utility_behavior_orig = utility_behavior
+            
+            if self.fast_train_backward and self.training:
+                utility_score = utility_score.detach()
+                if utility_uncertainty is not None:
+                    utility_uncertainty = utility_uncertainty.detach()
+                if utility_behavior is not None:
+                    utility_behavior = utility_behavior.detach()
+                    
             with torch.no_grad():
                 if collect_scan_metrics:
                     utility_metrics = {
@@ -735,7 +749,7 @@ class ActionMatrixLayer(nn.Module):
             if mmr_active:
                 choice_logits = choice_logits.masked_fill(~mmr_mask, float("-inf"))
 
-        behavior_div_loss = _behavior_decorrelation_loss(utility_behavior)
+        behavior_div_loss = _behavior_decorrelation_loss(utility_behavior_orig if utility_score is not None else None)
         if utility_behavior is not None:
             if collect_scan_metrics:
                 utility_metrics["behavior_div_loss"] = float(behavior_div_loss.detach().cpu())
@@ -1030,8 +1044,8 @@ class ActionMatrixLayer(nn.Module):
             "choice_sampling": "uniform" if choice_sampling == "uniform" else ("gumbel" if use_gumbel else "softmax"),
         }
         if utility_score is not None:
-            trace["utility_for_loss"] = utility_score
-            trace["uncertainty_for_loss"] = utility_uncertainty
+            trace["utility_for_loss"] = utility_score_orig
+            trace["uncertainty_for_loss"] = utility_uncertainty_orig
             trace["utility_metrics"] = utility_metrics
 
         new_memory = 0.95 * memory + 0.05 * next_state.mean(dim=1)
@@ -1089,8 +1103,10 @@ class ActionMatrixModel(nn.Module):
         utility_budget_end: int = 3,
         utility_budget_warmup_steps: int = 0,
         utility_category_k: int = 1,
+        fast_train_backward: bool = False,
     ) -> None:
         super().__init__()
+        self.fast_train_backward = bool(fast_train_backward)
         if input_norm not in {"none", "layernorm"}:
             raise ValueError(f"input_norm must be none or layernorm, got {input_norm}")
         if final_read not in {"last", "mean", "learned"}:
@@ -1151,6 +1167,7 @@ class ActionMatrixModel(nn.Module):
                 utility_budget_end=utility_budget_end,
                 utility_budget_warmup_steps=utility_budget_warmup_steps,
                 utility_category_k=utility_category_k,
+                fast_train_backward=fast_train_backward,
             )
             for i in range(layers)
         ])

@@ -281,11 +281,13 @@ class AudioMatrixClassifier(nn.Module):
         utility_budget_end: int = 3,
         utility_budget_warmup_steps: int = 0,
         utility_category_k: int = 1,
+        fast_train_backward: bool = False,
     ) -> None:
         super().__init__()
         self.frontend = frontend
         self.choice_sampling = "auto"
         self.backbone = ActionMatrixModel(
+            fast_train_backward=fast_train_backward,
             dim=dim,
             slots=slots,
             layers=layers,

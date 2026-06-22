@@ -51,6 +51,19 @@ class ActionExecutor(nn.Module):
             self.mined_diag = nn.Parameter(torch.ones(dim))
             self.mined_toeplitz_filter = nn.Parameter(torch.randn(1, 1, 5) * 0.02)
             self.mined_source_matrix = nn.Parameter(torch.randn(dim, dim) * 0.02)
+        self.backward_events = []
+
+    def collect_backward_time(self) -> float:
+        total = 0.0
+        if torch.cuda.is_available() and hasattr(self, "backward_events"):
+            torch.cuda.synchronize()
+            for start_event, end_event in self.backward_events:
+                try:
+                    total += start_event.elapsed_time(end_event) / 1000.0
+                except Exception:
+                    pass
+            self.backward_events.clear()
+        return total
 
     def _single(self, name: str, src: torch.Tensor, tgt: torch.Tensor, memory: torch.Tensor, pid: torch.Tensor) -> torch.Tensor:
         if name in {"identity", "route", "edge_gate", "write_gate", "output_write"}:
@@ -160,12 +173,63 @@ class ActionExecutor(nn.Module):
 
         out = src_k.clone()
 
+        # Find uniquely selected primitives on GPU, then transfer a small list to CPU (exactly 1 GPU-CPU sync)
+        unique_pids = torch.unique(flat_ids)
+        unique_pids_cpu = unique_pids.detach().cpu().tolist()
+        unique_pids_set = set(unique_pids_cpu)
+
+        # Collect execution metrics
+        if self.training or getattr(self, "collect_metrics_always", False):
+            self.executor_selected_rows = n
+            self.executor_selected_unique_primitives = len(unique_pids_cpu)
+            family_counts = [0] * 8
+            for pid in unique_pids_cpu:
+                family_id = pid // 5
+                if 0 <= family_id < 8:
+                    family_counts[family_id] += int((flat_ids == pid).sum().item())
+            self.executor_family_counts = family_counts
+            heavy_families = {1, 5, 6, 7}  # learned: 1, spectral: 5, attention: 6, mined: 7
+            heavy_count = sum(family_counts[fid] for fid in heavy_families)
+            self.executor_heavy_family_fraction = (heavy_count / max(1, sum(family_counts)))
+
+        # Backward Timer hook registration (non-blocking)
+        if self.training and torch.cuda.is_available():
+            if not hasattr(self, "backward_events"):
+                self.backward_events = []
+            start_event = torch.cuda.Event(enable_timing=True)
+            end_event = torch.cuda.Event(enable_timing=True)
+            def out_hook(grad):
+                start_event.record()
+                return grad
+            out.register_hook(out_hook)
+            
+            hooked = 0
+            inputs_count = [0]
+            def input_hook(grad):
+                inputs_count[0] += 1
+                if inputs_count[0] >= 3:
+                    end_event.record()
+                    self.backward_events.append((start_event, end_event))
+                return grad
+            if src_k.requires_grad:
+                src_k.register_hook(input_hook)
+                hooked += 1
+            if tgt_k.requires_grad:
+                tgt_k.register_hook(input_hook)
+                hooked += 1
+            if mem_k.requires_grad:
+                mem_k.register_hook(input_hook)
+                hooked += 1
+            inputs_count[0] = 3 - hooked
+
+        # Evaluates a primitive only if it was selected in the current batch
         def run_prim(name: str, func) -> None:
             pid = self.name_to_id[name]
+            if pid not in unique_pids_set:
+                return
             mask = (flat_ids == pid)
-            if mask.any():
-                val_sub = func(src_k[mask], tgt_k[mask], mem_k[mask], pid)
-                out[mask] = val_sub.to(dtype=out.dtype)
+            val_sub = func(src_k[mask], tgt_k[mask], mem_k[mask], pid)
+            out[mask] = val_sub.to(dtype=out.dtype)
 
         # Original Primitives
         def run_gated_keep(s, t, m, pid):
@@ -185,15 +249,21 @@ class ActionExecutor(nn.Module):
         for name in ("gated_add", "merge", "output_mix"):
             run_prim(name, average)
             
-        # Combine simple memory, zero, and replace primitive evaluations to avoid multiple run_prim calls
-        mem_mask = (flat_ids == self.name_to_id["memory_read"]) | (flat_ids == self.name_to_id["recall"])
-        if mem_mask.any():
+        # Combine simple memory, zero, and replace primitive evaluations
+        mem_ids = {self.name_to_id["memory_read"], self.name_to_id["recall"]} & unique_pids_set
+        if mem_ids:
+            mem_mask = torch.zeros_like(flat_ids, dtype=torch.bool)
+            for pid in mem_ids:
+                mem_mask |= (flat_ids == pid)
             out[mem_mask] = mem_k[mem_mask]
             
         run_prim("memory_write", lambda s, t, m, pid: 0.5 * (s + m))
         
-        zero_mask = (flat_ids == self.name_to_id["forget"]) | (flat_ids == self.name_to_id["disable"])
-        if zero_mask.any():
+        zero_ids = {self.name_to_id["forget"], self.name_to_id["disable"]} & unique_pids_set
+        if zero_ids:
+            zero_mask = torch.zeros_like(flat_ids, dtype=torch.bool)
+            for pid in zero_ids:
+                zero_mask |= (flat_ids == pid)
             out[zero_mask] = 0.0
             
         def run_memory_gate(s, t, m, pid):
@@ -201,8 +271,8 @@ class ActionExecutor(nn.Module):
             return memory_gate * m + (1.0 - memory_gate) * s
         run_prim("memory_gate", run_memory_gate)
         
-        rep_mask = (flat_ids == self.name_to_id["replace"])
-        if rep_mask.any():
+        if self.name_to_id["replace"] in unique_pids_set:
+            rep_mask = (flat_ids == self.name_to_id["replace"])
             out[rep_mask] = tgt_k[rep_mask]
 
         if self.enable_vnext:
