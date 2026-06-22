@@ -245,6 +245,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--utility-budget-end", type=int, default=3)
     ap.add_argument("--utility-budget-warmup-steps", type=int, default=0)
     ap.add_argument("--utility-category-k", type=int, default=1)
+    ap.add_argument("--trace-every", type=int, default=1, help="Interval for scanner metrics collection.")
     return ap
 
 
@@ -579,6 +580,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                     tau=tau,
                     curriculum_mode="deploy",
                     choice_sampling=sampling,
+                    collect_scan_metrics=(global_step % args.trace_every == 0),
                 )
                 ce = F.cross_entropy(logits, _batch_y(batch))
                 if learned_controller:

@@ -191,22 +191,15 @@ class PrimitiveMatrix5x5(nn.Module):
         count = self.feedback_count[layer_idx, cell_ids]
         seen = count > 0
         
-        ranking = bias.masked_fill(~seen, float("-inf"))
-        top = ranking.topk(k=k, dim=-1).indices
+        # Vectorized replacement for row-by-row selection and random filling:
+        # Give seen primitives a high base priority (bias + 10.0) plus a tiny random noise to break ties.
+        # Give unseen primitives a low priority (random noise between 0 and 1.0).
+        # This guarantees seen primitives are ranked first, followed by a random selection of unseen ones,
+        # executing fully on the GPU in a single call.
+        rand_priorities = torch.rand(n, self.num_primitives, device=device)
+        ranking = torch.where(seen, bias + 10.0 + rand_priorities * 0.1, rand_priorities)
         
-        no_measurements = (count.sum(dim=-1) <= 0)
-        if no_measurements.any():
-            rand_ids = torch.stack([torch.randperm(self.num_primitives, device=device)[:k] for _ in range(int(no_measurements.sum().item()))])
-            top[no_measurements] = rand_ids
-            
-        for idx in range(n):
-            row_seen_count = int(seen[idx].sum().item())
-            if row_seen_count < k:
-                unseen = (~seen[idx]).nonzero(as_tuple=False).flatten()
-                perm = torch.randperm(unseen.numel(), device=device)
-                fill_needed = k - row_seen_count
-                top[idx, row_seen_count:] = unseen[perm[:fill_needed]]
-                
+        top = ranking.topk(k=k, dim=-1).indices
         return top.view(*ids.shape, -1)
 
     def category_best(self, ids: torch.Tensor, layer_idx: int = 0, cell_ids: torch.Tensor | None = None) -> torch.Tensor:
@@ -221,16 +214,13 @@ class PrimitiveMatrix5x5(nn.Module):
         
         no_measurements = (self.feedback_count[layer_idx, cell_ids].sum(dim=-1) <= 0)
         if no_measurements.any():
-            bias[no_measurements] = self.usage_score.unsqueeze(0).expand(int(no_measurements.sum().item()), -1).to(bias.dtype)
+            bias = torch.where(no_measurements.unsqueeze(-1), self.usage_score.unsqueeze(0).to(bias.dtype), bias)
         
-        best_ids = []
         num_rows = len(self.grid)
-        for r in range(num_rows):
-            row_slice = bias[:, r * 5 : r * 5 + 5]
-            best_idx_in_row = row_slice.argmax(dim=-1)
-            best_ids.append(r * 5 + best_idx_in_row)
-            
-        best_tensor = torch.stack(best_ids, dim=-1)
+        bias_reshaped = bias.view(n, num_rows, 5)
+        best_idx_in_row = bias_reshaped.argmax(dim=-1) # [n, num_rows]
+        row_offsets = torch.arange(0, num_rows * 5, 5, device=device).view(1, num_rows)
+        best_tensor = best_idx_in_row + row_offsets
         return best_tensor.view(*ids.shape, -1)
 
     def category_topk(self, ids: torch.Tensor, k: int, layer_idx: int = 0, cell_ids: torch.Tensor | None = None) -> torch.Tensor:
@@ -245,17 +235,14 @@ class PrimitiveMatrix5x5(nn.Module):
         
         no_measurements = (self.feedback_count[layer_idx, cell_ids].sum(dim=-1) <= 0)
         if no_measurements.any():
-            bias[no_measurements] = self.usage_score.unsqueeze(0).expand(int(no_measurements.sum().item()), -1).to(bias.dtype)
+            bias = torch.where(no_measurements.unsqueeze(-1), self.usage_score.unsqueeze(0).to(bias.dtype), bias)
         
         k_val = min(k, 5)
-        top_ids = []
         num_rows = len(self.grid)
-        for r in range(num_rows):
-            row_slice = bias[:, r * 5 : r * 5 + 5]
-            best_indices = row_slice.topk(k=k_val, dim=-1).indices
-            top_ids.append(r * 5 + best_indices)
-            
-        best_tensor = torch.cat(top_ids, dim=-1)
+        bias_reshaped = bias.view(n, num_rows, 5)
+        best_indices = bias_reshaped.topk(k=k_val, dim=-1).indices # [n, num_rows, k_val]
+        row_offsets = torch.arange(0, num_rows * 5, 5, device=device).view(1, num_rows, 1)
+        best_tensor = best_indices + row_offsets # [n, num_rows, k_val]
         return best_tensor.view(*ids.shape, -1)
 
     def update_usage_credit(

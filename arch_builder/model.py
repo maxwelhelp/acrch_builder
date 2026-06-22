@@ -563,24 +563,33 @@ class ActionMatrixLayer(nn.Module):
                 return_behavior=True,
             )
             with torch.no_grad():
-                utility_metrics = {
-                    "utility_score_mean": float(utility_score.mean().cpu()),
-                    "utility_score_std": float(utility_score.std().cpu()),
-                    "utility_behavior_norm": float(utility_behavior.norm(dim=-1).mean().cpu()),
-                    "utility_critic_enabled": 1.0,
-                    "utility_choice_enabled": float(self.enable_utility_critic_choice),
-                    "utility_pool_size": float(self.utility_pool_size),
-                    "utility_budget": float(current_budget),
-                    "utility_budget_current": float(current_budget),
-                    "utility_exploration_weight_current": float(current_exploration_weight),
-                    "utility_mmr_beta": float(self.utility_mmr_beta),
-                    "utility_mmr_mode": 1.0 if self.utility_mmr_mode == "hybrid" else 0.0,
-                    "utility_choice_warmup_steps": float(self.utility_choice_warmup_steps),
-                    "mmr_controller_warmup_steps": float(self.mmr_controller_warmup_steps),
-                    "utility_choice_scale": float(self.utility_choice_scale),
-                    "utility_choice_scale_max": float(self.utility_choice_scale_max),
-                    "utility_mmr_identity_weight": float(self.utility_mmr_identity_weight),
-                }
+                if collect_scan_metrics:
+                    utility_metrics = {
+                        "utility_score_mean": float(utility_score.mean().cpu()),
+                        "utility_score_std": float(utility_score.std().cpu()),
+                        "utility_behavior_norm": float(utility_behavior.norm(dim=-1).mean().cpu()),
+                        "utility_critic_enabled": 1.0,
+                        "utility_choice_enabled": float(self.enable_utility_critic_choice),
+                        "utility_pool_size": float(self.utility_pool_size),
+                        "utility_budget": float(current_budget),
+                        "utility_budget_current": float(current_budget),
+                        "utility_exploration_weight_current": float(current_exploration_weight),
+                        "utility_mmr_beta": float(self.utility_mmr_beta),
+                        "utility_mmr_mode": 1.0 if self.utility_mmr_mode == "hybrid" else 0.0,
+                        "utility_choice_warmup_steps": float(self.utility_choice_warmup_steps),
+                        "mmr_controller_warmup_steps": float(self.mmr_controller_warmup_steps),
+                        "utility_choice_scale": float(self.utility_choice_scale),
+                        "utility_choice_scale_max": float(self.utility_choice_scale_max),
+                        "utility_mmr_identity_weight": float(self.utility_mmr_identity_weight),
+                    }
+                else:
+                    utility_metrics = {
+                        "utility_critic_enabled": 1.0,
+                        "utility_choice_enabled": float(self.enable_utility_critic_choice),
+                        "utility_pool_size": float(self.utility_pool_size),
+                        "utility_budget": float(current_budget),
+                        "utility_budget_current": float(current_budget),
+                    }
 
         self_delta_active = (
             self.self_delta_field is not None
@@ -720,7 +729,7 @@ class ActionMatrixLayer(nn.Module):
             mmr_active = bool((not self.training) or mmr_controller_progress >= 1.0)
             with torch.no_grad():
                 for _k, _v in mmr_metrics.items():
-                    utility_metrics[_k] = float(_v.detach().cpu())
+                    utility_metrics[_k] = float(_v.detach().cpu()) if collect_scan_metrics else 0.0
                 utility_metrics["mmr_controller_active"] = float(mmr_active)
                 utility_metrics["mmr_controller_warmup_progress"] = float(mmr_controller_progress)
             if mmr_active:
@@ -728,8 +737,12 @@ class ActionMatrixLayer(nn.Module):
 
         behavior_div_loss = _behavior_decorrelation_loss(utility_behavior)
         if utility_behavior is not None:
-            utility_metrics["behavior_div_loss"] = float(behavior_div_loss.detach().cpu())
-            utility_metrics["behavior_decorr_loss"] = float(behavior_div_loss.detach().cpu())
+            if collect_scan_metrics:
+                utility_metrics["behavior_div_loss"] = float(behavior_div_loss.detach().cpu())
+                utility_metrics["behavior_decorr_loss"] = float(behavior_div_loss.detach().cpu())
+            else:
+                utility_metrics["behavior_div_loss"] = 0.0
+                utility_metrics["behavior_decorr_loss"] = 0.0
 
         if choice_sampling not in {"auto", "gumbel", "softmax", "uniform"}:
             raise ValueError(f"unknown choice sampling: {choice_sampling!r}")
@@ -754,7 +767,7 @@ class ActionMatrixLayer(nn.Module):
             forced = forced / forced.sum(dim=-1, keepdim=True).clamp_min(1.0)
             choice = torch.where(available, forced, choice)
 
-        if self.utility_critic is not None:
+        if self.utility_critic is not None and collect_scan_metrics:
             with torch.no_grad():
                 source_names_for_pres = ("grid", "semantic", "usage", "random", "feedback", "single_signed_projection", "pair_jl16", "category")
                 for source_id, source_name in enumerate(source_names_for_pres):
@@ -787,7 +800,7 @@ class ActionMatrixLayer(nn.Module):
                 scan_metrics["pair_jl16_usage"] = scan_metrics[
                     "pair_jl16_candidate_usage"
                 ]
-        elif projection_enabled:
+        elif projection_enabled and collect_scan_metrics:
             with torch.no_grad():
                 scan_metrics["single_signed_projection_usage"] = float(
                     (choice * (top_source_ids == 5).to(choice.dtype)).sum(dim=-1).mean().cpu()

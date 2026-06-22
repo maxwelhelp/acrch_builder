@@ -185,19 +185,25 @@ class ActionExecutor(nn.Module):
         for name in ("gated_add", "merge", "output_mix"):
             run_prim(name, average)
             
-        for name in ("memory_read", "recall"):
-            run_prim(name, lambda s, t, m, pid: m)
+        # Combine simple memory, zero, and replace primitive evaluations to avoid multiple run_prim calls
+        mem_mask = (flat_ids == self.name_to_id["memory_read"]) | (flat_ids == self.name_to_id["recall"])
+        if mem_mask.any():
+            out[mem_mask] = mem_k[mem_mask]
             
         run_prim("memory_write", lambda s, t, m, pid: 0.5 * (s + m))
-        run_prim("forget", lambda s, t, m, pid: torch.zeros_like(s))
         
+        zero_mask = (flat_ids == self.name_to_id["forget"]) | (flat_ids == self.name_to_id["disable"])
+        if zero_mask.any():
+            out[zero_mask] = 0.0
+            
         def run_memory_gate(s, t, m, pid):
             memory_gate = torch.sigmoid((s * m).mean(dim=-1, keepdim=True))
             return memory_gate * m + (1.0 - memory_gate) * s
         run_prim("memory_gate", run_memory_gate)
         
-        run_prim("replace", lambda s, t, m, pid: t)
-        run_prim("disable", lambda s, t, m, pid: torch.zeros_like(s))
+        rep_mask = (flat_ids == self.name_to_id["replace"])
+        if rep_mask.any():
+            out[rep_mask] = tgt_k[rep_mask]
 
         if self.enable_vnext:
             # Spectral Primitives
