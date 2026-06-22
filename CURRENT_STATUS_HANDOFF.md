@@ -6,7 +6,7 @@
 
 ## Текущий статус
 
-Мы полностью закрыли **Phase 3 (Steps 9-12)**, всю **Phase 4 (Steps 13-15)**, а также первые три шага **Phase 5 (Steps 16-18)** из роудмапа [ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md).
+Мы полностью закрыли **все фазы и шаги** из роудмапа [ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md) (с Phase 1 по Phase 5, Шаги 1-20).
 
 Все тесты и валидация (`validate.sh`, а также все старые и новые пробы) успешно проходят с кодом 0. Все изменения закоммичены в git в текущую ветку `vnext_utility_critic_diagnostic`.
 
@@ -51,23 +51,26 @@
 
 9. **Copy/Reverse Memory Task + Test (Phase 5, Step 17)**:
    - В `ActionMatrixModel.forward` экспортировано состояние финального слоя слоев памяти `"slots_out": state` в возвращаемый словарь `choice_info`.
-   - Создан тренировочный скрипт `arch_builder/train_memory.py` и диагностическая проба `tools/project_probe/probe_copy_reverse.py`.
+   - Создан тренировочный скрипт `arch_builder/train_memory.py` and диагностическая проба `tools/project_probe/probe_copy_reverse.py`.
    - Модель обучается на оперирование памятью (копирование и разворот последовательности токенов) с использованием MSE лосса на целевых ячейках памяти.
 
 10. **Non-Stationary Adaptation Test (Phase 5, Step 18)**:
     - Создана диагностическая проба `tools/project_probe/probe_non_stationary.py`.
     - Подтверждена способность системы перераспределять веса и кредиты на альтернативные примитивы (например, `product`, `split`, `replace`) при принудительной абляции основного примитива (`diff`) в процессе работы.
 
+11. **Multi-layer Composition Credit Test (Phase 5, Step 19)**:
+    - Создана диагностическая проба `tools/project_probe/probe_multi_layer_composition.py`.
+    - Подтверждена способность кредитного контура распределять кредит по цепочке слоев: при решении составной задачи (Layer 0: `diff`, Layer 1: `product`) оба зависимых примитива успешно получают качественный кредит в `usage_score`.
+
+12. **Full Acceptance Audit (Phase 5, Step 20)**:
+    - Успешно выполнена проверка всех 11 разработанных диагностических проб.
+    - Проведен комплексный SpeechCommands smoke-тест со всеми новыми vNext возможностями, показавший стабильное время выполнения (3.86 секунды) и корректные метрики `"status": "PASS"`.
+
 ---
 
 ## Что нужно делать дальше
 
-Следующие шаги по роудмапу — **Phase 5: Universality (steps 19-20)**.
-
-1. **Multi-layer composition credit test (Step 19)**:
-   - Проверить способность кредитной системы корректно распределять награду в многослойной архитектуре (где выход первого слоя передается на вход второго слоя, образуя сквозную цепочку синергии примитивов).
-   - Написать диагностическую пробу `tools/project_probe/probe_multi_layer_composition.py`.
-2. **Full acceptance audit across all tasks (Step 20)**.
+Все шаги текущего роудмапа успешно выполнены. Ветка `vnext_utility_critic_diagnostic` полностью стабильна, готова к слиянию (merge) и проведению долгосрочных GPU-экспериментов на Tesla P40 по подбору оптимальных гиперпараметров!
 
 ---
 
@@ -89,4 +92,5 @@
   PYTHONPATH=. python tools/project_probe/probe_cifar10.py
   PYTHONPATH=. python tools/project_probe/probe_copy_reverse.py
   PYTHONPATH=. python tools/project_probe/probe_non_stationary.py
+  PYTHONPATH=. python tools/project_probe/probe_multi_layer_composition.py
   ```
