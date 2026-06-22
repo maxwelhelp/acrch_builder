@@ -1258,6 +1258,7 @@ def train(args) -> None:
         input_norm=args.input_norm,
         state_norm=args.state_norm,
         final_read=args.final_read,
+        enable_lazy_executor=args.enable_lazy_executor,
     ).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=(device.startswith("cuda") and args.amp == "fp16"))
@@ -1520,6 +1521,7 @@ def parser():
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--out-dir", default="agent_reports/vertical_slice")
     p.add_argument("--latest-report", default="LATEST_RUN_REPORT.md")
+    p.add_argument("--enable-lazy-executor", action="store_true", help="Only execute chosen + exploration candidates")
     return p
 
 
