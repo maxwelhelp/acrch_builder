@@ -1259,6 +1259,12 @@ def train(args) -> None:
         state_norm=args.state_norm,
         final_read=args.final_read,
         enable_lazy_executor=args.enable_lazy_executor,
+        utility_exploration_start_weight=args.utility_exploration_start_weight,
+        utility_exploration_end_weight=args.utility_exploration_end_weight,
+        utility_exploration_warmup_steps=args.utility_exploration_warmup_steps,
+        utility_budget_start=args.utility_budget_start,
+        utility_budget_end=args.utility_budget_end,
+        utility_budget_warmup_steps=args.utility_budget_warmup_steps,
     ).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=(device.startswith("cuda") and args.amp == "fp16"))
@@ -1522,6 +1528,12 @@ def parser():
     p.add_argument("--out-dir", default="agent_reports/vertical_slice")
     p.add_argument("--latest-report", default="LATEST_RUN_REPORT.md")
     p.add_argument("--enable-lazy-executor", action="store_true", help="Only execute chosen + exploration candidates")
+    p.add_argument("--utility-exploration-start-weight", type=float, default=0.35)
+    p.add_argument("--utility-exploration-end-weight", type=float, default=0.35)
+    p.add_argument("--utility-exploration-warmup-steps", type=int, default=0)
+    p.add_argument("--utility-budget-start", type=int, default=3)
+    p.add_argument("--utility-budget-end", type=int, default=3)
+    p.add_argument("--utility-budget-warmup-steps", type=int, default=0)
     return p
 
 

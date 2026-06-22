@@ -274,6 +274,12 @@ class AudioMatrixClassifier(nn.Module):
         enable_lazy_executor: bool = False,
         enable_category_scanner: bool = False,
         enable_auto_mined_atoms: bool = False,
+        utility_exploration_start_weight: float = 0.35,
+        utility_exploration_end_weight: float = 0.35,
+        utility_exploration_warmup_steps: int = 0,
+        utility_budget_start: int = 3,
+        utility_budget_end: int = 3,
+        utility_budget_warmup_steps: int = 0,
     ) -> None:
         super().__init__()
         self.frontend = frontend
@@ -314,6 +320,12 @@ class AudioMatrixClassifier(nn.Module):
             enable_lazy_executor=enable_lazy_executor,
             enable_category_scanner=enable_category_scanner,
             enable_auto_mined_atoms=enable_auto_mined_atoms,
+            utility_exploration_start_weight=utility_exploration_start_weight,
+            utility_exploration_end_weight=utility_exploration_end_weight,
+            utility_exploration_warmup_steps=utility_exploration_warmup_steps,
+            utility_budget_start=utility_budget_start,
+            utility_budget_end=utility_budget_end,
+            utility_budget_warmup_steps=utility_budget_warmup_steps,
         )
         # Generic multiclass readout: no layer roles or task-specific operators.
         self.backbone.classifier = nn.Sequential(

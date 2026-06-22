@@ -119,6 +119,12 @@ class ActionMatrixLayer(nn.Module):
         enable_lazy_executor: bool = False,
         enable_category_scanner: bool = False,
         enable_auto_mined_atoms: bool = False,
+        utility_exploration_start_weight: float = 0.35,
+        utility_exploration_end_weight: float = 0.35,
+        utility_exploration_warmup_steps: int = 0,
+        utility_budget_start: int = 3,
+        utility_budget_end: int = 3,
+        utility_budget_warmup_steps: int = 0,
     ) -> None:
         super().__init__()
         if state_norm not in {"none", "layernorm"}:
@@ -153,6 +159,12 @@ class ActionMatrixLayer(nn.Module):
         self.enable_lazy_executor = bool(enable_lazy_executor)
         self.enable_category_scanner = bool(enable_category_scanner)
         self.enable_auto_mined_atoms = bool(enable_auto_mined_atoms)
+        self.utility_exploration_start_weight = float(utility_exploration_start_weight)
+        self.utility_exploration_end_weight = float(utility_exploration_end_weight)
+        self.utility_exploration_warmup_steps = int(utility_exploration_warmup_steps)
+        self.utility_budget_start = int(utility_budget_start)
+        self.utility_budget_end = int(utility_budget_end)
+        self.utility_budget_warmup_steps = int(utility_budget_warmup_steps)
 
         context_dim = dim * 5
         emb_dim = primitive_matrix.emb.shape[-1]
@@ -233,6 +245,13 @@ class ActionMatrixLayer(nn.Module):
             cpu_rng = torch.random.get_rng_state()
             self.slot_output_weight = nn.Parameter(torch.tensor(0.10))
             self.collector_weight = nn.Parameter(torch.tensor(0.02))
+            self.routing_head = nn.Sequential(
+                nn.Linear(5 * dim, dim // 2),
+                nn.SiLU(),
+                nn.Linear(dim // 2, 3),
+            )
+            nn.init.zeros_(self.routing_head[-1].weight)
+            nn.init.constant_(self.routing_head[-1].bias, 0.0)
             torch.random.set_rng_state(cpu_rng)
 
         self.grad_credit_queue = []
@@ -511,6 +530,20 @@ class ActionMatrixLayer(nn.Module):
 
         sim, predicted_gain = self.simulator(flat_src, top_ids)
 
+        # Dynamic schedules for budget and exploration
+        if self.training and self.utility_budget_warmup_steps > 0:
+            progress = max(0.0, min(1.0, float(self.vnext_global_step) / float(self.utility_budget_warmup_steps)))
+            current_budget = int(round(self.utility_budget_start + progress * (self.utility_budget_end - self.utility_budget_start)))
+        else:
+            current_budget = self.utility_budget
+        current_budget = max(1, current_budget)
+
+        if self.training and self.utility_exploration_warmup_steps > 0:
+            progress = max(0.0, min(1.0, float(self.vnext_global_step) / float(self.utility_exploration_warmup_steps)))
+            current_exploration_weight = self.utility_exploration_start_weight + progress * (self.utility_exploration_end_weight - self.utility_exploration_start_weight)
+        else:
+            current_exploration_weight = self.utility_exploration_end_weight
+
         utility_score = None
         utility_uncertainty = None
         utility_behavior = None
@@ -534,7 +567,9 @@ class ActionMatrixLayer(nn.Module):
                     "utility_critic_enabled": 1.0,
                     "utility_choice_enabled": float(self.enable_utility_critic_choice),
                     "utility_pool_size": float(self.utility_pool_size),
-                    "utility_budget": float(self.utility_budget),
+                    "utility_budget": float(current_budget),
+                    "utility_budget_current": float(current_budget),
+                    "utility_exploration_weight_current": float(current_exploration_weight),
                     "utility_mmr_beta": float(self.utility_mmr_beta),
                     "utility_mmr_mode": 1.0 if self.utility_mmr_mode == "hybrid" else 0.0,
                     "utility_choice_warmup_steps": float(self.utility_choice_warmup_steps),
@@ -671,12 +706,12 @@ class ActionMatrixLayer(nn.Module):
                 utility=utility_score,
                 top_ids=top_ids,
                 pm_emb=self.pm.emb,
-                budget=self.utility_budget,
+                budget=current_budget,
                 beta=mmr_controller_progress * self.utility_mmr_beta,
                 behavior_feature=utility_behavior,
                 mode=self.utility_mmr_mode,
                 uncertainty=utility_uncertainty,
-                uncertainty_weight=0.35,
+                uncertainty_weight=current_exploration_weight,
                 identity_weight=self.utility_mmr_identity_weight,
             )
             mmr_active = bool((not self.training) or mmr_controller_progress >= 1.0)
@@ -763,10 +798,10 @@ class ActionMatrixLayer(nn.Module):
             if self.enable_mmr_controller and utility_score is not None and not disable_sim and not disable_sim_result and mmr_active:
                 selected_mask = mmr_mask
             else:
-                _, top_b_idx = choice.topk(k=self.utility_budget, dim=-1)
+                _, top_b_idx = choice.topk(k=current_budget, dim=-1)
                 selected_mask = torch.zeros_like(choice, dtype=torch.bool).scatter_(1, top_b_idx, True)
 
-            selected_pos = selected_mask.nonzero(as_tuple=False)[:, 1].reshape(b * s * s, self.utility_budget)
+            selected_pos = selected_mask.nonzero(as_tuple=False)[:, 1].reshape(b * s * s, current_budget)
             lazy_top_ids = top_ids.gather(1, selected_pos)
 
             if all_primitive_effects is None:
@@ -866,24 +901,44 @@ class ActionMatrixLayer(nn.Module):
         )
 
         cell_out_gate = torch.sigmoid(self.cell_output_gate(flat_context) + pair_cell_out)
-        cell_tape_weight = cell_out_gate * active * mode[:, 0:1]
-        cell_tape = (cell_tape_weight * transformed).view(b, s, s, d)
-        denom = cell_tape_weight.view(b, s, s, 1).sum(dim=(1, 2)).clamp_min(1e-5)
-        output_tape_state = cell_tape.sum(dim=(1, 2)) / denom
-
         slot_alive_logits = self.slot_alive_head(next_state).squeeze(-1)
         split_count = F.softmax(self.split_head(next_state), dim=-1)
         child_gate = torch.sigmoid(self.child_gate(next_state)).squeeze(-1)
         merge_gate = torch.sigmoid(self.merge_gate(next_state)).squeeze(-1)
         slot_output_gate = torch.sigmoid(self.output_gate(next_state)).squeeze(-1)
-        slot_output_state = (
-            (slot_output_gate * torch.sigmoid(slot_alive_logits)).unsqueeze(-1) * next_state
-        ).sum(dim=1) / (slot_output_gate * torch.sigmoid(slot_alive_logits)).sum(dim=1, keepdim=True).clamp_min(1e-5)
-
         collector_mass = slot_output_gate * merge_gate
-        if self.enable_vnext and self.slot_output_weight is not None:
-            output_state = output_tape_state + self.slot_output_weight * slot_output_state + self.collector_weight * (collector_mass.unsqueeze(-1) * next_state).sum(dim=1)
+
+        if self.enable_vnext:
+            routing_logits = self.routing_head(flat_context)
+            w_tape, w_slot, w_coll = torch.sigmoid(routing_logits).chunk(3, dim=-1)
+            w_tape = w_tape * 2.0
+            w_slot = w_slot * 0.20
+            w_coll = w_coll * 0.04
+
+            cell_tape_weight = cell_out_gate * active * mode[:, 0:1] * w_tape
+            cell_tape = (cell_tape_weight * transformed).view(b, s, s, d)
+            denom = cell_tape_weight.view(b, s, s, 1).sum(dim=(1, 2)).clamp_min(1e-5)
+            output_tape_state = cell_tape.sum(dim=(1, 2)) / denom
+
+            w_slot_j = w_slot.view(b, s, s, 1).sum(dim=1)
+            slot_output_state = (
+                (slot_output_gate * torch.sigmoid(slot_alive_logits)).unsqueeze(-1) * w_slot_j * next_state
+            ).sum(dim=1) / ((slot_output_gate * torch.sigmoid(slot_alive_logits)).unsqueeze(-1) * w_slot_j).sum(dim=1, keepdim=True).squeeze(-1).clamp_min(1e-5)
+
+            w_coll_j = w_coll.view(b, s, s, 1).sum(dim=1)
+            collector_state = (w_coll_j * collector_mass.unsqueeze(-1) * next_state).sum(dim=1)
+
+            output_state = output_tape_state + slot_output_state + collector_state
         else:
+            cell_tape_weight = cell_out_gate * active * mode[:, 0:1]
+            cell_tape = (cell_tape_weight * transformed).view(b, s, s, d)
+            denom = cell_tape_weight.view(b, s, s, 1).sum(dim=(1, 2)).clamp_min(1e-5)
+            output_tape_state = cell_tape.sum(dim=(1, 2)) / denom
+
+            slot_output_state = (
+                (slot_output_gate * torch.sigmoid(slot_alive_logits)).unsqueeze(-1) * next_state
+            ).sum(dim=1) / (slot_output_gate * torch.sigmoid(slot_alive_logits)).sum(dim=1, keepdim=True).clamp_min(1e-5)
+
             output_state = output_tape_state + 0.10 * slot_output_state + 0.02 * (collector_mass.unsqueeze(-1) * next_state).sum(dim=1)
 
 
@@ -1011,6 +1066,12 @@ class ActionMatrixModel(nn.Module):
         enable_lazy_executor: bool = False,
         enable_category_scanner: bool = False,
         enable_auto_mined_atoms: bool = False,
+        utility_exploration_start_weight: float = 0.35,
+        utility_exploration_end_weight: float = 0.35,
+        utility_exploration_warmup_steps: int = 0,
+        utility_budget_start: int = 3,
+        utility_budget_end: int = 3,
+        utility_budget_warmup_steps: int = 0,
     ) -> None:
         super().__init__()
         if input_norm not in {"none", "layernorm"}:
@@ -1066,6 +1127,12 @@ class ActionMatrixModel(nn.Module):
                 enable_lazy_executor=enable_lazy_executor,
                 enable_category_scanner=enable_category_scanner,
                 enable_auto_mined_atoms=enable_auto_mined_atoms,
+                utility_exploration_start_weight=utility_exploration_start_weight,
+                utility_exploration_end_weight=utility_exploration_end_weight,
+                utility_exploration_warmup_steps=utility_exploration_warmup_steps,
+                utility_budget_start=utility_budget_start,
+                utility_budget_end=utility_budget_end,
+                utility_budget_warmup_steps=utility_budget_warmup_steps,
             )
             for i in range(layers)
         ])

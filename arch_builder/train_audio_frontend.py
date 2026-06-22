@@ -238,6 +238,12 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--enable-lazy-executor", action="store_true")
     ap.add_argument("--enable-category-scanner", action="store_true")
     ap.add_argument("--enable-auto-mined-atoms", action="store_true")
+    ap.add_argument("--utility-exploration-start-weight", type=float, default=0.35)
+    ap.add_argument("--utility-exploration-end-weight", type=float, default=0.35)
+    ap.add_argument("--utility-exploration-warmup-steps", type=int, default=0)
+    ap.add_argument("--utility-budget-start", type=int, default=3)
+    ap.add_argument("--utility-budget-end", type=int, default=3)
+    ap.add_argument("--utility-budget-warmup-steps", type=int, default=0)
     return ap
 
 
@@ -572,7 +578,6 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                     tau=tau,
                     curriculum_mode="deploy",
                     choice_sampling=sampling,
-                    collect_scan_metrics=False,
                 )
                 ce = F.cross_entropy(logits, _batch_y(batch))
                 if learned_controller:
@@ -1145,6 +1150,12 @@ def train_variant(args) -> Dict[str, object]:
         enable_lazy_executor=args.enable_lazy_executor,
         enable_category_scanner=args.enable_category_scanner,
         enable_auto_mined_atoms=args.enable_auto_mined_atoms,
+        utility_exploration_start_weight=args.utility_exploration_start_weight,
+        utility_exploration_end_weight=args.utility_exploration_end_weight,
+        utility_exploration_warmup_steps=args.utility_exploration_warmup_steps,
+        utility_budget_start=args.utility_budget_start,
+        utility_budget_end=args.utility_budget_end,
+        utility_budget_warmup_steps=args.utility_budget_warmup_steps,
     ).to(device)
     model.choice_sampling = "uniform" if args.controller_baseline == "random" else "auto"
     if args.controller_baseline in {"frozen", "random"}:

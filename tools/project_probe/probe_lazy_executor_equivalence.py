@@ -20,7 +20,7 @@ def main() -> int:
     layers = 1
     top_k = 8
     classes = 2
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     torch.manual_seed(42)
     model_non_lazy = ActionMatrixModel(
@@ -92,13 +92,13 @@ def main() -> int:
 
     # Profile non-lazy
     t0 = time.time()
-    for _ in range(100):
+    for _ in range(10):
         _ = model_non_lazy(x1)
     non_lazy_time = time.time() - t0
 
     # Profile lazy with small budget
     t1 = time.time()
-    for _ in range(100):
+    for _ in range(10):
         _ = model_lazy_small(x1)
     lazy_time = time.time() - t1
 
