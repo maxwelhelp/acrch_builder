@@ -1,12 +1,12 @@
 # CURRENT_STATUS_HANDOFF: Universal Adaptive Layer Development
 
-Этот документ содержит контекст и инструкции для следующего агента, который продолжит разработку и стабилизацию vNext в ветке `vnext_utility_critic_diagnostic`.
+Этот документ содержит контекст и инструкции для продолжения разработки и стабилизации vNext в ветке `vnext_utility_critic_diagnostic`.
 
 ---
 
 ## Текущий статус
 
-Мы полностью закрыли **Phase 3 (Steps 9-12)** и первые два шага **Phase 4 (Steps 13-14)** из роудмапа [ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md).
+Мы полностью закрыли **Phase 3 (Steps 9-12)** и всю **Phase 4 (Steps 13-15)** из роудмапа [ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md).
 
 Все тесты и валидация (`validate.sh`, а также все старые и новые пробы) успешно проходят с кодом 0. Все изменения закоммичены в git в текущую ветку `vnext_utility_critic_diagnostic`.
 
@@ -41,22 +41,24 @@
    - Написана проба [`probe_rank_based_loss.py`](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/tools/project_probe/probe_rank_based_loss.py), проверяющая `pairwise_ranking_loss` из `credit.py`.
    - Проверена сходимость градиентов в правильном направлении, поведение на 1D/2D тензорах и все краевые случаи (равные таргеты, малая длина последовательности).
 
+7. **Shapley-Lite Joint Credit Probe (Phase 4, Step 15)**:
+   - Написана проба [`probe_shapley_lite.py`](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/tools/project_probe/probe_shapley_lite.py), проверяющая механизм Shapley-lite совместного кредитования в `BoundedCounterfactualCredit`.
+   - Проверена корректность вычисления синергии группы при маскировании и равное распределение этой синергии между примитивами-участниками.
+
 ---
 
 ## Что нужно делать дальше
 
-Следующий шаг по роудмапу — **Phase 4, Step 15: Joint credit with Shapley-lite — random subset masking for multi-primitive credit**.
+Следующие шаги по роудмапу — **Phase 5: Universality (steps 16-20)**.
 
-1. **Изучить логику Shapley-lite кредита**:
-   - Открыть [credit.py](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/arch_builder/credit.py) и посмотреть, как вычисляются Shapley-lite значения и обновляются кредиты при маскировании примитивов.
-2. **Создать диагностическую пробу**:
-   - Написать `tools/project_probe/probe_shapley_lite.py` для тестирования Shapley-lite механизма.
-   - Проверить математические свойства (например, вклад каждого примитива при разном маскировании).
-   - Убедиться, что вычисление стабильно и не приводит к градиентным или числовым аномалиям.
-3. **Запустить общую валидацию**:
-   - Выполнить `bash commands/validate.sh` и убедиться, что все пробы проходят без ошибок.
-4. **Перейти к Phase 5: Universality (steps 16-20)**:
-   - Реализовать CIFAR-10 патч фронтенд, тесты копирования/разворота памяти и т.д.
+1. **CIFAR-10 patch frontend + acceptance test (Step 16)**:
+   - Создать загрузчик CIFAR-10 патчей и входной фронтенд для классификатора на базе ActionMatrixModel.
+   - Проверить сходимость и точность классификации (критерий: `accuracy > 20%`).
+2. **Copy/reverse memory task + acceptance test (Step 17)**:
+   - Проверить способность модели читать/писать в слоты памяти на задачах копирования и разворота последовательностей (критерий: `accuracy > 90%`).
+3. **Non-stationary adaptation test (Step 18)**.
+4. **Multi-layer composition credit test (Step 19)**.
+5. **Full acceptance audit across all tasks (Step 20)**.
 
 ---
 
@@ -74,6 +76,7 @@
   PYTHONPATH=. python tools/project_probe/probe_mined_atoms.py
   PYTHONPATH=. python tools/project_probe/probe_gradient_trace_credit.py
   PYTHONPATH=. python tools/project_probe/probe_rank_based_loss.py
+  PYTHONPATH=. python tools/project_probe/probe_shapley_lite.py
   ```
 - 20-step SpeechCommands smoke-тест с категориальным сканером:
   ```bash
