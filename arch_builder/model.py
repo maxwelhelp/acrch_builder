@@ -1285,4 +1285,5 @@ class ActionMatrixModel(nn.Module):
             "slot_address_used_by_executor": False,
             "curriculum_mode": curriculum_mode,
             "choice_sampling": choice_sampling,
+            "slots_out": state,
         }

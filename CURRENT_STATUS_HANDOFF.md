@@ -6,7 +6,7 @@
 
 ## Текущий статус
 
-Мы полностью закрыли **Phase 3 (Steps 9-12)**, всю **Phase 4 (Steps 13-15)** и первый шаг **Phase 5 (Step 16)** из роудмапа [ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md).
+Мы полностью закрыли **Phase 3 (Steps 9-12)**, всю **Phase 4 (Steps 13-15)**, а также первые два шага **Phase 5 (Steps 16-17)** из роудмапа [ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md).
 
 Все тесты и валидация (`validate.sh`, а также все старые и новые пробы) успешно проходят с кодом 0. Все изменения закоммичены в git в текущую ветку `vnext_utility_critic_diagnostic`.
 
@@ -42,26 +42,29 @@
    - Проверена сходимость градиентов в правильном направлении, поведение на 1D/2D тензорах и все краевые случаи (равные таргеты, малая длина последовательности).
 
 7. **Shapley-Lite Joint Credit Probe (Phase 4, Step 15)**:
-   - Написана проба [`probe_shapley_lite.py`](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/tools/project_probe/probe_shapley_lite.py), проверяющая механизм Shapley-lite совместного кредитования в `BoundedCounterfactualCredit`.
+   - Написана проба [`probe_shapley_lite.py`](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/tools/project_probe/probe_shapley_lite.py), проверяющая механизм Shapley-lite совместного кредикования в `BoundedCounterfactualCredit`.
    - Проверена корректность вычисления синергии группы при маскировании и равное распределение этой синергии между примитивами-участниками.
 
 8. **CIFAR-10 Patch Classifier + Test (Phase 5, Step 16)**:
    - Создан тренировочный скрипт `arch_builder/train_cifar10.py` и диагностическая проба `tools/project_probe/probe_cifar10.py`.
    - Добавлен по-патчевый фронтенд (нарезка на 16 патчей 8х8), проецирование в скрытую размерность и классификация через встроенную голову `ActionMatrixModel`.
-   - Реализована отказоустойчивая загрузка с fallback-ом на Mock-генератор данных.
+
+9. **Copy/Reverse Memory Task + Test (Phase 5, Step 17)**:
+   - В `ActionMatrixModel.forward` экспортировано состояние финального слоя слоев памяти `"slots_out": state` в возвращаемый словарь `choice_info`.
+   - Создан тренировочный скрипт `arch_builder/train_memory.py` и диагностическая проба `tools/project_probe/probe_copy_reverse.py`.
+   - Модель обучается на оперирование памятью (копирование и разворот последовательности токенов) с использованием MSE лосса на целевых ячейках памяти.
 
 ---
 
 ## Что нужно делать дальше
 
-Следующие шаги по роудмапу — **Phase 5: Universality (steps 17-20)**.
+Следующие шаги по роудмапу — **Phase 5: Universality (steps 18-20)**.
 
-1. **Copy/reverse memory task + acceptance test (Step 17)**:
-   - Проверить способность модели читать/писать в слоты памяти на задачах копирования и разворота последовательностей (критерий: `accuracy > 90%`).
-   - Написать диагностическую пробу `tools/project_probe/probe_copy_reverse.py` для тестирования этих задач.
-2. **Non-stationary adaptation test (Step 18)**.
-3. **Multi-layer composition credit test (Step 19)**.
-4. **Full acceptance audit across all tasks (Step 20)**.
+1. **Non-stationary adaptation test (Step 18)**:
+   - Проверить способность критиков и сканера быстро адаптироваться при изменении распределения данных или принудительном отключении/замене примитивов в процессе работы.
+   - Написать диагностическую пробу `tools/project_probe/probe_non_stationary.py`.
+2. **Multi-layer composition credit test (Step 19)**.
+3. **Full acceptance audit across all tasks (Step 20)**.
 
 ---
 
@@ -81,8 +84,5 @@
   PYTHONPATH=. python tools/project_probe/probe_rank_based_loss.py
   PYTHONPATH=. python tools/project_probe/probe_shapley_lite.py
   PYTHONPATH=. python tools/project_probe/probe_cifar10.py
-  ```
-- 20-step SpeechCommands smoke-тест с категориальным сканером:
-  ```bash
-  STEPS_PER_EPOCH=20 TRAIN_LIMIT=1000 VAL_LIMIT=256 TEST_LIMIT=256 WORKERS=0 SLOTS=4 LAYERS=2 EPOCHS=2 python -m arch_builder.train_audio_frontend --epochs 2 --steps-per-epoch 20 --eval-steps 5 --eval-batch-size 64 --batch-size 64 --out-dir agent_reports/smoke_vnext_category --device cpu --enable-vnext --enable-lazy-executor --enable-category-scanner --utility-category-k 2
+  PYTHONPATH=. python tools/project_probe/probe_copy_reverse.py
   ```
