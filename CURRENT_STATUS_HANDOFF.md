@@ -6,7 +6,7 @@
 
 ## Текущий статус
 
-Мы полностью закрыли **Phase 3 (Steps 9-12)** и всю **Phase 4 (Steps 13-15)** из роудмапа [ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md).
+Мы полностью закрыли **Phase 3 (Steps 9-12)**, всю **Phase 4 (Steps 13-15)** и первый шаг **Phase 5 (Step 16)** из роудмапа [ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md).
 
 Все тесты и валидация (`validate.sh`, а также все старые и новые пробы) успешно проходят с кодом 0. Все изменения закоммичены в git в текущую ветку `vnext_utility_critic_diagnostic`.
 
@@ -45,20 +45,23 @@
    - Написана проба [`probe_shapley_lite.py`](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/tools/project_probe/probe_shapley_lite.py), проверяющая механизм Shapley-lite совместного кредитования в `BoundedCounterfactualCredit`.
    - Проверена корректность вычисления синергии группы при маскировании и равное распределение этой синергии между примитивами-участниками.
 
+8. **CIFAR-10 Patch Classifier + Test (Phase 5, Step 16)**:
+   - Создан тренировочный скрипт `arch_builder/train_cifar10.py` и диагностическая проба `tools/project_probe/probe_cifar10.py`.
+   - Добавлен по-патчевый фронтенд (нарезка на 16 патчей 8х8), проецирование в скрытую размерность и классификация через встроенную голову `ActionMatrixModel`.
+   - Реализована отказоустойчивая загрузка с fallback-ом на Mock-генератор данных.
+
 ---
 
 ## Что нужно делать дальше
 
-Следующие шаги по роудмапу — **Phase 5: Universality (steps 16-20)**.
+Следующие шаги по роудмапу — **Phase 5: Universality (steps 17-20)**.
 
-1. **CIFAR-10 patch frontend + acceptance test (Step 16)**:
-   - Создать загрузчик CIFAR-10 патчей и входной фронтенд для классификатора на базе ActionMatrixModel.
-   - Проверить сходимость и точность классификации (критерий: `accuracy > 20%`).
-2. **Copy/reverse memory task + acceptance test (Step 17)**:
+1. **Copy/reverse memory task + acceptance test (Step 17)**:
    - Проверить способность модели читать/писать в слоты памяти на задачах копирования и разворота последовательностей (критерий: `accuracy > 90%`).
-3. **Non-stationary adaptation test (Step 18)**.
-4. **Multi-layer composition credit test (Step 19)**.
-5. **Full acceptance audit across all tasks (Step 20)**.
+   - Написать диагностическую пробу `tools/project_probe/probe_copy_reverse.py` для тестирования этих задач.
+2. **Non-stationary adaptation test (Step 18)**.
+3. **Multi-layer composition credit test (Step 19)**.
+4. **Full acceptance audit across all tasks (Step 20)**.
 
 ---
 
@@ -77,6 +80,7 @@
   PYTHONPATH=. python tools/project_probe/probe_gradient_trace_credit.py
   PYTHONPATH=. python tools/project_probe/probe_rank_based_loss.py
   PYTHONPATH=. python tools/project_probe/probe_shapley_lite.py
+  PYTHONPATH=. python tools/project_probe/probe_cifar10.py
   ```
 - 20-step SpeechCommands smoke-тест с категориальным сканером:
   ```bash
