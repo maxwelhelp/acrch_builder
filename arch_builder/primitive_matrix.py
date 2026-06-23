@@ -349,3 +349,45 @@ class PrimitiveMatrix5x5(nn.Module):
             })
             
         return m
+
+    def age_based_exploration(self, layer_idx: int = 0, stale_threshold: int = 50, k: int = 3) -> torch.Tensor:
+        """Return primitive IDs with stale or zero feedback for forced exploration.
+        
+        Returns up to k primitives per cell that have either:
+        - Never been measured (feedback_count == 0)
+        - Not been measured for stale_threshold steps (feedback_age > threshold)
+        """
+        with torch.no_grad():
+            count = self.feedback_count[layer_idx]  # [cells, prims]
+            age = self.feedback_age[layer_idx]       # [cells, prims]
+            
+            # Stale = never measured OR measured but age > threshold
+            stale = (count == 0) | (age > stale_threshold)
+            
+            # Score: prefer never-measured, then oldest
+            score = torch.where(count == 0, age + 1e6, age)
+            score = torch.where(stale, score, torch.tensor(-1.0, device=score.device))
+            
+            # Top-k stale per cell
+            k_val = min(k, self.num_primitives)
+            top = score.topk(k=k_val, dim=-1).indices  # [cells, k]
+            return top
+
+    def demote_stale(self, min_count: int = 5, negative_threshold: float = -0.5, decay: float = 0.5) -> int:
+        """Demote primitives with consistently negative credit.
+        
+        For primitives with enough measurements and strongly negative bias,
+        reduce their gain_ema to make them less likely to be proposed.
+        Returns count of demoted primitives.
+        """
+        with torch.no_grad():
+            bias = torch.clamp(
+                self.feedback_gain_ema - 0.5 * self.feedback_regret_ema,
+                min=-2.0, max=2.0,
+            )
+            demote_mask = (self.feedback_count >= min_count) & (bias < negative_threshold)
+            count = int(demote_mask.sum().item())
+            if count > 0:
+                self.feedback_gain_ema[demote_mask] *= decay
+            return count
+

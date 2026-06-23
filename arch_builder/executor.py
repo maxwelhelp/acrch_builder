@@ -193,7 +193,7 @@ class ActionExecutor(nn.Module):
             self.executor_heavy_family_fraction = (heavy_count / max(1, sum(family_counts)))
 
         # Backward Timer hook registration (non-blocking)
-        if self.training and torch.cuda.is_available():
+        if self.training and torch.cuda.is_available() and out.requires_grad:
             if not hasattr(self, "backward_events"):
                 self.backward_events = []
             start_event = torch.cuda.Event(enable_timing=True)

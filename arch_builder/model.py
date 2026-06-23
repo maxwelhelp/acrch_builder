@@ -353,6 +353,8 @@ class ActionMatrixLayer(nn.Module):
         disable_self_delta: bool = False,
         zero_self_delta: bool = False,
         shuffle_self_delta: bool = False,
+        exploration_mode: bool = False,
+        random_k_multiplier: float = 1.0,
     ):
         b, s, d = state.shape
         src = state.unsqueeze(2).expand(b, s, s, d)
@@ -405,6 +407,8 @@ class ActionMatrixLayer(nn.Module):
             ensure_all_candidates=full_scan,
             collect_metrics=collect_scan_metrics,
             cell_ids=cell_ids,
+            exploration_mode=exploration_mode,
+            random_k_multiplier=random_k_multiplier,
         )
         proposal_rank_logits = proposal_logits
         proposal_choice_logits = proposal_logits
@@ -1225,6 +1229,8 @@ class ActionMatrixModel(nn.Module):
         disable_self_delta: bool = False,
         zero_self_delta: bool = False,
         shuffle_self_delta: bool = False,
+        exploration_mode: bool = False,
+        random_k_multiplier: float = 1.0,
     ):
         b = x.shape[0]
         s = self.slots
@@ -1275,6 +1281,8 @@ class ActionMatrixModel(nn.Module):
                 disable_self_delta=disable_self_delta,
                 zero_self_delta=zero_self_delta,
                 shuffle_self_delta=shuffle_self_delta,
+                exploration_mode=exploration_mode,
+                random_k_multiplier=random_k_multiplier,
             )
             if ablate_state_after is not None and idx == ablate_state_after:
                 state = torch.zeros_like(state)

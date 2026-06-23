@@ -16,6 +16,7 @@ from .reporting import append_csv, ensure_dir, write_json
 from .speechcommands_data import AudioBatch as SpeechCommandsAudioBatch
 from .speechcommands_data import SpeechCommandsAcceptanceTask, normalize_classes
 from .credit import BoundedCounterfactualCredit, generic_discovery_health_loss, pairwise_ranking_loss
+from .program_search import ProgramSearchState
 
 
 PROJECTION_METRIC_KEYS = (
@@ -375,8 +376,32 @@ def evaluate(
         "loss": loss_sum / max(1, total),
     }
     if trace_count:
+        # Keys that are accumulated per-layer (not per-step) need source_trace_count divisor
+        _PER_LAYER_KEYS = {
+            "candidate_usage", "candidate_coverage", "scanner_source_mass_sum",
+        }
+        _UTILITY_KEYS_SUFFIXES = {
+            "utility_pool_size", "utility_budget", "utility_budget_current",
+            "utility_mmr_beta", "utility_mmr_mode",
+            "utility_critic_enabled", "utility_choice_enabled",
+            "utility_choice_warmup_progress", "utility_choice_scale_value",
+            "utility_score_mean", "utility_score_std",
+            "utility_behavior_norm",
+            "utility_exploration_weight_current",
+            "mmr_controller_active", "mmr_controller_warmup_progress",
+            "mmr_pre_similarity_topk", "mmr_selected_similarity",
+            "mmr_fallback_identity",
+            "behavior_div_loss", "behavior_decorr_loss",
+            "behavior_pair_sim_before", "behavior_pair_sim_after",
+        }
         for key, value in trace_sum.items():
-            divisor = source_trace_count if key.endswith("candidate_usage") or key.endswith("candidate_coverage") or key == "scanner_source_mass_sum" else trace_count
+            is_per_layer = (
+                any(key.endswith(s) for s in _PER_LAYER_KEYS)
+                or key in _UTILITY_KEYS_SUFFIXES
+                or key.startswith("source_pool_presence_")
+                or key.startswith("source_after_")
+            )
+            divisor = source_trace_count if is_per_layer else trace_count
             out[key] = value / max(1, divisor)
     return out
 
@@ -539,6 +564,13 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
         budget=args.credit_budget,
         alternative_budget=args.credit_alternative_budget,
     )
+    search_state = ProgramSearchState(
+        patience=50,
+        burst_duration=20,
+        burst_tau_mult=1.5,
+        burst_random_mult=3.0,
+        min_improvement=0.005,
+    )
     best = 0.0
     train_acc = train_loss = 0.0
     last_diag: Dict[str, float] = {}
@@ -566,12 +598,14 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
         tau = max(args.tau_min, args.tau_start * (args.tau_decay ** (epoch - 1)))
         for step in range(max(1, args.steps_per_epoch)):
             global_step += 1
+            modifiers = search_state.get_modifiers()
+            decay_override = modifiers.get("feedback_decay_override")
             raw_batch, train_iter = _next_batch(train_iter, train_loader)
             batch = _move_batch(raw_batch, device)
             if hasattr(model.backbone, "set_vnext_step"):
                 model.backbone.set_vnext_step(global_step)
             if learned_controller:
-                credit.advance(model.backbone.pm)
+                credit.advance(model.backbone.pm, decay_override=decay_override)
             opt.zero_grad(set_to_none=True)
             if critic_opt is not None:
                 critic_opt.zero_grad(set_to_none=True)
@@ -579,10 +613,12 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 features = model.frontend(_batch_x(batch))
                 logits, trace = model.backbone(
                     features,
-                    tau=tau,
+                    tau=tau * modifiers.get("tau_multiplier", 1.0),
                     curriculum_mode="deploy",
                     choice_sampling=sampling,
                     collect_scan_metrics=(global_step % args.trace_every == 0),
+                    exploration_mode=modifiers.get("exploration_mode", False),
+                    random_k_multiplier=modifiers.get("random_k_multiplier", 1.0),
                 )
                 ce = F.cross_entropy(logits, _batch_y(batch))
                 if learned_controller:
@@ -596,6 +632,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                         primitive_top_share_target=args.primitive_top_share_target,
                         primitive_entropy_floor=args.primitive_entropy_floor,
                     )
+                    health_loss = health_loss * modifiers.get("health_loss_multiplier", 1.0)
                     
                     grad_losses = []
                     grad_nlls = []
@@ -758,6 +795,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 **grad_metrics,
                 **grad_norm_metrics,
                 **utility_diag,
+                **search_state.metrics(),
             }
             if args.log_every > 0 and global_step % args.log_every == 0:
                 print(
@@ -765,13 +803,30 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                     f"acc={correct/max(1,total):.3f} active={last_diag['active_cells']:.1f} "
                     f"top={last_diag['primitive_top_share']:.3f} "
                     f"credit={int(last_diag.get('credit_total_measurements', 0))} "
-                    f"gain={last_diag.get('credit_gain_mean', 0.0):+.5f}",
+                    f"gain={last_diag.get('credit_gain_mean', 0.0):+.5f} "
+                    f"burst={int(last_diag.get('search_in_burst', 0))}",
                     flush=True,
                 )
         train_acc = correct / max(1, total)
         train_loss = loss_sum / max(1, total)
         ev = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, "deploy")
         best = max(best, ev["acc"])
+        
+        # Demote stale and update search state
+        num_demoted = model.backbone.pm.demote_stale(min_count=5, negative_threshold=-0.5, decay=0.5)
+        if num_demoted > 0:
+            print(f"[ProgramSearch] Demoted {num_demoted} stale primitives with negative credit.")
+            
+        search_state.update(
+            val_acc=ev["acc"],
+            primitive_top_share=float(last_diag.get("primitive_top_share", 0.0)),
+            choice_entropy=float(last_diag.get("choice_entropy", 1.0)),
+            step=global_step,
+        )
+        
+        # Merge updated search state metrics into last_diag
+        last_diag.update(search_state.metrics())
+        
         samples_per_second = total / max(1e-8, time.perf_counter() - epoch_start)
         last_diag["train_samples_per_second"] = float(samples_per_second)
         csv_row = {
@@ -812,6 +867,25 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
         
         csv_row.update(last_diag)
         append_csv(ensure_dir(Path(args.out_dir)) / "metrics.csv", csv_row)
+        
+        # Save per-epoch program snapshot
+        pm = model.backbone.pm
+        scores = pm.feedback_gain_ema - 0.5 * pm.feedback_regret_ema
+        snapshot = {}
+        for l in range(pm.num_layers):
+            snapshot[f"layer_{l}"] = {}
+            for c in range(pm.num_cells):
+                cell_scores = scores[l, c]
+                top_idx = int(cell_scores.argmax().item())
+                top_name = pm.names[top_idx]
+                snapshot[f"layer_{l}"][f"cell_{c}"] = {
+                    "primitive": top_name,
+                    "score": float(cell_scores[top_idx]),
+                    "count": int(pm.feedback_count[l, c, top_idx])
+                }
+        snapshot_path = ensure_dir(Path(args.out_dir)) / f"program_snapshot_epoch_{epoch}.json"
+        snapshot_path.write_text(json.dumps(snapshot, indent=2))
+        
         print(
             f"real-discovery epoch={epoch}/{args.epochs} train={train_acc:.3f} "
             f"val={ev['acc']:.3f} speed={samples_per_second:.1f}/s "

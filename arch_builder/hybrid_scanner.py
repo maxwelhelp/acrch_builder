@@ -90,6 +90,8 @@ class HybridScanner(nn.Module):
         ensure_all_candidates: bool = False,
         collect_metrics: bool = True,
         cell_ids: torch.Tensor | None = None,
+        exploration_mode: bool = False,
+        random_k_multiplier: float = 1.0,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict[str, float]]:
         n = context.shape[0]
         device = context.device
@@ -100,7 +102,8 @@ class HybridScanner(nn.Module):
         local = primitive_matrix.local_window(anchor_ids, radius=1).reshape(n, -1)[:, : self.local_k]
         semantic = primitive_matrix.semantic_topk(anchor_ids, k=self.semantic_k).reshape(n, -1)
         usage = primitive_matrix.usage_topk(anchor_ids, k=self.usage_k).reshape(n, -1)
-        random = torch.randint(0, primitive_matrix.num_primitives, (n, self.random_k), device=device)
+        effective_random_k = max(1, int(self.random_k * random_k_multiplier))
+        random = torch.randint(0, primitive_matrix.num_primitives, (n, effective_random_k), device=device)
 
         if ensure_all_candidates:
             candidate_ids = torch.arange(
@@ -134,6 +137,19 @@ class HybridScanner(nn.Module):
                 cand_list.append(category)
                 src_list.append(torch.full_like(category, 7))
                 emb_list.append(primitive_matrix.emb[category] + self.category_source_type(torch.zeros_like(category)))
+
+            if exploration_mode:
+                stale_top = primitive_matrix.age_based_exploration(layer_idx=self.layer_idx, stale_threshold=50, k=3)
+                if cell_ids is not None:
+                    stale = stale_top[cell_ids]
+                else:
+                    stale = stale_top.unsqueeze(0).expand(n, -1, -1).reshape(n, -1)[:, :3]
+                cand_list.append(stale)
+                src_list.append(torch.full_like(stale, 8))
+                if self.feedback_source_type is not None:
+                    emb_list.append(primitive_matrix.emb[stale] + self.feedback_source_type(torch.zeros_like(stale)))
+                else:
+                    emb_list.append(primitive_matrix.emb[stale] + self.source_type(torch.full_like(stale, 3)))
                 
             candidate_ids = torch.cat(cand_list, dim=-1)
             source_ids = torch.cat(src_list, dim=-1)

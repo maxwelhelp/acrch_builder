@@ -316,7 +316,11 @@ class BoundedCounterfactualCredit:
         self.last_alternative_targets = alt_selected
         return selected
 
-    def advance(self, primitive_matrix=None) -> int:
+    def advance(
+        self,
+        primitive_matrix=None,
+        decay_override: Optional[float] = None,
+    ) -> int:
         """Apply previous measurements and age the ledger exactly once."""
         self.step += 1
         self.age.add_(1.0)
@@ -324,13 +328,14 @@ class BoundedCounterfactualCredit:
         if not ready:
             return 0
         ids, gains, layer_ids, cell_ids = [], [], [], []
+        eff_decay = decay_override if decay_override is not None else self.ema_decay
         for record in ready:
             record.applied_step = self.step
             share = record.gain / max(1, len(record.targets))
             for target in record.targets:
                 idx = (target.layer, target.cell, target.primitive)
                 old = float(self.ema[idx])
-                self.ema[idx] = self.ema_decay * old + (1.0 - self.ema_decay) * share
+                self.ema[idx] = eff_decay * old + (1.0 - eff_decay) * share
                 self.count[idx] += 1.0
                 self.age[idx] = 0.0
                 ids.append(target.primitive)
@@ -343,6 +348,7 @@ class BoundedCounterfactualCredit:
                 torch.tensor(gains, device=primitive_matrix.usage_score.device),
                 layer_ids=torch.tensor(layer_ids, device=primitive_matrix.usage_score.device),
                 cell_ids=torch.tensor(cell_ids, device=primitive_matrix.usage_score.device),
+                momentum=eff_decay,
             )
         self.active = ready
         return len(ready)
@@ -695,7 +701,8 @@ class BoundedCounterfactualCredit:
         interventions: List[Tuple[CounterfactualTarget, ...]] = [(target,) for target in singles]
         
         remaining_budget = max(0, self.budget - len(interventions))
-        triple_count = min(remaining_budget, 1 if len(singles) >= 3 else 0)
+        # Guarantee at least 1 joint measurement per collect call (may exceed budget by 1)
+        triple_count = max(1, min(remaining_budget, 1)) if len(singles) >= 3 else 0
         triples_added = []
         if triple_count > 0:
             for i in range(triple_count):
