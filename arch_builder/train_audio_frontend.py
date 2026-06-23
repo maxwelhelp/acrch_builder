@@ -247,6 +247,18 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--utility-budget-warmup-steps", type=int, default=0)
     ap.add_argument("--utility-category-k", type=int, default=1)
     ap.add_argument("--trace-every", type=int, default=1, help="Interval for scanner metrics collection.")
+    # Program search loop flags
+    ap.add_argument("--enable-program-search-loop", action="store_true")
+    ap.add_argument("--program-search-update-every", type=int, default=50)
+    ap.add_argument("--program-plateau-windows", type=int, default=10)
+    ap.add_argument("--program-burst-duration", type=int, default=20)
+    ap.add_argument("--program-burst-random-mult", type=float, default=3.0)
+    ap.add_argument("--program-burst-tau-mult", type=float, default=1.5)
+    ap.add_argument("--program-collapse-threshold", type=float, default=0.70)
+    # Joint credit flags
+    ap.add_argument("--enable-joint-credit", action="store_true")
+    ap.add_argument("--joint-credit-interval", type=int, default=25)
+    ap.add_argument("--joint-credit-extra-budget", type=int, default=2)
     import os
     ap.add_argument("--fast-train-backward", action="store_true", default=bool(int(os.environ.get("FAST_TRAIN_BACKWARD", "0"))))
     return ap
@@ -316,6 +328,11 @@ def evaluate(
     total = 0
     correct = 0
     loss_sum = 0.0
+    num_layers = model.backbone.num_layers
+    slots = model.backbone.slots
+    num_primitives = model.backbone.pm.num_primitives
+    accum_prim = [torch.zeros(slots * slots, num_primitives, device=device) for _ in range(num_layers)]
+    accum_src = [torch.zeros(slots * slots, 9, device=device) for _ in range(num_layers)]
     source_mass = defaultdict(float)
     trace_sum = defaultdict(float)
     trace_count = 0
@@ -329,6 +346,29 @@ def evaluate(
         total += _batch_y(batch).shape[0]
         loss_sum += float(loss.detach().cpu()) * _batch_y(batch).shape[0]
         trace_count += 1
+        
+        # Accumulate actual routing choices from trace
+        for layer_idx, layer in enumerate(trace.get("layers", [])):
+            if "choice" in layer and "candidate_ids" in layer and "candidate_source_ids" in layer:
+                choice = layer["choice"]
+                candidate_ids = layer["candidate_ids"]
+                candidate_source_ids = layer["candidate_source_ids"]
+                b_s_s, pool_sz = choice.shape
+                batch_val = b_s_s // (slots * slots)
+                
+                cell_indices = torch.arange(slots * slots, device=choice.device).repeat(batch_val).unsqueeze(-1).expand(b_s_s, pool_sz).reshape(-1)
+                cand_flat = candidate_ids.reshape(-1)
+                choice_flat = choice.reshape(-1)
+                
+                valid_mask = (cand_flat >= 0) & (cand_flat < num_primitives)
+                flat_idx = cell_indices * num_primitives + cand_flat
+                accum_prim[layer_idx].view(-1).put_(flat_idx[valid_mask], choice_flat[valid_mask], accumulate=True)
+                
+                src_flat = candidate_source_ids.reshape(-1)
+                valid_src_mask = (src_flat >= 0) & (src_flat < 9)
+                flat_src_idx = cell_indices * 9 + src_flat
+                accum_src[layer_idx].view(-1).put_(flat_src_idx[valid_src_mask], choice_flat[valid_src_mask], accumulate=True)
+
         for layer in trace.get("layers", []):
             source_trace_count += 1
             scan = layer.get("scan_metrics", {})
@@ -403,6 +443,9 @@ def evaluate(
             )
             divisor = source_trace_count if is_per_layer else trace_count
             out[key] = value / max(1, divisor)
+    
+    out["accum_prim"] = [layer.cpu().numpy() for layer in accum_prim]
+    out["accum_src"] = [layer.cpu().numpy() for layer in accum_src]
     return out
 
 
@@ -563,18 +606,25 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
         primitives=model.backbone.pm.num_primitives,
         budget=args.credit_budget,
         alternative_budget=args.credit_alternative_budget,
+        enable_joint_credit=args.enable_joint_credit,
+        joint_credit_extra_budget=args.joint_credit_extra_budget,
     )
-    search_state = ProgramSearchState(
-        patience=50,
-        burst_duration=20,
-        burst_tau_mult=1.5,
-        burst_random_mult=3.0,
-        min_improvement=0.005,
-    )
+    if args.enable_program_search_loop:
+        search_state = ProgramSearchState(
+            patience=args.program_plateau_windows,
+            burst_duration=args.program_burst_duration,
+            burst_tau_mult=args.program_burst_tau_mult,
+            burst_random_mult=args.program_burst_random_mult,
+            min_improvement=0.005,
+        )
+    else:
+        search_state = None
     best = 0.0
     train_acc = train_loss = 0.0
     last_diag: Dict[str, float] = {}
     global_step = 0
+    dynamics_history = []
+    previous_top_primitives = None
     learned_controller = args.controller_baseline == "learned"
     sampling = "uniform" if args.controller_baseline == "random" else "softmax"
 
@@ -596,9 +646,26 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
         total = correct = 0
         loss_sum = 0.0
         tau = max(args.tau_min, args.tau_start * (args.tau_decay ** (epoch - 1)))
+        correct_window = 0
+        total_window = 0
+        loss_window = 0.0
         for step in range(max(1, args.steps_per_epoch)):
             global_step += 1
-            modifiers = search_state.get_modifiers()
+            if search_state is not None:
+                modifiers = search_state.get_modifiers()
+            else:
+                modifiers = {
+                    "tau_multiplier": 1.0,
+                    "random_k_multiplier": 1.0,
+                    "health_loss_multiplier": 1.0,
+                    "feedback_decay_override": None,
+                    "exploration_mode": False,
+                    "in_burst": False,
+                    "burst_reason": None,
+                    "burst_steps_remaining": 0,
+                    "crystallization_score": 0.0,
+                    "total_bursts": 0,
+                }
             decay_override = modifiers.get("feedback_decay_override")
             raw_batch, train_iter = _next_batch(train_iter, train_loader)
             batch = _move_batch(raw_batch, device)
@@ -795,7 +862,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 **grad_metrics,
                 **grad_norm_metrics,
                 **utility_diag,
-                **search_state.metrics(),
+                **(search_state.metrics() if search_state is not None else {}),
             }
             if args.log_every > 0 and global_step % args.log_every == 0:
                 print(
@@ -807,25 +874,41 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                     f"burst={int(last_diag.get('search_in_burst', 0))}",
                     flush=True,
                 )
+            
+            # Accumulate window statistics
+            correct_window += (logits.argmax(dim=-1) == _batch_y(batch)).sum().item()
+            total_window += _batch_y(batch).shape[0]
+            loss_window += float(ce.detach().cpu()) * _batch_y(batch).shape[0]
+            
+            if search_state is not None and global_step % args.program_search_update_every == 0:
+                window_acc = correct_window / max(1, total_window)
+                num_demoted = model.backbone.pm.demote_stale(min_count=5, negative_threshold=-0.5, decay=0.5)
+                if num_demoted > 0:
+                    print(f"[ProgramSearch] Step {global_step}: Demoted {num_demoted} stale primitives with negative credit.")
+                    
+                search_state.update(
+                    val_acc=window_acc,
+                    primitive_top_share=float(last_diag.get("primitive_top_share", 0.0)),
+                    choice_entropy=float(last_diag.get("choice_entropy", 1.0)),
+                    step=global_step,
+                )
+                print(
+                    f"[ProgramSearch] Window Update Step {global_step}: window_acc={window_acc:.3f} "
+                    f"crystallization={search_state.metrics().get('search_crystallization_score', 0.0):.3f} "
+                    f"burst={int(search_state.metrics().get('search_in_burst', 0))} (patience={search_state.steps_since_improvement})",
+                    flush=True
+                )
+                correct_window = 0
+                total_window = 0
+                loss_window = 0.0
         train_acc = correct / max(1, total)
         train_loss = loss_sum / max(1, total)
         ev = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau, "deploy")
         best = max(best, ev["acc"])
         
-        # Demote stale and update search state
-        num_demoted = model.backbone.pm.demote_stale(min_count=5, negative_threshold=-0.5, decay=0.5)
-        if num_demoted > 0:
-            print(f"[ProgramSearch] Demoted {num_demoted} stale primitives with negative credit.")
-            
-        search_state.update(
-            val_acc=ev["acc"],
-            primitive_top_share=float(last_diag.get("primitive_top_share", 0.0)),
-            choice_entropy=float(last_diag.get("choice_entropy", 1.0)),
-            step=global_step,
-        )
-        
-        # Merge updated search state metrics into last_diag
-        last_diag.update(search_state.metrics())
+        # Update last_diag with search state metrics if enabled
+        if search_state is not None:
+            last_diag.update(search_state.metrics())
         
         samples_per_second = total / max(1e-8, time.perf_counter() - epoch_start)
         last_diag["train_samples_per_second"] = float(samples_per_second)
@@ -886,6 +969,96 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
         snapshot_path = ensure_dir(Path(args.out_dir)) / f"program_snapshot_epoch_{epoch}.json"
         snapshot_path.write_text(json.dumps(snapshot, indent=2))
         
+        # Calculate actual execution dynamics from validation results
+        import numpy as np
+        current_top_primitives = []
+        primitives_blueprint = []
+        for l in range(pm.num_layers):
+            layer_blue = []
+            for c in range(pm.num_cells):
+                c_prim_dist = ev["accum_prim"][l][c]
+                top_prim_idx = int(c_prim_dist.argmax())
+                current_top_primitives.append(top_prim_idx)
+                c_src_dist = ev["accum_src"][l][c]
+                top_src_idx = int(c_src_dist.argmax())
+                layer_blue.append((pm.names[top_prim_idx], top_src_idx))
+            primitives_blueprint.append(layer_blue)
+            
+        route_jaccard = 1.0
+        drift_count = 0
+        if previous_top_primitives is not None:
+            intersection = sum(1 for a, b in zip(previous_top_primitives, current_top_primitives) if a == b)
+            union = len(current_top_primitives)
+            route_jaccard = intersection / max(1, union)
+            drift_count = union - intersection
+        previous_top_primitives = current_top_primitives
+        
+        source_names_list = ["grid", "semantic", "usage", "random", "feedback", "single_signed_projection", "pair_jl16", "category", "exploration"]
+        src_sum = np.zeros(9)
+        for l in range(pm.num_layers):
+            src_sum += ev["accum_src"][l].sum(axis=0)
+        src_total = src_sum.sum()
+        src_mix = {name: float(src_sum[idx] / max(1.0, src_total)) for idx, name in enumerate(source_names_list)}
+        
+        crystallization = 0.0
+        in_burst = False
+        burst_reason = None
+        if search_state is not None:
+            crystallization = search_state.metrics().get("search_crystallization_score", 0.0)
+            in_burst = bool(search_state.metrics().get("search_in_burst", 0))
+            burst_reason = search_state.get_modifiers().get("burst_reason")
+            
+        dynamics_history.append({
+            "epoch": epoch,
+            "val_acc": ev["acc"],
+            "crystallization": crystallization,
+            "in_burst": in_burst,
+            "burst_reason": burst_reason,
+            "route_jaccard": route_jaccard if len(dynamics_history) > 0 else None,
+            "drift_count": drift_count if len(dynamics_history) > 0 else 0,
+            "src_mix": src_mix,
+            "blueprint": primitives_blueprint,
+        })
+        
+        dyn_md = [
+            "# Program Dynamics Report",
+            f"Generated at epoch {epoch}. This report tracks execution trajectory, primitive drift, source mix, and crystallization.\n",
+            "## Epoch Summary Table\n",
+            "| Epoch | Val Acc | Crystallization | Burst Active | Burst Reason | Route Jaccard | Cell Drift |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for item in dynamics_history:
+            jacc_str = f"{item['route_jaccard']:.3f}" if item['route_jaccard'] is not None else "-"
+            drift_str = str(item['drift_count']) if item['route_jaccard'] is not None else "-"
+            reason_str = item['burst_reason'] if item['burst_reason'] else "-"
+            dyn_md.append(f"| {item['epoch']} | {item['val_acc']:.3f} | {item['crystallization']:.3f} | {item['in_burst']} | {reason_str} | {jacc_str} | {drift_str} |")
+            
+        dyn_md.extend([
+            "\n## Source Mix Evolution\n",
+            "| Epoch | Grid | Semantic | Usage | Random | Feedback | Proj | JL16 | Category | Exploration |",
+            "|---|---|---|---|---|---|---|---|---|---|",
+        ])
+        for item in dynamics_history:
+            sm = item["src_mix"]
+            row_vals = [f"{sm[k]*100:.1f}%" for k in source_names_list]
+            dyn_md.append(f"| {item['epoch']} | " + " | ".join(row_vals) + " |")
+            
+        dyn_md.append(f"\n## Latest Program Blueprint (Epoch {epoch})\n")
+        for l in range(pm.num_layers):
+            dyn_md.extend([
+                f"### Layer {l}\n",
+                "| Cell | Top Primitive | Top Source |",
+                "|---|---|---|",
+            ])
+            for c in range(pm.num_cells):
+                prim_name, src_idx = primitives_blueprint[l][c]
+                src_name = source_names_list[src_idx] if src_idx < len(source_names_list) else str(src_idx)
+                dyn_md.append(f"| {c} | `{prim_name}` | {src_name} |")
+            dyn_md.append("")
+            
+        dyn_path = ensure_dir(Path(args.out_dir)) / "PROGRAM_DYNAMICS.md"
+        dyn_path.write_text("\n".join(dyn_md))
+        
         print(
             f"real-discovery epoch={epoch}/{args.epochs} train={train_acc:.3f} "
             f"val={ev['acc']:.3f} speed={samples_per_second:.1f}/s "
@@ -945,6 +1118,12 @@ def _report_synthetic(args, model: AudioMatrixClassifier, task, train_acc: float
     full = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="teacher")
     audit = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="audit")
     deploy = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="deploy")
+    # Remove large non-serializable ndarrays from evaluation dictionaries
+    for m_dict in [full, audit, deploy]:
+        if m_dict is not None:
+            m_dict.pop("accum_prim", None)
+            m_dict.pop("accum_src", None)
+            
     honesty_score = deploy["acc"] / full["acc"] if full["acc"] > 0 else 0.0
     waveform_length = args.length
     return {
@@ -988,6 +1167,13 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         full = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="teacher", split="validation")
         audit = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="audit", split="validation")
     test = evaluate(model, task, args.eval_steps, args.eval_batch_size, device, tau=args.tau_min, curriculum_mode="deploy", split="testing") if task.test_ds is not None else None
+    
+    # Remove large non-serializable ndarrays from evaluation dictionaries
+    for m_dict in [full, audit, deploy, test]:
+        if m_dict is not None:
+            m_dict.pop("accum_prim", None)
+            m_dict.pop("accum_src", None)
+            
     ablations = collect_ablations(model, task, min(args.eval_batch_size, 32), device, tau=args.tau_min)
     chance = 1.0 / max(1, len(task.classes))
     honesty_score = deploy["acc"] / max(1e-8, full["acc"])

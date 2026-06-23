@@ -169,6 +169,7 @@ class ActionMatrixLayer(nn.Module):
         self.utility_budget_end = int(utility_budget_end)
         self.utility_budget_warmup_steps = int(utility_budget_warmup_steps)
         self.utility_category_k = int(utility_category_k)
+        self.layer_idx = int(layer_idx)
 
         context_dim = dim * 5
         emb_dim = primitive_matrix.emb.shape[-1]
@@ -787,7 +788,7 @@ class ActionMatrixLayer(nn.Module):
 
         if self.utility_critic is not None and collect_scan_metrics:
             with torch.no_grad():
-                source_names_for_pres = ("grid", "semantic", "usage", "random", "feedback", "single_signed_projection", "pair_jl16", "category")
+                source_names_for_pres = ("grid", "semantic", "usage", "random", "feedback", "single_signed_projection", "pair_jl16", "category", "exploration")
                 for source_id, source_name in enumerate(source_names_for_pres):
                     pool_pres = (top_source_ids == source_id).any(dim=-1).float().mean()
                     utility_metrics[f"source_pool_presence_{source_name}"] = float(pool_pres.cpu())
@@ -801,7 +802,7 @@ class ActionMatrixLayer(nn.Module):
                     choice_pres = (choice * (top_source_ids == source_id).to(choice.dtype)).sum(dim=-1).mean()
                     utility_metrics[f"source_after_choice_presence_{source_name}"] = float(choice_pres.cpu())
 
-        source_names = ("grid", "semantic", "usage", "random", "feedback", "single_signed_projection", "pair_jl16", "category")
+        source_names = ("grid", "semantic", "usage", "random", "feedback", "single_signed_projection", "pair_jl16", "category", "exploration")
         if collect_scan_metrics:
             with torch.no_grad():
                 for source_id, source_name in enumerate(source_names):
@@ -818,6 +819,9 @@ class ActionMatrixLayer(nn.Module):
                 scan_metrics["pair_jl16_usage"] = scan_metrics[
                     "pair_jl16_candidate_usage"
                 ]
+                # Exploration metrics
+                scan_metrics["exploration_stale_candidates_count"] = float(self.pm.get_stale_count(self.layer_idx, stale_threshold=50))
+                scan_metrics["exploration_mode_active"] = float(exploration_mode)
         elif projection_enabled and collect_scan_metrics:
             with torch.no_grad():
                 scan_metrics["single_signed_projection_usage"] = float(

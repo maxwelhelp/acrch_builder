@@ -118,6 +118,7 @@ python -m arch_builder.train_audio_frontend \
   --out-dir "$OUT" \
   --latest-report "$OUT/LATEST_RUN_REPORT.md" \
   "${SCANNER_ARGS[@]}" \
-  "${VNEXT_ARGS[@]}"
+  "${VNEXT_ARGS[@]}" \
+  "${@}"
 
 echo "report: $OUT/final_report.json"

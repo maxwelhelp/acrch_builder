@@ -19,4 +19,4 @@ PRIMITIVE_TOP_SHARE_TARGET=0.65 \
 PRIMITIVE_ENTROPY_FLOOR=0.55 \
 ENABLE_VNEXT=1 \
 ENABLE_UTILITY_CRITIC_PROBE=1 \
-bash commands/run_speechcommands_real_discovery.sh || true
+bash commands/run_speechcommands_real_discovery.sh "$@" || true

@@ -223,6 +223,8 @@ class BoundedCounterfactualCredit:
         pair_fraction: float = 0.25,
         alternative_budget: int = 2,
         ema_decay: float = 0.9,
+        enable_joint_credit: bool = False,
+        joint_credit_extra_budget: int = 2,
     ) -> None:
         self.layers = layers
         self.slots = slots
@@ -232,6 +234,8 @@ class BoundedCounterfactualCredit:
         self.pair_fraction = float(pair_fraction)
         self.alternative_budget = max(0, int(alternative_budget))
         self.ema_decay = float(ema_decay)
+        self.enable_joint_credit = enable_joint_credit
+        self.joint_credit_extra_budget = max(0, int(joint_credit_extra_budget))
         shape = (layers, slots * slots, primitives)
         self.ema = torch.zeros(shape)
         self.count = torch.zeros(shape)
@@ -698,33 +702,28 @@ class BoundedCounterfactualCredit:
             )
         full_loss = F.cross_entropy(full_logits.float(), labels, reduction="none")
         singles = self._targets_from_trace(full_trace)
-        interventions: List[Tuple[CounterfactualTarget, ...]] = [(target,) for target in singles]
+        single_interventions = [(target,) for target in singles][:self.budget]
         
-        remaining_budget = max(0, self.budget - len(interventions))
-        # Guarantee at least 1 joint measurement per collect call (may exceed budget by 1)
-        triple_count = max(1, min(remaining_budget, 1)) if len(singles) >= 3 else 0
-        triples_added = []
-        if triple_count > 0:
-            for i in range(triple_count):
-                a = singles[(3 * i) % len(singles)]
-                b = singles[(3 * i + 1) % len(singles)]
-                c = singles[(3 * i + 2) % len(singles)]
+        joint_interventions = []
+        if self.enable_joint_credit:
+            remaining_joint = self.joint_credit_extra_budget
+            # Try to add one triple if we have enough candidates
+            if len(singles) >= 3 and remaining_joint > 0:
+                a = singles[0]
+                b = singles[1]
+                c = singles[2]
                 if a != b and b != c and a != c:
-                    triples_added.append((a, b, c))
-            interventions.extend(triples_added)
-            remaining_budget -= len(triples_added)
-            
-        pair_count = min(remaining_budget, max(0, int(round(self.budget * self.pair_fraction))))
-        pairs_added = []
-        if len(singles) >= 2 and pair_count > 0:
-            for i in range(pair_count):
-                a = singles[(2 * i) % len(singles)]
-                b = singles[(2 * i + 1) % len(singles)]
-                if a != b:
-                    pairs_added.append((a, b))
-            interventions.extend(pairs_added)
-            
-        interventions = interventions[: self.budget]
+                    joint_interventions.append((a, b, c))
+                    remaining_joint -= 1
+            # Try to add pairs for the remaining joint budget
+            if len(singles) >= 2 and remaining_joint > 0:
+                for i in range(remaining_joint):
+                    a = singles[(2 * i) % len(singles)]
+                    b = singles[(2 * i + 1) % len(singles)]
+                    if a != b:
+                        joint_interventions.append((a, b))
+                        
+        interventions = single_interventions + joint_interventions
         interventions.extend((target,) for target in self.last_alternative_targets)
         if not interventions:
             backbone.train(was_training)

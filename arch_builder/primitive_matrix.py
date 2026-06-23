@@ -366,12 +366,25 @@ class PrimitiveMatrix5x5(nn.Module):
             
             # Score: prefer never-measured, then oldest
             score = torch.where(count == 0, age + 1e6, age)
+            
+            # Add random jitter to ensure diverse unmeasured primitive exploration
+            jitter = torch.rand_like(score) * 50.0
+            score = score + jitter
+            
             score = torch.where(stale, score, torch.tensor(-1.0, device=score.device))
             
             # Top-k stale per cell
             k_val = min(k, self.num_primitives)
             top = score.topk(k=k_val, dim=-1).indices  # [cells, k]
             return top
+
+    def get_stale_count(self, layer_idx: int = 0, stale_threshold: int = 50) -> int:
+        """Return count of stale primitives for diagnostic metrics."""
+        with torch.no_grad():
+            count = self.feedback_count[layer_idx]
+            age = self.feedback_age[layer_idx]
+            stale = (count == 0) | (age > stale_threshold)
+            return int(stale.sum().item())
 
     def demote_stale(self, min_count: int = 5, negative_threshold: float = -0.5, decay: float = 0.5) -> int:
         """Demote primitives with consistently negative credit.

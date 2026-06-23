@@ -172,15 +172,33 @@ def generate_markdown_report(model: AudioMatrixClassifier, output_path: str | No
 
 def main():
     parser = argparse.ArgumentParser(description="Export learned neural program report.")
-    parser.add_argument("checkpoint", type=str, help="Path to checkpoint .pt file")
+    parser.add_argument("checkpoint", type=str, nargs="?", default=None, help="Path to checkpoint .pt file")
+    parser.add_argument("--run-dir", type=str, default=None, help="Directory of the training run containing checkpoints")
     parser.add_argument("--out", type=str, default="reports/neural_program_report.md", help="Output markdown path")
     args = parser.parse_args()
     
-    if not Path(args.checkpoint).exists():
-        print(f"Error: checkpoint file {args.checkpoint} does not exist.", file=sys.stderr)
+    checkpoint_path = args.checkpoint
+    if args.run_dir:
+        run_path = Path(args.run_dir)
+        for name in ["model_last.pt", "model_best.pt"]:
+            p = run_path / name
+            if p.exists():
+                checkpoint_path = str(p)
+                break
+        if not checkpoint_path:
+            pts = list(run_path.glob("*.pt"))
+            if pts:
+                checkpoint_path = str(pts[0])
+                
+    if not checkpoint_path:
+        print("Error: must provide either checkpoint path or a valid --run-dir containing checkpoints.", file=sys.stderr)
         sys.exit(1)
         
-    model = load_model(args.checkpoint)
+    if not Path(checkpoint_path).exists():
+        print(f"Error: checkpoint file {checkpoint_path} does not exist.", file=sys.stderr)
+        sys.exit(1)
+        
+    model = load_model(checkpoint_path)
     report = generate_markdown_report(model, args.out)
     print(report[:1000])
     print("...")

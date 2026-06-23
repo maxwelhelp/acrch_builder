@@ -1,116 +1,101 @@
 # ИНСТРУКЦИИ ДЛЯ СЛЕДУЮЩЕГО АГЕНТА (NEXT AGENT INSTRUCTIONS)
 
-Этот документ подготовлен для быстрой передачи контекста и начала работы следующего AI-агента над репозиторием `arch_builder`.
+Этот документ подготовлен для быстрой передачи контекста и начала работы следующего AI-агента над репозиторием `arch_builder` по ветке `vnext_utility_critic_diagnostic`.
 
 ---
 
-## Текущий статус
+## Текущий статус сессии (Active Program Search)
 
-1. **Роудмап выполнен на 100%**:
-   Все 5 фаз (20 шагов) роудмапа [ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/reports/ARCHITECTURE_ROADMAP_UNIVERSAL_ADAPTIVE_LAYER.md) полностью завершены, интегрированы и покрыты тестами.
-   
-2. **Ветка разработки**: `vnext_utility_critic_diagnostic`.
-   Все измененные файлы и новые пробы закоммичены в git.
+Мы успешно реализовали и интегрировали **Active Program Search Loop** (активный цикл поиска программ) во всей архитектуре vNext, устранили диагностические пропуски, развязали бюджеты совместных кредитов и добавили отслеживание динамики роутинга в реальном времени.
 
-3. **Грязные файлы (Dirty-file policy)**:
-   Файлы `arch_builder/credit.py`, `arch_builder/utility_critic.py`, `arch_builder/vnext_controller.py` содержат стабильную логику vNext и не должны перезаписываться или форматироваться без явного согласования.
+Все изменения закоммичены в git в текущую ветку `vnext_utility_critic_diagnostic`.
+
+### Основные документы сессии:
+- [Рабочий план реализации (implementation_plan.md)](file:///home/maxwelhelp/.gemini/antigravity/brain/1b481e63-9148-4409-ac6d-bfb22c4e3f62/implementation_plan.md)
+- [Чек-лист выполненных задач (task.md)](file:///home/maxwelhelp/.gemini/antigravity/brain/1b481e63-9148-4409-ac6d-bfb22c4e3f62/task.md)
+- [Итоговый отчет изменений (walkthrough.md)](file:///home/maxwelhelp/.gemini/antigravity/brain/1b481e63-9148-4409-ac6d-bfb22c4e3f62/walkthrough.md)
+- [Динамика программы (PROGRAM_DYNAMICS.md)](file:///home/maxwelhelp/test/sience/experiments/math_search/WORKING_BEST/acrch_builder/agent_reports/vnext_smoke_seed1_1ep/PROGRAM_DYNAMICS.md) (создается автоматически во время тренировки в `--out-dir`).
 
 ---
 
-## Что было сделано и проверено
+## Что было сделано и проверено в этой сессии
 
-Мы успешно реализовали, интегрировали и протестировали все 11 ключевых нововведений vNext через соответствующие пробы:
+1. **Step-Based Program Search Loop** (`arch_builder/program_search.py`):
+   - Перевели логику `ProgramSearchState` на шаги (steps/windows) вместо эпох.
+   - Шаг обновления задается через CLI-флаг `--program-search-update-every` (по умолчанию 50 шагов). Накопление статистики идет через скользящее среднее.
+   - Добавлен автоматический триггер **Exploration Burst** при плато точности, доминировании одного примитива (collapse > 0.70) или затухании энтропии выбора (< 0.1).
+   - В режиме burst временно повышается температура роутинга `tau_multiplier`, увеличивается количество случайных кандидатов `random_k_multiplier` и активируется `exploration_mode`.
 
-1. **Category-Aware Scanner (Шаг 9)**:
-   - Выбирает топ-$K$ примитивов на семейство по feedback bias.
-   - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_category_scanner.py`
-   
-2. **Spectral Primitives (Шаг 10)**:
-   - Интегрированы спектральные примитивы (`dct`, `fft_filter`, `wavelet`, `spectral_mix`, `spectral_gate`).
-   - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_spectral_primitives.py`
-   
-3. **Attention-Like Primitives (Шаг 11)**:
-   - Интегрированы примитивы внимания (`qkv_gate`, `cross_attend`, `self_attend`, `key_align`, `value_mix`).
-   - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_attention_primitives.py`
-   
-4. **Auto-Mined Atoms (Шаг 12)**:
-   - Интегрированы примитивы автоматического извлечения признаков (`svd_atom_k`, `diag`, `toeplitz`, `block_mean`, `mined_gate`).
-   - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_mined_atoms.py`
+2. **Развязка бюджетов Joint Credit** (`arch_builder/credit.py`):
+   - Разделили бюджеты одиночных контрфактуальных замеров и совместных (pairwise/ Shapley-lite) замеров, чтобы исключить взаимное вытеснение при оценке кредитов.
+   - Добавлены CLI-аргументы `--enable-joint-credit`, `--joint-credit-interval`, `--joint-credit-extra-budget`.
 
-5. **Gradient Trace Credit Hook (Шаг 13)**:
-   - Проверена работа backward hook для `Online Gradient Trace Credit Hook`.
-   - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_gradient_trace_credit.py`
+3. **Снапшоты роутинга и динамики** (`arch_builder/train_audio_frontend.py`):
+   - Во время валидации собираются фактические пути прохождения тензоров (`trace`).
+   - На основе собранных трейсов вычисляются:
+     - **Route Jaccard similarity**: мера стабильности роутинга между эпохами.
+     - **Cell Drift**: количество ячеек памяти, изменивших выбранный примитив или источник.
+     - **Source Mix**: процентное распределение вкладов всех 9 источников (включая добавленный `exploration` источник).
+   - Все эти показатели записываются в файл `PROGRAM_DYNAMICS.md` на каждой эпохе.
+   - Снапшоты топологии программы сохраняются в JSON файлы вида `program_snapshot_epoch_{epoch}.json`.
 
-6. **Rank-Based Critic Loss (Шаг 14)**:
-   - Интегрирован попарный ранговый лосс (`pairwise_ranking_loss`) для обучения критика.
-   - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_rank_based_loss.py`
+4. **Exporter CLI `--run-dir`**:
+   - Скрипт `tools/project_probe/export_program_report.py` теперь принимает параметр `--run-dir` для автоматического нахождения сохраненных чекпоинтов модели (`model_last.pt` / `model_best.pt`).
 
-7. **Shapley-Lite Joint Credit (Шаг 15)**:
-   - Интегрировано Shapley-lite распределение групповой синергии в `BoundedCounterfactualCredit`.
-   - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_shapley_lite.py`
-
-8. **CIFAR-10 Patch Classifier + Test (Шаг 16)**:
-   - Добавлена нарезка изображений на 16 патчей 8х8 и классификация через `ActionMatrixModel`.
-   - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_cifar10.py`
-
-9. **Copy/Reverse Memory Task + Test (Шаг 17)**:
-   - Внедрен экспорт финального состояния памяти через `"slots_out": state` в `ActionMatrixModel.forward`.
-   - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_copy_reverse.py`
-
-10. **Non-Stationary Adaptation Test (Шаг 18)**:
-    - Проверена адаптация модели к принудительному отключению (абляции) примитива `diff` во время обучения.
-    - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_non_stationary.py`
-
-11. **Multi-layer Composition Credit Test (Шаг 19)**:
-    - Проверено распределение кредита по цепочке слоев (Layer 0 -> Layer 1) при решении составной математической задачи.
-    - Тестирование: `PYTHONPATH=. python tools/project_probe/probe_multi_layer_composition.py`
+5. **Три новых диагностических зонда**:
+   - `tools/project_probe/probe_feedback_memory_closure.py`: проверяет накопление EMA оценок, старение/forgetting и работу top-k по памяти обратной связи.
+   - `tools/project_probe/probe_program_search_loop.py`: тестирует конечный автомат поиска программ, переходы в burst и возвращение к базовым параметрам.
+   - `tools/project_probe/probe_program_export.py`: гарантирует корректность генерации и экспорта markdown- blueprint'а программы.
 
 ---
 
 ## Как запускать валидацию и тесты
 
-- **Полная проверка проекта (без регрессий)**:
-  ```bash
-  bash commands/validate.sh
-  ```
-  *Критерий успешности*: Скрипт должен завершаться с `[validate] OK` и кодом 0.
+1. **Полная валидация проекта** (запускает компиляцию, CLI-тесты и все 3 новых диагностических зонда):
+   ```bash
+   bash commands/validate.sh
+   ```
+   *Ожидаемый результат*: Скрипт должен вывести `[validate] OK` и завершиться с кодом 0.
 
-- **Запуск всех 11 диагностических проб**:
-  ```bash
-  PYTHONPATH=. python tools/project_probe/probe_category_scanner.py && \
-  PYTHONPATH=. python tools/project_probe/probe_spectral_primitives.py && \
-  PYTHONPATH=. python tools/project_probe/probe_attention_primitives.py && \
-  PYTHONPATH=. python tools/project_probe/probe_mined_atoms.py && \
-  PYTHONPATH=. python tools/project_probe/probe_gradient_trace_credit.py && \
-  PYTHONPATH=. python tools/project_probe/probe_rank_based_loss.py && \
-  PYTHONPATH=. python tools/project_probe/probe_shapley_lite.py && \
-  PYTHONPATH=. python tools/project_probe/probe_cifar10.py && \
-  PYTHONPATH=. python tools/project_probe/probe_copy_reverse.py && \
-  PYTHONPATH=. python tools/project_probe/probe_non_stationary.py && \
-  PYTHONPATH=. python tools/project_probe/probe_multi_layer_composition.py
-  ```
-
-- **SpeechCommands интеграционный smoke test на CPU**:
-  ```bash
-  STEPS_PER_EPOCH=10 TRAIN_LIMIT=1000 VAL_LIMIT=256 TEST_LIMIT=256 WORKERS=0 SLOTS=4 LAYERS=1 EPOCHS=2 \
-  python -m arch_builder.train_audio_frontend --epochs 2 --steps-per-epoch 10 --eval-steps 2 --eval-batch-size 32 \
-  --batch-size 32 --out-dir agent_reports/smoke_vnext_full_audit --device cpu --enable-vnext --enable-lazy-executor \
-  --enable-category-scanner --utility-category-k 2
-  ```
+2. **Запуск интеграционного smoke-теста (SpeechCommands)**:
+   ```bash
+   ENABLE_UTILITY_CRITIC_CHOICE=1 ENABLE_LAZY_EXECUTOR=1 ENABLE_SCANNER_FEEDBACK_MEMORY=1 ENABLE_CATEGORY_SCANNER=1 ENABLE_MMR_CONTROLLER=1 \
+   bash commands/run_speechcommands_vnext_smoke.sh \
+     --enable-program-search-loop \
+     --program-search-update-every 10 \
+     --program-plateau-windows 2 \
+     --program-burst-duration 5 \
+     --enable-joint-credit \
+     --joint-credit-interval 10 \
+     --joint-credit-extra-budget 2 \
+     --train-limit 300 --val-limit 150 --test-limit 100 --epochs 2 --steps-per-epoch 50
+   ```
+   *Результат*: В папке `agent_reports/vnext_smoke_seed1_1ep/` создадутся файлы `final_report.json`, `PROGRAM_DYNAMICS.md`, а также JSON-снапшоты программ.
 
 ---
 
-## Что нужно делать дальше (План для следующего агента)
+## Что делать дальше (Задание для следующего агента)
 
-Ядро и все фазы роудмапа полностью стабилизированы. Рекомендуется перейти к этапу **эксплуатации и тюнинга гиперпараметров**:
+Ядро поискового цикла полностью стабилизировано и покрыто тестами. Для следующего шага рекомендуется:
 
-1. **Long Run на GPU (Tesla P40)**:
-   Запустить полноценное обучение SpeechCommands (например, 20-50 эпох) с поддержкой CUDA на Tesla P40 для замера финального качества модели и сравнения с baseline.
-   
-2. **Sweep по параметрам vNext**:
-   - Попробовать различный размер пула категорий `--utility-category-k` (1, 2, 3).
-   - Исследовать влияние `enable_lazy_executor` на скорость обучения на Pascal P40.
-   - Сравнить работу рангового лосса критика (`pairwise_ranking_loss`) с классическим MSE.
+1. **Запуск длинного эксперимента (Long Run) на GPU (Tesla P40)**:
+   - Запустите SpeechCommands на 8-15 эпох с включенным Active Program Search, используя MCP-задания или фоновые команды.
+   - Параметры запуска:
+     ```bash
+     ENABLE_VNEXT=1 ENABLE_UTILITY_CRITIC_CHOICE=1 ENABLE_MMR_CONTROLLER=1 ENABLE_LAZY_EXECUTOR=1 ENABLE_SCANNER_FEEDBACK_MEMORY=1 ENABLE_CATEGORY_SCANNER=1 \
+     bash commands/run_speechcommands_real_discovery.sh \
+       --enable-program-search-loop \
+       --program-search-update-every 50 \
+       --enable-joint-credit \
+       --joint-credit-interval 25 \
+       --joint-credit-extra-budget 2
+     ```
 
-3. **Анализ отчетов**:
-   Используйте скрипт `commands/build_focused_report.sh` или анализируйте логи в `agent_reports/` для оценки метрик сходимости, энтропии выбора примитивов (`choice_entropy`) и качества кредитования (`expected_edge_recovery`).
+2. **Мониторинг динамики и стабилизация**:
+   - Анализируйте `PROGRAM_DYNAMICS.md` во время обучения:
+     - Растет ли точность (`Val Acc`) и кристаллизация (`Crystallization`) после окончания exploration bursts?
+     - Стабилизируется ли маршрутизация (повышается ли `Route Jaccard` до значений > 0.80 к концу обучения)?
+     - Помогает ли `exploration` источник находить редкие эффективные примитивы в ячейках.
+
+3. **Тюнинг Burst-параметров**:
+   - Настройте `--program-search-update-every`, `patience`, `burst_duration` и мультипликаторы шума для максимизации качества обучения аудио-классификатора.

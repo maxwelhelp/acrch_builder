@@ -28,6 +28,11 @@ python -m arch_builder.train_vertical_slice --help >/dev/null
 echo "[validate] cleanup generated pycache"
 cleanup_pycache
 
+echo "[validate] run new diagnostic probes"
+PYTHONPATH=. python tools/project_probe/probe_feedback_memory_closure.py
+PYTHONPATH=. python tools/project_probe/probe_program_search_loop.py
+PYTHONPATH=. python tools/project_probe/probe_program_export.py
+
 echo "[validate] forbidden files"
 if git ls-files | grep -E '\.(pt|pth|ckpt|safetensors|pyc|pyo)$' | grep .; then
   echo "forbidden tracked weight/cache file found" >&2
