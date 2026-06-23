@@ -252,6 +252,7 @@ class BoundedCounterfactualCredit:
         self.rolling_predicted_single: List[float] = []
         self.rolling_targets_single: List[float] = []
         self.rolling_sim_predicted_single: List[float] = []
+        self.rolling_triangle_predicted_single: List[float] = []
 
     def _targets_from_trace(self, trace: Dict[str, object]) -> List[CounterfactualTarget]:
         scored: List[Tuple[float, CounterfactualTarget]] = []
@@ -354,12 +355,22 @@ class BoundedCounterfactualCredit:
                 cell_ids=torch.tensor(cell_ids, device=primitive_matrix.usage_score.device),
                 momentum=eff_decay,
             )
+        if primitive_matrix is not None and hasattr(primitive_matrix, "relation_memory") and primitive_matrix.relation_memory is not None:
+            for record in ready:
+                record_ids = [t.primitive for t in record.targets]
+                if len(record_ids) > 1:
+                    primitive_matrix.relation_memory.update(
+                        torch.tensor(record_ids, device=primitive_matrix.relation_memory.co_occurrence_pos.device),
+                        record.gain,
+                        momentum=eff_decay,
+                    )
         self.active = ready
         return len(ready)
 
     def alignment_losses(
         self,
         trace: Dict[str, object],
+        primitive_matrix=None,
     ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, float]]:
         from collections import defaultdict
         device = trace["layers"][0]["choice_for_loss"].device
@@ -396,6 +407,7 @@ class BoundedCounterfactualCredit:
         utility_predicted_single = []
         utility_targets_single = []
         sim_predicted_single = []
+        triangle_predicted_single = []
         
         proposal_scores = []
         sim_predicted = []
@@ -499,6 +511,22 @@ class BoundedCounterfactualCredit:
                         utility_predicted_single.append(ut_val)
                         utility_targets_single.append(utility_target_val)
                         sim_predicted_single.append(sim_val)
+                        
+                        tri_score_val = 0.0
+                        if primitive_matrix is not None and getattr(primitive_matrix, "relation_memory", None) is not None:
+                            from .relation_consistency import TriangleRelationScorer
+                            scorer = TriangleRelationScorer()
+                            cand_tensor = torch.tensor([[target.primitive]], device=trace["layers"][target.layer]["candidate_ids"].device)
+                            cell_tensor = torch.tensor([target.cell], device=cand_tensor.device)
+                            res = scorer.compute(
+                                candidate_ids=cand_tensor,
+                                layer_idx=target.layer,
+                                cell_ids=cell_tensor,
+                                pm=primitive_matrix,
+                                program_entropy_norm=None,
+                            )
+                            tri_score_val = float(res["score"].cpu().item())
+                        triangle_predicted_single.append(tri_score_val)
                 
                 utility_predicted.append(ut_val)
 
@@ -523,13 +551,17 @@ class BoundedCounterfactualCredit:
         self.rolling_predicted_single.extend(utility_predicted_single)
         self.rolling_targets_single.extend(utility_targets_single)
         self.rolling_sim_predicted_single.extend(sim_predicted_single)
+        self.rolling_triangle_predicted_single.extend(triangle_predicted_single)
 
         self.rolling_predicted_single = self.rolling_predicted_single[-128:]
         self.rolling_targets_single = self.rolling_targets_single[-128:]
         self.rolling_sim_predicted_single = self.rolling_sim_predicted_single[-128:]
+        self.rolling_triangle_predicted_single = self.rolling_triangle_predicted_single[-128:]
 
         utility_gain_corr = pearson_corr(self.rolling_predicted_single, self.rolling_targets_single)
         current_predicted_gain_corr = pearson_corr(self.rolling_sim_predicted_single, self.rolling_targets_single)
+        triangle_gain_corr = pearson_corr(self.rolling_triangle_predicted_single, self.rolling_targets_single)
+        
         utility_vs_current_gain_corr_delta = utility_gain_corr - current_predicted_gain_corr
         
         # Spearman correlation on rolling buffer
@@ -652,6 +684,8 @@ class BoundedCounterfactualCredit:
                 "utility_gain_spearman": float(utility_gain_spearman),
                 "current_predicted_gain_corr": float(current_predicted_gain_corr),
                 "utility_vs_current_gain_corr_delta": float(utility_vs_current_gain_corr_delta),
+                "triangle_gain_corr": float(triangle_gain_corr),
+                "triangle_beats_feedback_corr": float(triangle_gain_corr > utility_gain_corr),
                 "proposal_top1_measured_gain": float(proposal_top1_measured_gain),
                 "utility_top1_measured_gain": float(utility_top1_measured_gain),
                 "random_top1_measured_gain": float(random_top1_measured_gain),

@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .relation_consistency import RelationMemory
+
 
 PRIMITIVE_GRID: List[List[str]] = [
     ["identity", "gated_keep", "diff", "contrast", "smooth"],
@@ -86,6 +88,7 @@ class PrimitiveMatrix5x5(nn.Module):
         num_layers: int = 1,
         enable_scanner_feedback_memory: bool = False,
         slots: int = 4,
+        enable_relation_memory: bool = False,
     ) -> None:
         super().__init__()
         self.grid = PRIMITIVE_GRID if enable_vnext else PRIMITIVE_GRID[:5]
@@ -100,6 +103,9 @@ class PrimitiveMatrix5x5(nn.Module):
         self.slots = slots
         self.num_cells = slots * slots
         self.enable_scanner_feedback_memory = enable_scanner_feedback_memory
+        self.relation_memory: RelationMemory | None = None
+        if enable_relation_memory:
+            self.relation_memory = RelationMemory(len(self.names))
 
         desc = self._descriptor_matrix(infos)
         proj = torch.randn(desc.shape[1], embed_dim) / max(1.0, desc.shape[1] ** 0.5)
@@ -319,6 +325,7 @@ class PrimitiveMatrix5x5(nn.Module):
                     self.feedback_regret_ema[l, c, p_id] = momentum * self.feedback_regret_ema[l, c, p_id] - (1.0 - momentum) * val
 
 
+
     def metrics(self) -> Dict[str, float]:
         emb = F.normalize(self.emb.detach(), dim=-1)
         cov_rank = torch.linalg.matrix_rank(emb).item()
@@ -373,7 +380,10 @@ class PrimitiveMatrix5x5(nn.Module):
                 "feedback_update_skipped_disabled": float(self.feedback_update_skipped_disabled.item()),
                 "feedback_update_skipped_missing_address": float(self.feedback_update_skipped_missing_address.item()),
             })
-            
+
+        if self.relation_memory is not None:
+            m.update(self.relation_memory.metrics())
+
         return m
 
     def age_based_exploration(self, layer_idx: int = 0, stale_threshold: int = 50, k: int = 3) -> torch.Tensor:

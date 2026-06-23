@@ -187,7 +187,7 @@ def main():
             features = model.frontend(_batch_x(batch))
             logits, trace = model.backbone(features, tau=1.0, curriculum_mode="deploy", collect_scan_metrics=False)
             ce = F.cross_entropy(logits, _batch_y(batch))
-            policy_loss, simulator_loss, _ = credit.alignment_losses(trace)
+            policy_loss, simulator_loss, _ = credit.alignment_losses(trace, primitive_matrix=model.backbone.pm)
             loss = ce + policy_loss + simulator_loss
         scaler.scale(loss).backward()
         scaler.step(opt)
@@ -240,7 +240,7 @@ def main():
             
             # Credit Alignment
             t_credit_0 = time.perf_counter()
-            policy_loss, simulator_loss, _ = credit.alignment_losses(trace)
+            policy_loss, simulator_loss, _ = credit.alignment_losses(trace, primitive_matrix=model.backbone.pm)
             get_sync()
             t_credit_1 = time.perf_counter()
             # credit_plan_seconds will be tracked by wrapper, but we check here too

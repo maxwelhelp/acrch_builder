@@ -241,6 +241,9 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--utility-choice-scale-max", type=float, default=0.20)
     ap.add_argument("--utility-mmr-identity-weight", type=float, default=0.50)
     ap.add_argument("--enable-scanner-feedback-memory", action="store_true")
+    ap.add_argument("--enable-relation-memory", action="store_true")
+    ap.add_argument("--enable-relation-consistency", action="store_true")
+    ap.add_argument("--enable-relation-reranker", action="store_true")
     ap.add_argument("--enable-mmr-controller", action="store_true")
     ap.add_argument("--enable-lazy-executor", action="store_true")
     ap.add_argument("--enable-category-scanner", action="store_true")
@@ -713,7 +716,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                         train_accum_src[layer_idx].view(-1).put_(flat_src_idx[valid_src_mask], choice_flat[valid_src_mask], accumulate=True)
 
                 if learned_controller:
-                    policy_loss, simulator_loss, align_metrics = credit.alignment_losses(trace)
+                    policy_loss, simulator_loss, align_metrics = credit.alignment_losses(trace, primitive_matrix=model.backbone.pm)
                     behavior_div_loss = _behavior_diversity_loss(trace, ce.device)
                     health_loss, health_metrics = generic_discovery_health_loss(
                         trace,
@@ -1455,6 +1458,7 @@ def train_variant(args) -> Dict[str, object]:
         utility_choice_scale_max=args.utility_choice_scale_max,
         utility_mmr_identity_weight=args.utility_mmr_identity_weight,
         enable_scanner_feedback_memory=args.enable_scanner_feedback_memory,
+        enable_relation_memory=args.enable_relation_memory,
         enable_mmr_controller=args.enable_mmr_controller,
         enable_lazy_executor=args.enable_lazy_executor,
         enable_category_scanner=args.enable_category_scanner,

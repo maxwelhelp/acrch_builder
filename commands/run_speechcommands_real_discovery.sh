@@ -32,6 +32,15 @@ fi
 if [[ "${ENABLE_SCANNER_FEEDBACK_MEMORY:-0}" == "1" ]]; then
   VNEXT_ARGS+=(--enable-scanner-feedback-memory)
 fi
+if [[ "${ENABLE_RELATION_MEMORY:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-relation-memory)
+fi
+if [[ "${ENABLE_RELATION_CONSISTENCY:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-relation-consistency)
+fi
+if [[ "${ENABLE_RELATION_RERANKER:-0}" == "1" ]]; then
+  VNEXT_ARGS+=(--enable-relation-reranker)
+fi
 if [[ "${ENABLE_MMR_CONTROLLER:-0}" == "1" ]]; then
   VNEXT_ARGS+=(--enable-mmr-controller)
 fi

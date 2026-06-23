@@ -1100,6 +1100,7 @@ class ActionMatrixModel(nn.Module):
         utility_choice_scale_max: float = 0.20,
         utility_mmr_identity_weight: float = 0.50,
         enable_scanner_feedback_memory: bool = False,
+        enable_relation_memory: bool = False,
         enable_mmr_controller: bool = False,
         enable_lazy_executor: bool = False,
         enable_category_scanner: bool = False,
@@ -1132,6 +1133,7 @@ class ActionMatrixModel(nn.Module):
             num_layers=layers,
             enable_scanner_feedback_memory=enable_scanner_feedback_memory,
             slots=slots,
+            enable_relation_memory=enable_relation_memory,
         )
         self.layers = nn.ModuleList([
             ActionMatrixLayer(
