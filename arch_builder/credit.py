@@ -800,6 +800,9 @@ class BoundedCounterfactualCredit:
             for targets, gain in zip(interventions, gains)
             if targets and all(target.force for target in targets)
         ]
+        limit = self.budget + self.alternative_budget
+        if self.enable_joint_credit:
+            limit += self.joint_credit_extra_budget
         self.last_metrics = {
             "credit_measurements": float(len(records)),
             "credit_joint_measurements": float(sum(len(record.targets) > 1 for record in records)),
@@ -807,7 +810,7 @@ class BoundedCounterfactualCredit:
             "credit_gain_abs_mean": float(gains.abs().mean().cpu()),
             "credit_positive_fraction": float(positive.cpu()),
             "credit_budget_used": float(len(records)),
-            "credit_budget_limit": float(self.budget + self.alternative_budget),
+            "credit_budget_limit": float(limit),
             "credit_gain_scale": float(self.gain_scale),
             "credit_joint_synergy_mean": float(sum(joint_synergies) / max(1, len(joint_synergies))),
             "credit_random_targets": float(self.last_random_targets),

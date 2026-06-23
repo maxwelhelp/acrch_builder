@@ -26,14 +26,27 @@ def test_feedback_memory_closure():
     target_cell = 5
     target_prim = 12
     
-    # Initialize EMA scores to low value, but target prim to high value
-    pm.feedback_gain_ema.fill_(0.0)
-    pm.feedback_regret_ema.fill_(0.0)
-    pm.feedback_count.fill_(0)
+    # Set positive credit for primitive index 12 in layer 0, cell 5 using update_usage_credit
+    chosen_ids = torch.tensor([target_prim], dtype=torch.long)
+    credit_val = torch.tensor([1.0], dtype=torch.float32)
+    layer_tensor = torch.tensor([target_layer], dtype=torch.long)
+    cell_tensor = torch.tensor([target_cell], dtype=torch.long)
     
-    # Set target prim
-    pm.feedback_gain_ema[target_layer, target_cell, target_prim] = 10.0
-    pm.feedback_count[target_layer, target_cell, target_prim] = 5
+    for _ in range(5):
+        pm.update_usage_credit(
+            chosen_ids=chosen_ids,
+            credit=credit_val,
+            layer_ids=layer_tensor,
+            cell_ids=cell_tensor,
+            momentum=0.9,
+        )
+        
+    # Verify that the buffers updated correctly through the real pathway
+    metrics = pm.metrics()
+    assert pm.feedback_count[target_layer, target_cell, target_prim].item() == 5, "feedback_count did not increment to 5"
+    assert pm.feedback_gain_ema[target_layer, target_cell, target_prim].item() > 0, "feedback_gain_ema was not updated"
+    assert metrics["feedback_bias_abs"] > 0, "feedback_bias_abs should be positive"
+    assert metrics["feedback_update_called"] == 5.0, "feedback_update_called should be 5.0"
     
     # Create fake ids/cell_ids to call feedback_topk
     n = 16 # batch size equals num_cells
@@ -57,9 +70,17 @@ def test_feedback_memory_closure():
     print(f"Stale count (threshold=50) with all age=100: {stale_count}")
     assert stale_count > 0, "Stale count should be greater than 0"
     
-    # Mark target_prim as fresh (age = 10, count = 1)
-    pm.feedback_age[target_layer, target_cell, target_prim] = 10.0
-    pm.feedback_count[target_layer, target_cell, target_prim] = 1
+    # Mark target_prim as fresh using update_usage_credit.
+    # update_usage_credit resets its age to 0.
+    pm.update_usage_credit(
+        chosen_ids=chosen_ids,
+        credit=credit_val,
+        layer_ids=layer_tensor,
+        cell_ids=cell_tensor,
+        momentum=0.9,
+    )
+    # Then we add 10 to age to simulate 10 steps of aging
+    pm.feedback_age.add_(10.0)
     
     # Its age is now 10. It is NOT stale.
     # Verify that the unmeasured ones are still stale.

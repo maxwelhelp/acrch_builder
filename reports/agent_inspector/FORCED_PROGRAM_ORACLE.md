@@ -3,7 +3,7 @@
 - state_update_contract_pass: `True`
 - raw_primitive_pass: `True`
 - invariants_pass: `True`
-- controller_address_choice_delta: `0.02510315552353859`
+- controller_address_choice_delta: `0.01877879537642002`
 - final_read_last_layer0_output_bypass_delta: `0.0`
 
 ## Raw primitive audit

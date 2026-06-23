@@ -113,6 +113,14 @@ class PrimitiveMatrix5x5(nn.Module):
         self.register_buffer("feedback_regret_ema", torch.zeros(num_layers, self.num_cells, len(self.names)), persistent=False)
         self.register_buffer("feedback_count", torch.zeros(num_layers, self.num_cells, len(self.names)), persistent=False)
         self.register_buffer("feedback_age", torch.zeros(num_layers, self.num_cells, len(self.names)), persistent=False)
+        
+        # Diagnostic feedback counters
+        self.register_buffer("feedback_update_called", torch.zeros(()), persistent=False)
+        self.register_buffer("feedback_update_items", torch.zeros(()), persistent=False)
+        self.register_buffer("feedback_update_positive", torch.zeros(()), persistent=False)
+        self.register_buffer("feedback_update_negative", torch.zeros(()), persistent=False)
+        self.register_buffer("feedback_update_skipped_disabled", torch.zeros(()), persistent=False)
+        self.register_buffer("feedback_update_skipped_missing_address", torch.zeros(()), persistent=False)
 
         local_lookup = []
         for idx in range(len(self.names)):
@@ -260,12 +268,17 @@ class PrimitiveMatrix5x5(nn.Module):
         treated as useful credit.
         """
         with torch.no_grad():
+            self.feedback_update_called.add_(1.0)
             ids = chosen_ids.detach().flatten().to(self.usage_score.device)
             values = credit.detach().flatten().to(self.usage_score.device, dtype=self.usage_score.dtype)
             if values.numel() == 1 and ids.numel() != 1:
                 values = values.expand_as(ids)
             if ids.numel() != values.numel():
                 raise ValueError(f"credit count {values.numel()} does not match chosen ids {ids.numel()}")
+            
+            n_items = float(ids.numel())
+            self.feedback_update_items.add_(n_items)
+            
             counts = torch.bincount(ids, minlength=self.num_primitives).to(self.usage_score.dtype)
             sums = torch.zeros_like(self.usage_score).scatter_add_(0, ids, values)
             observed = counts > 0
@@ -275,28 +288,35 @@ class PrimitiveMatrix5x5(nn.Module):
             )
             self.usage_observations.add_(counts)
 
-            # Scanner feedback memory updates (gain/regret EMAs) - only if explicitly enabled
-            if self.enable_scanner_feedback_memory:
-                self.feedback_age.add_(1.0)
-                if layer_ids is None:
-                    layers_t = torch.zeros_like(ids)
-                else:
-                    layers_t = layer_ids.detach().flatten().to(self.usage_score.device, dtype=torch.long)
+            # Scanner feedback memory updates (gain/regret EMAs)
+            if not self.enable_scanner_feedback_memory:
+                self.feedback_update_skipped_disabled.add_(n_items)
+                return
+
+            self.feedback_age.add_(1.0)
+            if layer_ids is None:
+                layers_t = torch.zeros_like(ids)
+            else:
+                layers_t = layer_ids.detach().flatten().to(self.usage_score.device, dtype=torch.long)
+            
+            if cell_ids is None:
+                cells_t = torch.zeros_like(ids)
+            else:
+                cells_t = cell_ids.detach().flatten().to(self.usage_score.device, dtype=torch.long)
+            
+            for l, c, p_id, val in zip(layers_t.tolist(), cells_t.tolist(), ids.tolist(), values.tolist()):
+                if l < 0 or l >= self.num_layers or c < 0 or c >= self.num_cells or p_id < 0 or p_id >= self.num_primitives:
+                    self.feedback_update_skipped_missing_address.add_(1.0)
+                    continue
                 
-                if cell_ids is None:
-                    cells_t = torch.zeros_like(ids)
-                else:
-                    cells_t = cell_ids.detach().flatten().to(self.usage_score.device, dtype=torch.long)
-                
-                for l, c, p_id, val in zip(layers_t.tolist(), cells_t.tolist(), ids.tolist(), values.tolist()):
-                    if l < 0 or l >= self.num_layers or c < 0 or c >= self.num_cells or p_id < 0 or p_id >= self.num_primitives:
-                        continue
-                    self.feedback_count[l, c, p_id] += 1
-                    self.feedback_age[l, c, p_id] = 0.0
-                    if val > 0:
-                        self.feedback_gain_ema[l, c, p_id] = momentum * self.feedback_gain_ema[l, c, p_id] + (1.0 - momentum) * val
-                    elif val < 0:
-                        self.feedback_regret_ema[l, c, p_id] = momentum * self.feedback_regret_ema[l, c, p_id] - (1.0 - momentum) * val
+                self.feedback_count[l, c, p_id] += 1
+                self.feedback_age[l, c, p_id] = 0.0
+                if val > 0:
+                    self.feedback_update_positive.add_(1.0)
+                    self.feedback_gain_ema[l, c, p_id] = momentum * self.feedback_gain_ema[l, c, p_id] + (1.0 - momentum) * val
+                elif val < 0:
+                    self.feedback_update_negative.add_(1.0)
+                    self.feedback_regret_ema[l, c, p_id] = momentum * self.feedback_regret_ema[l, c, p_id] - (1.0 - momentum) * val
 
 
     def metrics(self) -> Dict[str, float]:
@@ -346,6 +366,12 @@ class PrimitiveMatrix5x5(nn.Module):
                 "feedback_count": float(self.feedback_count.sum().cpu()),
                 "feedback_entropy": feedback_entropy,
                 "feedback_top_share": feedback_top_share,
+                "feedback_update_called": float(self.feedback_update_called.item()),
+                "feedback_update_items": float(self.feedback_update_items.item()),
+                "feedback_update_positive": float(self.feedback_update_positive.item()),
+                "feedback_update_negative": float(self.feedback_update_negative.item()),
+                "feedback_update_skipped_disabled": float(self.feedback_update_skipped_disabled.item()),
+                "feedback_update_skipped_missing_address": float(self.feedback_update_skipped_missing_address.item()),
             })
             
         return m

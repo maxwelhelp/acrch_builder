@@ -49,6 +49,12 @@ PROJECTION_METRIC_KEYS = (
     "category_candidate_usage",
     "feedback_candidate_coverage",
     "category_candidate_coverage",
+    "feedback_update_called",
+    "feedback_update_items",
+    "feedback_update_positive",
+    "feedback_update_negative",
+    "feedback_update_skipped_disabled",
+    "feedback_update_skipped_missing_address",
 )
 
 SELF_DELTA_METRIC_KEYS = (
@@ -641,6 +647,8 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
         main_params = list(model.parameters())
 
     for epoch in range(1, args.epochs + 1):
+        pm = model.backbone.pm
+        train_accum_src = [torch.zeros(pm.num_cells, 9, device=device) for _ in range(pm.num_layers)]
         epoch_start = time.perf_counter()
         model.train()
         total = correct = 0
@@ -688,6 +696,22 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                     random_k_multiplier=modifiers.get("random_k_multiplier", 1.0),
                 )
                 ce = F.cross_entropy(logits, _batch_y(batch))
+                
+                # Accumulate train routing choices
+                for layer_idx, layer in enumerate(trace.get("layers", [])):
+                    if "choice" in layer and "candidate_ids" in layer and "candidate_source_ids" in layer:
+                        choice_t = layer["choice"].detach()
+                        candidate_source_ids_t = layer["candidate_source_ids"].detach()
+                        b_s_s, pool_sz = choice_t.shape
+                        batch_val = b_s_s // (pm.num_cells)
+                        
+                        cell_indices = torch.arange(pm.num_cells, device=choice_t.device).repeat(batch_val).unsqueeze(-1).expand(b_s_s, pool_sz).reshape(-1)
+                        src_flat = candidate_source_ids_t.reshape(-1)
+                        choice_flat = choice_t.reshape(-1)
+                        valid_src_mask = (src_flat >= 0) & (src_flat < 9)
+                        flat_src_idx = cell_indices * 9 + src_flat
+                        train_accum_src[layer_idx].view(-1).put_(flat_src_idx[valid_src_mask], choice_flat[valid_src_mask], accumulate=True)
+
                 if learned_controller:
                     policy_loss, simulator_loss, align_metrics = credit.alignment_losses(trace)
                     behavior_div_loss = _behavior_diversity_loss(trace, ce.device)
@@ -857,8 +881,8 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 **align_metrics,
                 **health_metrics,
                 **credit.metrics(),
-                **model.backbone.pm.metrics(),
                 **projection_diag,
+                **model.backbone.pm.metrics(),
                 **grad_metrics,
                 **grad_norm_metrics,
                 **utility_diag,
@@ -894,7 +918,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
                 )
                 print(
                     f"[ProgramSearch] Window Update Step {global_step}: window_acc={window_acc:.3f} "
-                    f"crystallization={search_state.metrics().get('search_crystallization_score', 0.0):.3f} "
+                    f"crystallization={search_state.metrics().get('search_crystallization', 0.0):.3f} "
                     f"burst={int(search_state.metrics().get('search_in_burst', 0))} (patience={search_state.steps_since_improvement})",
                     flush=True
                 )
@@ -1000,11 +1024,17 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
         src_total = src_sum.sum()
         src_mix = {name: float(src_sum[idx] / max(1.0, src_total)) for idx, name in enumerate(source_names_list)}
         
+        train_src_sum = np.zeros(9)
+        for l in range(pm.num_layers):
+            train_src_sum += train_accum_src[l].cpu().numpy().sum(axis=0)
+        train_src_total = train_src_sum.sum()
+        train_src_mix = {name: float(train_src_sum[idx] / max(1.0, train_src_total)) for idx, name in enumerate(source_names_list)}
+
         crystallization = 0.0
         in_burst = False
         burst_reason = None
         if search_state is not None:
-            crystallization = search_state.metrics().get("search_crystallization_score", 0.0)
+            crystallization = search_state.metrics().get("search_crystallization", 0.0)
             in_burst = bool(search_state.metrics().get("search_in_burst", 0))
             burst_reason = search_state.get_modifiers().get("burst_reason")
             
@@ -1017,6 +1047,7 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
             "route_jaccard": route_jaccard if len(dynamics_history) > 0 else None,
             "drift_count": drift_count if len(dynamics_history) > 0 else 0,
             "src_mix": src_mix,
+            "train_src_mix": train_src_mix,
             "blueprint": primitives_blueprint,
         })
         
@@ -1034,7 +1065,17 @@ def _train_real_discovery(args, model, task, opt, scaler, dtype, device: str):
             dyn_md.append(f"| {item['epoch']} | {item['val_acc']:.3f} | {item['crystallization']:.3f} | {item['in_burst']} | {reason_str} | {jacc_str} | {drift_str} |")
             
         dyn_md.extend([
-            "\n## Source Mix Evolution\n",
+            "\n## Train Source Mix Evolution\n",
+            "| Epoch | Grid | Semantic | Usage | Random | Feedback | Proj | JL16 | Category | Exploration |",
+            "|---|---|---|---|---|---|---|---|---|---|",
+        ])
+        for item in dynamics_history:
+            sm = item["train_src_mix"]
+            row_vals = [f"{sm[k]*100:.1f}%" for k in source_names_list]
+            dyn_md.append(f"| {item['epoch']} | " + " | ".join(row_vals) + " |")
+
+        dyn_md.extend([
+            "\n## Validation Source Mix Evolution\n",
             "| Epoch | Grid | Semantic | Usage | Random | Feedback | Proj | JL16 | Category | Exploration |",
             "|---|---|---|---|---|---|---|---|---|---|",
         ])
@@ -1350,8 +1391,11 @@ def _report_real(args, model: AudioMatrixClassifier, task: SpeechCommandsAccepta
         report["checks"].update({
             "credit_closed": bool((discovery_metrics or {}).get("credit_closed", 0.0)),
             "bounded_credit_budget": (
-                (discovery_metrics or {}).get("credit_budget_used", args.credit_budget + args.credit_alternative_budget + 1)
-                <= args.credit_budget + args.credit_alternative_budget
+                (discovery_metrics or {}).get("credit_budget_used", 999)
+                <= (
+                    args.credit_budget + args.credit_alternative_budget +
+                    (args.joint_credit_extra_budget if getattr(args, "enable_joint_credit", False) else 0)
+                )
             ),
             "joint_credit_measured": True if (args.steps_per_epoch * args.epochs < 50) else ((discovery_metrics or {}).get("credit_total_joint_measurements", 0.0) > 0),
             "random_credit_budget_nonzero": (discovery_metrics or {}).get("credit_random_targets", 0.0) > 0,
